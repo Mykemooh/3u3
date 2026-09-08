@@ -1,0 +1,8 @@
+node_modules
+.next
+.data
+public/uploads/jobs/*
+!public/uploads/jobs/.gitkeep
+*.log
+.env
+.env.local
