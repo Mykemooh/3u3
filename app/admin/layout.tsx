@@ -5,6 +5,11 @@ import { signOutLink } from '@/lib/nav';
 import SignOutButton from '@/components/SignOutButton';
 import Logo from '@/components/Logo';
 
+// Every admin page reads live operational data (bookings, leads, rates,
+// crew). Setting this here cascades to all nested /admin pages, so none of
+// them ever get baked into a static build-time snapshot.
+export const dynamic = 'force-dynamic';
+
 const NAV = [
   { href: '/admin', label: 'Overview' },
   { href: '/admin/leads', label: 'Leads' },

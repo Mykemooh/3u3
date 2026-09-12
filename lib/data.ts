@@ -37,6 +37,18 @@ export async function getUserByPhone(phone: string) {
   return rows[0];
 }
 
+// The real inbox that gets the "instant notification" PRD 6.6 promises the
+// owner — looked up dynamically (rather than hardcoded) so it stays correct
+// if the seeded admin user is ever replaced.
+export async function getOwnerEmail(tenantId: string) {
+  const rows = await db
+    .select()
+    .from(users)
+    .where(and(eq(users.tenantId, tenantId), eq(users.role, 'ADMIN')))
+    .limit(1);
+  return rows[0]?.email ?? process.env.ADMIN_NOTIFICATION_EMAIL ?? undefined;
+}
+
 export async function getUserById(id: string) {
   const rows = await db.select().from(users).where(eq(users.id, id)).limit(1);
   return rows[0];

@@ -12,8 +12,11 @@ for storage (see Deploying, below).
 ## What's built (V1 scope, per the PRD)
 
 - **Welcome screen** — two paths only: returning customer / new here.
-- **New-customer lead capture** — name, phone, address, no account or
-  payment, immediately followed by picking a quote-visit time.
+- **New-customer lead capture** — choose a service, then name, phone,
+  address (no account or payment), immediately followed by picking a
+  quote-visit time. The quote-visit calendar is fully native (four fixed
+  daily 30-minute slots, PRD 6.2/9) — it needs no third-party calendar
+  (Koalendar etc.) hooked up to work.
 - **Returning-customer booking** — sign in by phone, see your own agreed
   rate per service, pick a real open slot on the crew's calendar. The
   recurring-cadence prompt (one-time / bi-weekly / monthly) only appears —
@@ -159,9 +162,24 @@ db/
   for an `<img>` tag — everything else (colors, layout) is already correct.
 - **Job photos use Vercel Blob automatically once deployed** (falls back to
   local disk only when `BLOB_READ_WRITE_TOKEN` isn't set, i.e. local dev).
-- **Notifications are logged, not sent.** `notification_log` records every
-  email/SMS trigger event (matching PRD section 3's cost-tracking goal) but
-  no real email/SMS provider is wired up — that's a natural next step.
+- **Notifications are logged AND sent**, once configured. `notification_log`
+  still records every trigger event (PRD section 3's cost-tracking goal),
+  and `lib/email.ts` now actually sends the customer quote-visit
+  confirmation and the owner's new-lead alert via Resend — but only once
+  `RESEND_API_KEY` is set (see `.env.example`). Without it, sends are
+  logged and console-warned, not delivered, so the app still runs fine
+  without an email provider configured.
+- **The hero's looping background video is real footage now**
+  (`public/videos/hero-cleaning.mp4`, muted/looped/autoplaying behind the
+  logo, tagline, and both CTAs), replacing the earlier CSS-simulated
+  shine/sparkle placeholder in `components/CleaningMotion.tsx`.
+- **Fixed a build-breaking bug**: several pages/routes that read live DB
+  data (`/api/slots`, and everything under `/admin`, `/book`, `/crew`)
+  weren't marked `dynamic = 'force-dynamic'`, so Next tried to prerender
+  them at build time. With no DB reachable at build time this fails
+  `next build` outright (exit code 1) — with a DB reachable, it would
+  instead silently bake a build-time snapshot into the page. Both are bugs;
+  fixed by declaring these routes dynamic.
 - **`slotStart`/`slotEnd` are plain text**, not Postgres timestamp columns —
   they hold naive "business-local wall-clock" strings
   (`YYYY-MM-DDTHH:MM:00`) that the scheduling engine parses directly. This
@@ -174,8 +192,12 @@ db/
 1. Swap in the real 3U3 logo asset.
 2. Replace the checklist item defaults with the actual room-by-room detail
    from the Cleaning Checklists SOP document.
-3. Wire `notification_log` triggers to a real email provider (e.g. Resend)
-   and, per the PRD's SMS cost threshold, Twilio once lead volume justifies it.
+3. Add `RESEND_API_KEY` (and optionally `EMAIL_FROM`) in Vercel's
+   Environment Variables so the customer confirmation and owner alert
+   emails actually send — sign up free at resend.com, verify a sending
+   domain (or use their shared `onboarding@resend.dev` sender to start),
+   and create an API key. Add Twilio, per the PRD's SMS cost threshold,
+   once lead volume justifies it.
 4. Change the seeded demo passwords / replace the demo users before this
    goes anywhere near real customers or cleaners.
 5. Add a custom domain in Vercel once you're happy with the `.vercel.app` URL.

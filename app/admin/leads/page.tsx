@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { db } from '@/db/client';
-import { users, addresses, clientRates } from '@/db/schema';
+import { users, addresses, clientRates, serviceTypes } from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { getTenant, getAllBookings } from '@/lib/data';
 import BookingStatusActions from '@/components/BookingStatusActions';
@@ -41,6 +41,12 @@ export default async function AdminLeads() {
     : [];
   const wonClientIds = new Set(ratesByClient.map((r) => r.userId));
 
+  const serviceIds = [...new Set(leads.map((l) => l.serviceTypeId).filter(Boolean))] as string[];
+  const serviceRows = serviceIds.length
+    ? await db.select().from(serviceTypes).where(inArray(serviceTypes.id, serviceIds))
+    : [];
+  const serviceMap = Object.fromEntries(serviceRows.map((s) => [s.id, s.name]));
+
   return (
     <div>
       <h1 className="mb-1 text-2xl font-bold text-ink">Leads</h1>
@@ -57,6 +63,9 @@ export default async function AdminLeads() {
                 <div className="flex items-center gap-2">
                   <p className="font-semibold text-ink">{client?.name ?? 'Unknown'}</p>
                   <span className={`pill ${STATUS_STYLE[lead.status]}`}>{lead.status}</span>
+                  {lead.serviceTypeId && serviceMap[lead.serviceTypeId] && (
+                    <span className="pill bg-ink/5 text-ink/60">{serviceMap[lead.serviceTypeId]}</span>
+                  )}
                   {won && <span className="pill bg-gold/15 text-bronze">Won — rate on file</span>}
                 </div>
                 <p className="text-sm text-ink/60">

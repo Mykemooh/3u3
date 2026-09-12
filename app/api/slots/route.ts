@@ -2,6 +2,13 @@ import { NextResponse } from 'next/server';
 import { generateUpcomingSlots } from '@/lib/scheduling';
 import { getTenant, getServiceType, getPrimaryCrew, getBookingsForCrewOnOrAfter } from '@/lib/data';
 
+// Reads live booking data — must run per-request. Without this, Next tries
+// to statically prerender the route at build time (see the same note on
+// /api/quote-slots), which fails the production build outright whenever the
+// database isn't reachable at build time — this is what was breaking
+// `npm run build` / Vercel deploys before this fix.
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: Request) {
   const tenant = await getTenant();
   if (!tenant) return NextResponse.json({ error: 'Not set up' }, { status: 500 });
