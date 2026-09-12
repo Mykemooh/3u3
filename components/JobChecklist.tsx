@@ -56,7 +56,7 @@ export default function JobChecklist({
   }
 
   return (
-    <div className="min-h-screen bg-cream pb-28">
+    <div className="min-h-screen bg-white pb-28">
       <header className="bg-ink px-6 py-5 text-white">
         <Link href="/crew" className="text-sm text-white/50 hover:text-white">
           ← All jobs

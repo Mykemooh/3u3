@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import Logo from '@/components/Logo';
+import LogoBadge from '@/components/LogoBadge';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 import { SERVICE_LABELS } from '@/lib/data';
 
@@ -97,12 +97,12 @@ export default function BookWizard({
 
   if (services.length === 0) {
     return (
-      <main className="min-h-screen bg-ink flex flex-col items-center justify-center px-6 py-12 text-center text-white">
-        <Logo variant="light" size="sm" />
-        <p className="mt-8 max-w-sm text-white/70">
+      <main className="min-h-screen bg-white flex flex-col items-center justify-center px-6 py-12 text-center">
+        <LogoBadge size="sm" />
+        <p className="mt-8 max-w-sm text-ink/60">
           Hi {customerName} — we don't have an agreed rate on file for you yet. Please contact us directly to get set up.
         </p>
-        <Link href="/" className="btn-secondary mt-6 !bg-transparent !border-white/25 !text-white">
+        <Link href="/" className="btn-secondary mt-6">
           Back to home
         </Link>
       </main>
@@ -110,9 +110,9 @@ export default function BookWizard({
   }
 
   return (
-    <main className="min-h-screen bg-ink flex flex-col items-center px-6 py-10 text-ink">
+    <main className="min-h-screen bg-white flex flex-col items-center px-6 py-10 text-ink">
       <Link href="/" className="mb-8">
-        <Logo variant="light" size="sm" />
+        <LogoBadge size="sm" />
       </Link>
 
       {step === 'service' && (

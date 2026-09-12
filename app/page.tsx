@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Logo from '@/components/Logo';
 import Footer from '@/components/Footer';
+import CleaningMotion from '@/components/CleaningMotion';
 import { SERVICE_LABELS } from '@/lib/data';
 
 const HOW_IT_WORKS = [
@@ -31,11 +32,9 @@ export default function WelcomePage() {
               'radial-gradient(circle at 20% 20%, rgba(210,150,30,0.35), transparent 45%), radial-gradient(circle at 80% 70%, rgba(138,109,29,0.3), transparent 50%)',
           }}
         />
+        <CleaningMotion />
         <div className="relative flex flex-col items-center text-center text-white">
-          <Logo variant="light" size="lg" />
-          <p className="mt-4 max-w-xs text-sm italic text-white/70">
-            Family Owned by Parents of Three boys, Built in Texas
-          </p>
+          <Logo size="lg" />
           <h1 className="mt-8 max-w-xl text-3xl font-bold leading-tight md:text-4xl">
             A spotless home, booked in minutes.
           </h1>
@@ -52,7 +51,7 @@ export default function WelcomePage() {
       </section>
 
       {/* Services */}
-      <section className="section bg-cream">
+      <section className="section bg-white">
         <div className="container-narrow">
           <h2 className="text-center text-2xl font-bold text-ink md:text-3xl">What we clean</h2>
           <p className="mt-2 text-center text-sm text-ink/60">Pick the service that fits — we'll confirm your exact price at the quote visit.</p>
@@ -71,7 +70,7 @@ export default function WelcomePage() {
       </section>
 
       {/* How it works */}
-      <section className="section bg-white">
+      <section className="section bg-white border-t border-ink/5">
         <div className="container-narrow">
           <h2 className="text-center text-2xl font-bold text-ink md:text-3xl">How it works</h2>
           <div className="mt-10 grid grid-cols-1 gap-8 md:grid-cols-3">
