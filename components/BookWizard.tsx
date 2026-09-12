@@ -119,12 +119,12 @@ export default function BookWizard({
         <div className="card w-full max-w-md">
           <h1 className="text-xl font-bold mb-1">Welcome back, {customerName.split(' ')[0]}</h1>
           <p className="text-sm text-ink/60 mb-6">Pick a service — you'll see your own agreed rate.</p>
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {services.map((s) => (
               <button
                 key={s.id}
                 onClick={() => pickService(s)}
-                className="w-full flex items-center justify-between rounded-xl border-2 border-ink/10 px-4 py-3 text-left transition hover:border-gold"
+                className="flex flex-col items-start gap-2 rounded-xl border-2 border-ink/10 px-4 py-4 text-left transition hover:border-gold"
               >
                 <span className="font-semibold">{s.name}</span>
                 <span className="pill bg-gold/15 text-bronze">{s.rateLabel}</span>
@@ -185,12 +185,12 @@ export default function BookWizard({
           </button>
           <h1 className="text-xl font-bold mb-1">How often?</h1>
           <p className="text-sm text-ink/60 mb-6">Last step — set your cadence for {service.name.toLowerCase()}.</p>
-          <div className="space-y-3 mb-6">
+          <div className="grid grid-cols-1 gap-3 mb-6 sm:grid-cols-3">
             {(['ONE_TIME', 'BIWEEKLY', 'MONTHLY'] as Cadence[]).map((c) => (
               <button
                 key={c}
                 onClick={() => setCadence(c)}
-                className={`w-full rounded-xl border-2 px-4 py-3 text-left font-medium transition ${
+                className={`rounded-xl border-2 px-4 py-3 text-center font-medium transition ${
                   cadence === c ? 'border-gold bg-gold/10' : 'border-ink/10 hover:border-gold'
                 }`}
               >

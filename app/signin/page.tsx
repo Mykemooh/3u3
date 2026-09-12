@@ -37,7 +37,7 @@ function SignInInner() {
 
   return (
     <main className="min-h-screen bg-ink flex flex-col items-center justify-center px-6 py-12">
-      <Link href="/" className="mb-8">
+      <Link href="/" className="mb-10">
         <Logo variant="light" />
       </Link>
       <div className="card w-full max-w-sm">

@@ -33,4 +33,13 @@
   .pill {
     @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold;
   }
+  .section {
+    @apply px-6 py-16 md:py-24;
+  }
+  .container-narrow {
+    @apply mx-auto w-full max-w-5xl;
+  }
+  .step-dot {
+    @apply flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold;
+  }
 }
