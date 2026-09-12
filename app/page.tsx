@@ -6,7 +6,7 @@ import { SERVICE_LABELS } from '@/lib/data';
 
 const HOW_IT_WORKS = [
   {
-    title: 'Book a free quote visit',
+    title: 'Book a free estimate visit',
     description: "Tell us a bit about your home and pick a time — takes less than a minute.",
   },
   {
@@ -39,10 +39,10 @@ export default function WelcomePage() {
             A spotless home, booked in minutes.
           </h1>
           <p className="mt-3 max-w-md text-white/60">
-            Get a free, no-obligation quote from a real person at your door.
+            Book a free, no-obligation estimate visit with a real person at your door.
           </p>
           <Link href="/new" className="btn-primary mt-8 w-full max-w-xs text-base">
-            Get a free quote
+            Book a free estimate
           </Link>
           <Link href="/signin" className="mt-4 text-sm text-white/50 hover:text-gold">
             Already a customer? Sign in
@@ -54,7 +54,7 @@ export default function WelcomePage() {
       <section className="section bg-white">
         <div className="container-narrow">
           <h2 className="text-center text-2xl font-bold text-ink md:text-3xl">What we clean</h2>
-          <p className="mt-2 text-center text-sm text-ink/60">Pick the service that fits — we'll confirm your exact price at the quote visit.</p>
+          <p className="mt-2 text-center text-sm text-ink/60">Pick the service that fits — we'll confirm your exact price at the estimate visit.</p>
           <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
             {Object.values(SERVICE_LABELS).map((label) => (
               <div
