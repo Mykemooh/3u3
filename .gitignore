@@ -6,3 +6,4 @@ public/uploads/jobs/*
 *.log
 .env
 .env.local
+.env.local.save
