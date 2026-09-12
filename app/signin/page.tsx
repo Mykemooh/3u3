@@ -4,7 +4,7 @@ import { useState, Suspense } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import Logo from '@/components/Logo';
+import LogoBadge from '@/components/LogoBadge';
 
 function SignInInner() {
   const router = useRouter();
@@ -36,9 +36,9 @@ function SignInInner() {
   }
 
   return (
-    <main className="min-h-screen bg-ink flex flex-col items-center justify-center px-6 py-12">
-      <Link href="/" className="mb-8">
-        <Logo variant="light" />
+    <main className="min-h-screen bg-white flex flex-col items-center justify-center px-6 py-12">
+      <Link href="/" className="mb-10">
+        <LogoBadge />
       </Link>
       <div className="card w-full max-w-sm">
         <h1 className="text-xl font-bold text-ink mb-1">
@@ -85,7 +85,7 @@ function SignInInner() {
           </p>
         )}
       </div>
-      <p className="mt-6 text-xs text-white/40">
+      <p className="mt-6 text-xs text-ink/30">
         Demo customer: +12815550199 / customer123
       </p>
     </main>

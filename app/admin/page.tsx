@@ -1,11 +1,12 @@
 import Link from 'next/link';
-import { getTenant, getAllBookings, getPrimaryCrew } from '@/lib/data';
+import { getTenant, getAllBookings, getPrimaryCrew, getClientsForTenant } from '@/lib/data';
 
 export default async function AdminOverview() {
   const tenant = await getTenant();
   if (!tenant) return null;
   const bookings = await getAllBookings(tenant.id);
   const crew = await getPrimaryCrew(tenant.id);
+  const clients = await getClientsForTenant(tenant.id);
 
   const now = new Date().toISOString();
   const quoteVisits = bookings.filter((b) => b.isQuoteVisit && b.status !== 'CANCELLED');
@@ -14,9 +15,9 @@ export default async function AdminOverview() {
   const upcomingJobs = jobs.filter((b) => b.slotStart >= now);
 
   const stats = [
-    { label: 'Upcoming quote visits', value: upcomingQuoteVisits.length },
-    { label: 'Upcoming cleaning jobs', value: upcomingJobs.length },
-    { label: 'Total bookings on file', value: bookings.length },
+    { label: 'Upcoming quote visits', value: upcomingQuoteVisits.length, href: '/admin/leads' },
+    { label: 'Upcoming cleaning jobs', value: upcomingJobs.length, href: '/admin/bookings' },
+    { label: 'Clients on file', value: clients.length, href: '/admin/clients' },
   ];
 
   return (
@@ -28,10 +29,10 @@ export default async function AdminOverview() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {stats.map((s) => (
-          <div key={s.label} className="card">
+          <Link key={s.label} href={s.href} className="card block transition hover:border-gold">
             <p className="text-3xl font-black text-bronze">{s.value}</p>
             <p className="text-sm text-ink/60">{s.label}</p>
-          </div>
+          </Link>
         ))}
       </div>
 

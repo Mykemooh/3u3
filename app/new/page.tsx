@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import Logo from '@/components/Logo';
+import LogoBadge from '@/components/LogoBadge';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 
 type Slot = { start: string; end: string; available: boolean };
@@ -60,11 +60,21 @@ export default function NewCustomerPage() {
     }
   }
 
+  const stepNumber = step === 'form' ? 1 : step === 'schedule' ? 2 : null;
+
   return (
-    <main className="min-h-screen bg-ink flex flex-col items-center px-6 py-10">
-      <Link href="/" className="mb-8">
-        <Logo variant="light" size="sm" />
+    <main className="min-h-screen bg-white flex flex-col items-center px-6 py-12">
+      <Link href="/" className="mb-10">
+        <LogoBadge size="sm" />
       </Link>
+
+      {stepNumber && (
+        <div className="mb-6 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ink/40">
+          <span className={stepNumber === 1 ? 'text-bronze' : ''}>1. Your details</span>
+          <span className="text-ink/20">—</span>
+          <span className={stepNumber === 2 ? 'text-bronze' : ''}>2. Pick a time</span>
+        </div>
+      )}
 
       {step === 'form' && (
         <div className="card w-full max-w-md">

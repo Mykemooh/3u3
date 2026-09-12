@@ -1,9 +1,9 @@
 import { db } from '@/db/client';
 import {
   tenants, serviceTypes, crews, clientRates, users, addresses, bookings,
-  jobs, jobChecklistItems, crewMembers,
+  jobs, jobChecklistItems, crewMembers, notificationLog,
 } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 
 export async function getTenant() {
   const rows = await db.select().from(tenants).limit(1);
@@ -86,6 +86,19 @@ export async function getCrewForUser(userId: string) {
 export function formatMoney(cents: number | null | undefined) {
   if (cents == null) return '—';
   return `$${(cents / 100).toFixed(2)}`;
+}
+
+export async function getClientsForTenant(tenantId: string) {
+  const rows = await db
+    .select()
+    .from(users)
+    .where(and(eq(users.tenantId, tenantId), eq(users.role, 'CUSTOMER')));
+  return rows.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function getNotificationLogForTenant(tenantId: string) {
+  const rows = await db.select().from(notificationLog).where(eq(notificationLog.tenantId, tenantId));
+  return rows.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
 export const SERVICE_LABELS: Record<string, string> = {
