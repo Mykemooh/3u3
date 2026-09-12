@@ -15,7 +15,7 @@ export default function Footer() {
 
           <div className="flex flex-col items-center gap-2 md:items-start">
             <p className="text-xs font-semibold uppercase tracking-wider text-white/30">Get started</p>
-            <Link href="/new" className="text-sm hover:text-gold">Get a free quote</Link>
+            <Link href="/new" className="text-sm hover:text-gold">Book a free estimate</Link>
             <Link href="/signin" className="text-sm hover:text-gold">Sign in</Link>
           </div>
 

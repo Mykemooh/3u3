@@ -78,7 +78,7 @@ export default function NewCustomerPage() {
 
       {step === 'form' && (
         <div className="card w-full max-w-md">
-          <h1 className="text-xl font-bold mb-1">Get a free quote</h1>
+          <h1 className="text-xl font-bold mb-1">Book a free estimate</h1>
           <p className="text-sm text-ink/60 mb-6">
             Just a few details — we'll set up an in-person visit to give you an exact price, no obligation.
           </p>
@@ -136,7 +136,7 @@ export default function NewCustomerPage() {
           <button onClick={() => setStep('form')} className="text-sm text-ink/50 mb-4 hover:text-ink">
             ← Back
           </button>
-          <h1 className="text-xl font-bold mb-1">Pick a quote visit time</h1>
+          <h1 className="text-xl font-bold mb-1">Pick an estimate visit time</h1>
           <p className="text-sm text-ink/60 mb-6">
             A 30-minute in-person visit — we'll look at the home and give you an exact price on the spot.
           </p>
@@ -172,7 +172,7 @@ export default function NewCustomerPage() {
             onClick={confirmBooking}
             className="btn-primary w-full mt-6"
           >
-            {submitting ? 'Booking…' : 'Confirm quote visit'}
+            {submitting ? 'Booking…' : 'Confirm estimate visit'}
           </button>
         </div>
       )}

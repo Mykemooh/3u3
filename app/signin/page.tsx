@@ -80,7 +80,7 @@ function SignInInner() {
           <p className="mt-4 text-center text-sm text-ink/60">
             New here?{' '}
             <Link href="/new" className="font-semibold text-bronze underline">
-              Get a quote instead
+              Book a free estimate instead
             </Link>
           </p>
         )}
