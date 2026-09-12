@@ -12,6 +12,7 @@ export default function NewCustomerPage() {
   const [step, setStep] = useState<'form' | 'schedule' | 'confirmed'>('form');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [addressLine1, setAddressLine1] = useState('');
   const [days, setDays] = useState<Day[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
@@ -39,6 +40,7 @@ export default function NewCustomerPage() {
         body: JSON.stringify({
           name,
           phone,
+          email: email || undefined,
           addressLine1,
           slotStart: selected.start,
           slotEnd: selected.end,
@@ -90,6 +92,16 @@ export default function NewCustomerPage() {
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+1 (281) 555-0100"
                 required
+              />
+            </div>
+            <div>
+              <label className="label">Email (optional)</label>
+              <input
+                className="input"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
               />
             </div>
             <div>

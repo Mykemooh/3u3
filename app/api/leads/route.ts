@@ -9,6 +9,7 @@ import { createQuoteVisitBooking, logNotification, DoubleBookingError } from '@/
 const schema = z.object({
   name: z.string().min(1),
   phone: z.string().min(7),
+  email: z.string().email().optional(),
   addressLine1: z.string().min(1),
   slotStart: z.string(),
   slotEnd: z.string(),
@@ -26,13 +27,15 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'Please fill in every field.' }, { status: 400 });
   }
-  const { name, phone, addressLine1, slotStart, slotEnd } = parsed.data;
+  const { name, phone, email, addressLine1, slotStart, slotEnd } = parsed.data;
 
   let user = (await db.select().from(users).where(eq(users.phone, phone)).limit(1))[0];
   if (!user) {
     const id = crypto.randomUUID();
-    await db.insert(users).values({ id, tenantId: tenant.id, role: 'CUSTOMER', name, phone });
+    await db.insert(users).values({ id, tenantId: tenant.id, role: 'CUSTOMER', name, phone, email });
     user = (await db.select().from(users).where(eq(users.id, id)).limit(1))[0]!;
+  } else if (email && !user.email) {
+    await db.update(users).set({ email }).where(eq(users.id, user.id));
   }
 
   let address = (await db.select().from(addresses).where(eq(addresses.userId, user.id)).limit(1))[0];
@@ -54,7 +57,7 @@ export async function POST(req: Request) {
     await logNotification({
       tenantId: tenant.id,
       channel: 'EMAIL',
-      recipient: phone,
+      recipient: user.email ?? phone,
       triggerEvent: 'QUOTE_VISIT_CONFIRMATION_CUSTOMER',
       relatedBookingId: bookingId,
     });
