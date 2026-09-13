@@ -114,6 +114,7 @@ export async function createQuoteVisitBooking(input: {
   tenantId: string;
   clientId: string;
   addressId?: string;
+  serviceTypeId?: string;
   slotStart: string;
   slotEnd: string;
 }) {
@@ -130,6 +131,7 @@ export async function createQuoteVisitBooking(input: {
       tenantId: input.tenantId,
       clientId: input.clientId,
       addressId: input.addressId,
+      serviceTypeId: input.serviceTypeId,
       slotStart: input.slotStart,
       slotEnd: input.slotEnd,
       cadence: 'ONE_TIME',

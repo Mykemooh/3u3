@@ -9,6 +9,9 @@ import { getCrewForUser, SERVICE_LABELS } from '@/lib/data';
 import SignOutButton from '@/components/SignOutButton';
 import Logo from '@/components/Logo';
 
+// Reads the signed-in cleaner's own jobs — live data, per-session.
+export const dynamic = 'force-dynamic';
+
 export default async function CrewHome() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect('/signin?role=crew');

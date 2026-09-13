@@ -4,6 +4,10 @@ import { authOptions } from '@/lib/auth';
 import { getTenant, getServiceTypes, getClientRatesFor, formatMoney } from '@/lib/data';
 import BookWizard from '@/components/BookWizard';
 
+// Reads the signed-in customer's session and live rate/service data —
+// never statically cacheable.
+export const dynamic = 'force-dynamic';
+
 export default async function BookPage() {
   const session = await getServerSession(authOptions);
   if (!session?.user || (session.user as any).role !== 'CUSTOMER') {

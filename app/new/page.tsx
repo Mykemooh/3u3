@@ -7,9 +7,19 @@ import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 
 type Slot = { start: string; end: string; available: boolean };
 type Day = { date: string; slots: Slot[] };
+type Service = { id: string; key: string; name: string };
+
+const SERVICE_BLURBS: Record<string, string> = {
+  STANDARD: 'Regular upkeep — kitchens, bathrooms, floors, dusting.',
+  DEEP: 'A deeper one-time or quarterly clean, top to bottom.',
+  MOVE_IN_OUT: 'Empty-home clean for moving in or out.',
+  AIRBNB: 'Fast turnover between guests, reset to staging standard.',
+};
 
 export default function NewCustomerPage() {
-  const [step, setStep] = useState<'form' | 'schedule' | 'confirmed'>('form');
+  const [step, setStep] = useState<'service' | 'form' | 'schedule' | 'confirmed'>('service');
+  const [services, setServices] = useState<Service[]>([]);
+  const [serviceTypeId, setServiceTypeId] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -19,6 +29,13 @@ export default function NewCustomerPage() {
   const [selected, setSelected] = useState<Slot | null>(null);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [customerEmailSent, setCustomerEmailSent] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/services')
+      .then((r) => r.json())
+      .then((data) => setServices(data.services ?? []));
+  }, []);
 
   useEffect(() => {
     if (step !== 'schedule') return;
@@ -28,6 +45,8 @@ export default function NewCustomerPage() {
       .then((data) => setDays(data.days))
       .finally(() => setLoadingSlots(false));
   }, [step]);
+
+  const selectedService = services.find((s) => s.id === serviceTypeId);
 
   async function confirmBooking() {
     if (!selected) return;
@@ -42,6 +61,7 @@ export default function NewCustomerPage() {
           phone,
           email: email || undefined,
           addressLine1,
+          serviceTypeId,
           slotStart: selected.start,
           slotEnd: selected.end,
         }),
@@ -52,6 +72,7 @@ export default function NewCustomerPage() {
         setSubmitting(false);
         return;
       }
+      setCustomerEmailSent(!!data.customerEmailSent);
       setStep('confirmed');
     } catch {
       setError('Something went wrong. Please try again.');
@@ -60,7 +81,7 @@ export default function NewCustomerPage() {
     }
   }
 
-  const stepNumber = step === 'form' ? 1 : step === 'schedule' ? 2 : null;
+  const stepNumber = step === 'service' ? 1 : step === 'form' ? 2 : step === 'schedule' ? 3 : null;
 
   return (
     <main className="min-h-screen bg-white flex flex-col items-center px-6 py-12">
@@ -70,16 +91,49 @@ export default function NewCustomerPage() {
 
       {stepNumber && (
         <div className="mb-6 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ink/40">
-          <span className={stepNumber === 1 ? 'text-bronze' : ''}>1. Your details</span>
+          <span className={stepNumber === 1 ? 'text-bronze' : ''}>1. Service</span>
           <span className="text-ink/20">—</span>
-          <span className={stepNumber === 2 ? 'text-bronze' : ''}>2. Pick a time</span>
+          <span className={stepNumber === 2 ? 'text-bronze' : ''}>2. Your details</span>
+          <span className="text-ink/20">—</span>
+          <span className={stepNumber === 3 ? 'text-bronze' : ''}>3. Pick a time</span>
+        </div>
+      )}
+
+      {step === 'service' && (
+        <div className="card w-full max-w-md">
+          <h1 className="text-xl font-bold mb-1">What do you need cleaned?</h1>
+          <p className="text-sm text-ink/60 mb-6">
+            Pick a service — we'll confirm your exact price at the quote visit.
+          </p>
+          <div className="space-y-3">
+            {services.length === 0 && <p className="text-sm text-ink/50">Loading services…</p>}
+            {services.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => {
+                  setServiceTypeId(s.id);
+                  setStep('form');
+                }}
+                className="card w-full flex flex-col items-start text-left transition hover:border-gold hover:shadow-gold"
+              >
+                <span className="font-semibold text-ink">{s.name}</span>
+                {SERVICE_BLURBS[s.key] && (
+                  <span className="mt-1 text-sm text-ink/60">{SERVICE_BLURBS[s.key]}</span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
       {step === 'form' && (
         <div className="card w-full max-w-md">
+          <button onClick={() => setStep('service')} className="text-sm text-ink/50 mb-4 hover:text-ink">
+            ← Back
+          </button>
           <h1 className="text-xl font-bold mb-1">Get a free quote</h1>
           <p className="text-sm text-ink/60 mb-6">
+            {selectedService ? `${selectedService.name} — ` : ''}
             Just a few details — we'll set up an in-person visit to give you an exact price, no obligation.
           </p>
           <form
@@ -113,6 +167,7 @@ export default function NewCustomerPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
               />
+              <p className="mt-1 text-xs text-ink/40">Add this if you'd like an emailed confirmation.</p>
             </div>
             <div>
               <label className="label">Home address</label>
@@ -184,10 +239,15 @@ export default function NewCustomerPage() {
           </div>
           <h1 className="text-xl font-bold mb-2">You're booked!</h1>
           <p className="text-sm text-ink/60 mb-1">
+            {selectedService?.name}
+            {selectedService ? ' — ' : ''}
             {selected && `${formatDateLabel(selected.start.split('T')[0])}, ${formatSlotLabel(selected.start, selected.end)}`}
           </p>
           <p className="text-sm text-ink/60 mb-6">
-            We've emailed you a confirmation. The owner has been notified and will meet you at your home for the visit.
+            {customerEmailSent
+              ? "We've emailed you a confirmation. "
+              : ''}
+            The owner has been notified and will meet you at your home for the visit.
           </p>
           <Link href="/" className="btn-secondary w-full">
             Back to home
