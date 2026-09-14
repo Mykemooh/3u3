@@ -5,6 +5,7 @@ import { db } from '@/db/client';
 import { jobs, jobChecklistItems, bookings } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { getCrewForUser } from '@/lib/data';
+import { createDraftInvoiceForBooking } from '@/lib/invoices';
 
 // A job cannot be marked finished until every checklist item has a
 // complete before/after pair, or has been explicitly flagged skipped with
@@ -38,5 +39,15 @@ export async function POST(req: Request, { params }: { params: { jobId: string }
   await db.update(jobs).set({ status: 'COMPLETE', completedAt: now }).where(eq(jobs.id, params.jobId));
   await db.update(bookings).set({ status: 'COMPLETED' }).where(eq(bookings.id, job.bookingId));
 
-  return NextResponse.json({ ok: true });
+  // Draft the invoice the moment the job is done (quote → job → invoice →
+  // payment → receipt). Never blocks job completion if it fails — the
+  // admin can always create it manually from /admin/invoices.
+  let invoiceId: string | null = null;
+  try {
+    invoiceId = await createDraftInvoiceForBooking(job.bookingId);
+  } catch (err) {
+    console.error('[invoices] failed to draft invoice for booking', job.bookingId, err);
+  }
+
+  return NextResponse.json({ ok: true, invoiceId });
 }

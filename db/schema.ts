@@ -35,6 +35,7 @@ export const users = pgTable('users', {
   phone: text('phone'),
   email: text('email'),
   passwordHash: text('password_hash'),
+  stripeCustomerId: text('stripe_customer_id'),
   ...timestamps,
 }, (t) => ({
   phoneUnique: uniqueIndex('users_phone_unique').on(t.phone),
@@ -177,6 +178,44 @@ export const jobChecklistItems = pgTable('job_checklist_items', {
   beforePhotoPath: text('before_photo_path'),
   afterPhotoPath: text('after_photo_path'),
   completedAt: timestamp('completed_at', { withTimezone: true }),
+  ...timestamps,
+});
+
+// ---------------------------------------------------------------------------
+// Invoices — the quote → job → invoice → payment → receipt tail end. One
+// invoice per (non-quote-visit) booking, auto-drafted the moment its job is
+// marked COMPLETE (see lib/invoices.ts), reviewed/edited by the admin, then
+// finalized as a real Stripe Invoice (send_invoice collection method) —
+// which is what gives us a branded, Stripe-hosted pay page and PDF ("use
+// templates for invoicing") without inventing our own. Receipt delivery
+// and "paid" status both come from Stripe (webhook), not guessed
+// client-side.
+// ---------------------------------------------------------------------------
+export const invoices = pgTable('invoices', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  bookingId: text('booking_id').notNull().references(() => bookings.id),
+  clientId: text('client_id').notNull().references(() => users.id),
+  status: text('status', { enum: ['DRAFT', 'SENT', 'PAID', 'VOID'] }).notNull().default('DRAFT'),
+  totalCents: integer('total_cents').notNull().default(0),
+  stripeInvoiceId: text('stripe_invoice_id'),
+  hostedInvoiceUrl: text('hosted_invoice_url'),
+  invoicePdfUrl: text('invoice_pdf_url'),
+  stripePaymentIntentId: text('stripe_payment_intent_id'),
+  receiptUrl: text('receipt_url'),
+  sentAt: timestamp('sent_at', { withTimezone: true }),
+  paidAt: timestamp('paid_at', { withTimezone: true }),
+  ...timestamps,
+}, (t) => ({
+  bookingUnique: uniqueIndex('invoices_booking_unique').on(t.bookingId),
+}));
+
+export const invoiceItems = pgTable('invoice_items', {
+  id: id(),
+  invoiceId: text('invoice_id').notNull().references(() => invoices.id),
+  description: text('description').notNull(),
+  amountCents: integer('amount_cents').notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
   ...timestamps,
 });
 
