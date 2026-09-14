@@ -22,6 +22,29 @@ for storage (see Deploying, below).
   recurring-cadence prompt (one-time / bi-weekly / monthly) only appears —
   and only for Standard cleaning — as the very last step before confirming,
   exactly as specced.
+- **Estimates** — the step that turns a walkthrough into money. After a
+  quote visit the admin writes up priced line items (plus an optional note)
+  and sends them; the client gets Approve / Decline as one-click links in
+  the email, no account needed. Approving writes the agreed price into
+  `client_rates`, which is exactly what the returning-customer booking flow
+  filters on — so approval opens real bookable slots at that price with no
+  admin step in between. A brand-new lead has no password yet, so the
+  approval page lets them set one and drops them straight into booking.
+- **Dispatch board** (`/admin/schedule`) — the week laid out with crews
+  down the side and days across the top, jobs needing a crew called out in
+  their own row, and quote visits on a separate row since they're the
+  owner's calendar rather than crew capacity. Reassigning a crew re-runs
+  the same no-double-booking check that booking does.
+- **Pipeline board** (`/admin/pipeline`) — every client's stage on one
+  screen, from new lead through paid, with money totalled per column.
+  Entirely derived from real records, so there's no status field to keep
+  up to date by hand.
+- **Invoicing and payment** — an invoice auto-drafts the moment a cleaner
+  marks a job complete, at the client's already-agreed rate. The admin
+  reviews and sends it; that creates a real Stripe invoice
+  (`collection_method: 'send_invoice'`, so nothing is ever auto-charged)
+  with a Stripe-hosted pay page and PDF. A webhook on `invoice.paid` marks
+  it paid and sends the customer a receipt link plus an owner alert.
 - **Admin dashboard** — adjust the scheduling engine (working hours, crew
   size, per-service duration via seed data, commute buffer), see every
   booking, manage crew, set/update each client's agreed rate.
@@ -33,11 +56,16 @@ for storage (see Deploying, below).
 - **No double-booking** — enforced in a database transaction, not just in
   the UI.
 
-Out of scope for V1 (per the PRD's own "future phases" list, section 5):
-AI phone bot, white-label multi-tenant onboarding UI, owner analytics
-dashboard, in-app payments, video capture. The data model doesn't preclude
-any of these — tenant, service, and checklist records are already
-per-tenant, just seeded with one tenant today.
+That chain — lead → walkthrough → estimate → approval → booking → job →
+invoice → payment → receipt — runs end to end with no step happening
+outside the app.
+
+Out of scope for now (per the PRD's own "future phases" list, section 5):
+AI phone bot, self-serve white-label onboarding UI, owner analytics
+dashboard, video capture. The data model doesn't preclude any of these —
+tenant, service, and checklist records are already per-tenant, just seeded
+with one tenant today, so onboarding a second cleaning business is a data
+exercise rather than a rewrite.
 
 ## Tech stack
 
@@ -132,6 +160,12 @@ components/              Shared UI (BookWizard, JobChecklist, Logo, forms)
 lib/
   scheduling.ts           The admin-driven slot-generation engine
   bookings.ts             Booking creation + no-double-booking enforcement
+  estimates.ts            Draft/send/approve estimates; approval sets the agreed rate
+  dispatch.ts             Week schedule rollup + crew reassignment (same conflict check)
+  pipeline.ts             Derives each client's lifecycle stage for the pipeline board
+  invoices.ts             Auto-draft on job completion, send via Stripe, confirm payment
+  stripe.ts               Lazy Stripe client (throws a clear error if unconfigured)
+  email.ts                Resend sending + every email template
   storage.ts              Job photo storage (Vercel Blob, local-disk fallback)
   auth.ts                 NextAuth config
   data.ts                 Shared DB read helpers
@@ -180,6 +214,30 @@ db/
   `next build` outright (exit code 1) — with a DB reachable, it would
   instead silently bake a build-time snapshot into the page. Both are bugs;
   fixed by declaring these routes dynamic.
+- **Estimate approval links are capability URLs, not logins.** The client
+  has no account when the estimate lands, so there's nothing to
+  authenticate against; the link carries a 32-byte random token, stored
+  unique on the row and only ever minted at send time. Same model as
+  Stripe's own hosted invoice links. The token grants exactly one thing —
+  answering that estimate — and the password-setup endpoint behind it only
+  works once, on an approved estimate, for a client who has no password
+  yet, so a forwarded link can never reset an established account.
+- **The pipeline board derives every stage; it stores none.** A "stage"
+  column maintained by hand drifts out of step with reality the first busy
+  week. Stages are computed from bookings, estimates, jobs and invoices at
+  read time instead, ordered by what needs doing next rather than how far
+  along someone is (see the comments in `lib/pipeline.ts` — the repeat-
+  client case is the one worth reading).
+- **`db/push.ts` needs an explicit `ALTER TABLE` for new columns on
+  existing tables.** `CREATE TABLE IF NOT EXISTS` is a no-op once a table
+  exists, so editing a `CREATE TABLE` block alone will never reach an
+  already-deployed database no matter how many times the script is re-run.
+  `users.stripe_customer_id` is the worked example.
+- **Payments never trust the browser.** An invoice is marked paid only by
+  the Stripe webhook (`invoice.paid`), never by the customer landing back
+  on a thank-you page. Without `STRIPE_WEBHOOK_SECRET` set, payments will
+  succeed on Stripe's side and this app will never learn about them — so
+  configure it before sending a real invoice.
 - **`slotStart`/`slotEnd` are plain text**, not Postgres timestamp columns —
   they hold naive "business-local wall-clock" strings
   (`YYYY-MM-DDTHH:MM:00`) that the scheduling engine parses directly. This
@@ -198,6 +256,14 @@ db/
    domain (or use their shared `onboarding@resend.dev` sender to start),
    and create an API key. Add Twilio, per the PRD's SMS cost threshold,
    once lead volume justifies it.
-4. Change the seeded demo passwords / replace the demo users before this
+4. Add `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` so invoices can
+   actually be sent and paid. Use test-mode keys until you're ready for
+   real money, and point the webhook at `<your-app-url>/api/stripe/webhook`
+   subscribed to at least `invoice.paid` — without it, payments go through
+   on Stripe's side and this app never finds out.
+5. Set `NEXTAUTH_URL` to the real production URL. Estimate approval links
+   are built from it, so if it's wrong or missing, every estimate you send
+   will point at `localhost`.
+6. Change the seeded demo passwords / replace the demo users before this
    goes anywhere near real customers or cleaners.
-5. Add a custom domain in Vercel once you're happy with the `.vercel.app` URL.
+7. Add a custom domain in Vercel once you're happy with the `.vercel.app` URL.
