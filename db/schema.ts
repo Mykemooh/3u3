@@ -182,6 +182,52 @@ export const jobChecklistItems = pgTable('job_checklist_items', {
 });
 
 // ---------------------------------------------------------------------------
+// Estimates — the missing middle of the lifecycle. A quote visit (above)
+// only books the walkthrough; this is what comes out of it. The admin
+// builds priced line items, sends it, and the client approves or declines
+// with one click from the email.
+//
+// approvalToken is a capability URL secret (a long random string, unique,
+// only ever set when the estimate is sent) rather than a signed JWT: the
+// client has no account yet at this point, so there is nothing to
+// authenticate against, and this is the same pattern Stripe's own hosted
+// invoice links use. Approving writes the agreed rate into client_rates,
+// which is exactly what unlocks the existing returning-customer booking
+// flow — so approval feeds straight into scheduling with no admin step in
+// between.
+// ---------------------------------------------------------------------------
+export const quotes = pgTable('quotes', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  clientId: text('client_id').notNull().references(() => users.id),
+  // The walkthrough this estimate came out of. Nullable because an admin
+  // can also write an estimate for an existing client without a visit.
+  quoteVisitBookingId: text('quote_visit_booking_id').references(() => bookings.id),
+  serviceTypeId: text('service_type_id').notNull().references(() => serviceTypes.id),
+  status: text('status', { enum: ['DRAFT', 'SENT', 'APPROVED', 'DECLINED', 'EXPIRED'] })
+    .notNull()
+    .default('DRAFT'),
+  totalCents: integer('total_cents').notNull().default(0),
+  notes: text('notes'),
+  approvalToken: text('approval_token'),
+  sentAt: timestamp('sent_at', { withTimezone: true }),
+  respondedAt: timestamp('responded_at', { withTimezone: true }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  ...timestamps,
+}, (t) => ({
+  tokenUnique: uniqueIndex('quotes_approval_token_unique').on(t.approvalToken),
+}));
+
+export const quoteItems = pgTable('quote_items', {
+  id: id(),
+  quoteId: text('quote_id').notNull().references(() => quotes.id),
+  description: text('description').notNull(),
+  amountCents: integer('amount_cents').notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  ...timestamps,
+});
+
+// ---------------------------------------------------------------------------
 // Invoices — the quote → job → invoice → payment → receipt tail end. One
 // invoice per (non-quote-visit) booking, auto-drafted the moment its job is
 // marked COMPLETE (see lib/invoices.ts), reviewed/edited by the admin, then

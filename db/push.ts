@@ -139,6 +139,32 @@ async function main() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 
+    CREATE TABLE IF NOT EXISTS quotes (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      client_id TEXT NOT NULL REFERENCES users(id),
+      quote_visit_booking_id TEXT REFERENCES bookings(id),
+      service_type_id TEXT NOT NULL REFERENCES service_types(id),
+      status TEXT NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT','SENT','APPROVED','DECLINED','EXPIRED')),
+      total_cents INTEGER NOT NULL DEFAULT 0,
+      notes TEXT,
+      approval_token TEXT,
+      sent_at TIMESTAMPTZ,
+      responded_at TIMESTAMPTZ,
+      expires_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS quotes_approval_token_unique ON quotes(approval_token);
+
+    CREATE TABLE IF NOT EXISTS quote_items (
+      id TEXT PRIMARY KEY,
+      quote_id TEXT NOT NULL REFERENCES quotes(id),
+      description TEXT NOT NULL,
+      amount_cents INTEGER NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
     CREATE TABLE IF NOT EXISTS invoices (
       id TEXT PRIMARY KEY,
       tenant_id TEXT NOT NULL REFERENCES tenants(id),
