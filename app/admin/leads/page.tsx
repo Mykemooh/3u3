@@ -1,9 +1,18 @@
 import Link from 'next/link';
 import { db } from '@/db/client';
-import { users, addresses, clientRates, serviceTypes } from '@/db/schema';
+import { users, addresses, clientRates, serviceTypes, quotes } from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { getTenant, getAllBookings } from '@/lib/data';
 import BookingStatusActions from '@/components/BookingStatusActions';
+import StartEstimateButton from '@/components/StartEstimateButton';
+
+const ESTIMATE_STYLE: Record<string, string> = {
+  DRAFT: 'bg-ink/5 text-ink/60',
+  SENT: 'bg-amber-100 text-amber-700',
+  APPROVED: 'bg-emerald-100 text-emerald-700',
+  DECLINED: 'bg-red-100 text-red-700',
+  EXPIRED: 'bg-ink/10 text-ink/50',
+};
 
 const STATUS_STYLE: Record<string, string> = {
   REQUESTED: 'bg-amber-100 text-amber-700',
@@ -47,6 +56,17 @@ export default async function AdminLeads() {
     : [];
   const serviceMap = Object.fromEntries(serviceRows.map((s) => [s.id, s.name]));
 
+  // Where each lead stands on its estimate — so the next action on a lead
+  // ("build one" / "chasing an answer" / "they said yes") is visible
+  // without opening anything.
+  const leadIds = leads.map((l) => l.id);
+  const estimateRows = leadIds.length
+    ? await db.select().from(quotes).where(inArray(quotes.quoteVisitBookingId, leadIds))
+    : [];
+  const estimateByVisit = Object.fromEntries(
+    estimateRows.filter((q) => q.quoteVisitBookingId).map((q) => [q.quoteVisitBookingId as string, q]),
+  );
+
   return (
     <div>
       <h1 className="mb-1 text-2xl font-bold text-ink">Leads</h1>
@@ -57,6 +77,7 @@ export default async function AdminLeads() {
           const client = clientMap[lead.clientId];
           const address = lead.addressId ? addressMap[lead.addressId] : null;
           const won = client ? wonClientIds.has(client.id) : false;
+          const estimate = estimateByVisit[lead.id];
           return (
             <div key={lead.id} className="card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -65,6 +86,9 @@ export default async function AdminLeads() {
                   <span className={`pill ${STATUS_STYLE[lead.status]}`}>{lead.status}</span>
                   {lead.serviceTypeId && serviceMap[lead.serviceTypeId] && (
                     <span className="pill bg-ink/5 text-ink/60">{serviceMap[lead.serviceTypeId]}</span>
+                  )}
+                  {estimate && (
+                    <span className={`pill ${ESTIMATE_STYLE[estimate.status]}`}>Estimate {estimate.status}</span>
                   )}
                   {won && <span className="pill bg-gold/15 text-bronze">Won — rate on file</span>}
                 </div>
@@ -77,9 +101,24 @@ export default async function AdminLeads() {
               <div className="flex items-center gap-3">
                 {client && (
                   <Link href={`/admin/clients/${client.id}`} className="text-sm font-semibold text-bronze hover:underline">
-                    {won ? 'View client' : 'Convert to client →'}
+                    View client
                   </Link>
                 )}
+                {client &&
+                  (estimate ? (
+                    <Link
+                      href={`/admin/estimates/${estimate.id}`}
+                      className="text-sm font-semibold text-bronze hover:underline"
+                    >
+                      Open estimate →
+                    </Link>
+                  ) : (
+                    <StartEstimateButton
+                      clientId={client.id}
+                      serviceTypeId={lead.serviceTypeId ?? undefined}
+                      quoteVisitBookingId={lead.id}
+                    />
+                  ))}
                 <BookingStatusActions bookingId={lead.id} status={lead.status} completeLabel="Mark visited" />
               </div>
             </div>

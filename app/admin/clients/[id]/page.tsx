@@ -4,7 +4,17 @@ import { db } from '@/db/client';
 import { addresses, clientRates, bookings as bookingsTable } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { getTenant, getUserById, getServiceTypes, formatMoney, SERVICE_LABELS } from '@/lib/data';
+import { getEstimatesForClient } from '@/lib/estimates';
 import ClientRateForm from '@/components/ClientRateForm';
+import StartEstimateButton from '@/components/StartEstimateButton';
+
+const ESTIMATE_STYLE: Record<string, string> = {
+  DRAFT: 'bg-ink/5 text-ink/60',
+  SENT: 'bg-amber-100 text-amber-700',
+  APPROVED: 'bg-emerald-100 text-emerald-700',
+  DECLINED: 'bg-red-100 text-red-700',
+  EXPIRED: 'bg-ink/10 text-ink/50',
+};
 
 const STATUS_STYLE: Record<string, string> = {
   REQUESTED: 'bg-amber-100 text-amber-700',
@@ -26,6 +36,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
   const clientBookings = (await db.select().from(bookingsTable).where(eq(bookingsTable.clientId, client.id))).sort(
     (a, b) => b.slotStart.localeCompare(a.slotStart),
   );
+  const estimates = await getEstimatesForClient(client.id);
 
   return (
     <div className="space-y-8">
@@ -45,6 +56,37 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
             <li key={a.id} className="text-sm text-ink/70">{a.line1}, {a.city}, {a.state} {a.zip ?? ''}</li>
           ))}
         </ul>
+      </div>
+
+      <div className="card max-w-2xl">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-semibold text-ink">Estimates</h2>
+          <StartEstimateButton
+            clientId={client.id}
+            serviceTypeId={services[0]?.id}
+            label="+ New estimate"
+          />
+        </div>
+        <div className="space-y-2">
+          {estimates.map((q) => (
+            <Link
+              key={q.id}
+              href={`/admin/estimates/${q.id}`}
+              className="flex items-center justify-between border-b border-ink/5 py-2 text-sm last:border-0 hover:text-bronze"
+            >
+              <span className="flex items-center gap-2">
+                <span className="font-medium">
+                  {serviceMap[q.serviceTypeId] ? SERVICE_LABELS[serviceMap[q.serviceTypeId].key] : '—'}
+                </span>
+                <span className={`pill ${ESTIMATE_STYLE[q.status]}`}>{q.status}</span>
+              </span>
+              <span className="font-semibold text-bronze">{formatMoney(q.totalCents)}</span>
+            </Link>
+          ))}
+          {estimates.length === 0 && (
+            <p className="text-sm text-ink/50">No estimates yet for this client.</p>
+          )}
+        </div>
       </div>
 
       <div className="card max-w-2xl">

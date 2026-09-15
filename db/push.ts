@@ -26,6 +26,7 @@ async function main() {
       phone TEXT,
       email TEXT,
       password_hash TEXT,
+      stripe_customer_id TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
     CREATE UNIQUE INDEX IF NOT EXISTS users_phone_unique ON users(phone);
@@ -138,6 +139,59 @@ async function main() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 
+    CREATE TABLE IF NOT EXISTS quotes (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      client_id TEXT NOT NULL REFERENCES users(id),
+      quote_visit_booking_id TEXT REFERENCES bookings(id),
+      service_type_id TEXT NOT NULL REFERENCES service_types(id),
+      status TEXT NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT','SENT','APPROVED','DECLINED','EXPIRED')),
+      total_cents INTEGER NOT NULL DEFAULT 0,
+      notes TEXT,
+      approval_token TEXT,
+      sent_at TIMESTAMPTZ,
+      responded_at TIMESTAMPTZ,
+      expires_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS quotes_approval_token_unique ON quotes(approval_token);
+
+    CREATE TABLE IF NOT EXISTS quote_items (
+      id TEXT PRIMARY KEY,
+      quote_id TEXT NOT NULL REFERENCES quotes(id),
+      description TEXT NOT NULL,
+      amount_cents INTEGER NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS invoices (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      booking_id TEXT NOT NULL REFERENCES bookings(id),
+      client_id TEXT NOT NULL REFERENCES users(id),
+      status TEXT NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT','SENT','PAID','VOID')),
+      total_cents INTEGER NOT NULL DEFAULT 0,
+      stripe_invoice_id TEXT,
+      hosted_invoice_url TEXT,
+      invoice_pdf_url TEXT,
+      stripe_payment_intent_id TEXT,
+      receipt_url TEXT,
+      sent_at TIMESTAMPTZ,
+      paid_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS invoices_booking_unique ON invoices(booking_id);
+
+    CREATE TABLE IF NOT EXISTS invoice_items (
+      id TEXT PRIMARY KEY,
+      invoice_id TEXT NOT NULL REFERENCES invoices(id),
+      description TEXT NOT NULL,
+      amount_cents INTEGER NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
     CREATE TABLE IF NOT EXISTS notification_log (
       id TEXT PRIMARY KEY,
       tenant_id TEXT NOT NULL REFERENCES tenants(id),
@@ -149,6 +203,13 @@ async function main() {
       related_booking_id TEXT REFERENCES bookings(id),
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+
+    -- CREATE TABLE IF NOT EXISTS is a no-op on a table that already
+    -- exists, so a new column on an existing table (like this one, added
+    -- alongside invoicing) needs an explicit ALTER TABLE too, or it will
+    -- never reach an already-deployed database no matter how many times
+    -- this script is re-run.
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
   `);
 
   console.log('Schema pushed to Postgres.');

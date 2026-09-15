@@ -1,7 +1,7 @@
 import { db } from '@/db/client';
 import {
   tenants, serviceTypes, crews, clientRates, users, addresses, bookings,
-  jobs, jobChecklistItems, crewMembers, notificationLog,
+  jobs, jobChecklistItems, crewMembers, notificationLog, invoices,
 } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 
@@ -106,6 +106,11 @@ export async function getClientsForTenant(tenantId: string) {
     .from(users)
     .where(and(eq(users.tenantId, tenantId), eq(users.role, 'CUSTOMER')));
   return rows.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function getAllInvoicesForTenant(tenantId: string) {
+  const rows = await db.select().from(invoices).where(eq(invoices.tenantId, tenantId));
+  return rows.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }
 
 export async function getNotificationLogForTenant(tenantId: string) {
