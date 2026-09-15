@@ -8,6 +8,9 @@ tsconfig.tsbuildinfo
 public/uploads/jobs/*
 !public/uploads/jobs/.gitkeep
 *.log
-.env
-.env.local
-.env.local.save
+# Every env file, however it's named. `vercel env pull` writes
+# .env.production.local, which holds the production database password and
+# the Stripe secret key — listing names one at a time is how that ends up
+# committed by accident. .env.example carries no real values, so it stays.
+.env*
+!.env.example
