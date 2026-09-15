@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic';
 
 const NAV = [
   { href: '/admin', label: 'Overview' },
+  { href: '/admin/pipeline', label: 'Pipeline' },
   { href: '/admin/leads', label: 'Leads' },
   { href: '/admin/estimates', label: 'Estimates' },
   { href: '/admin/clients', label: 'Clients' },
