@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
 import { getTenant, getServiceTypes, getClientRatesFor, formatMoney } from '@/lib/data';
 import BookWizard from '@/components/BookWizard';
+import AccessNotice from '@/components/AccessNotice';
 
 // Reads the signed-in customer's session and live rate/service data —
 // never statically cacheable.
@@ -29,9 +30,14 @@ export default async function BookPage() {
     .filter((s) => s.rateCents != null);
 
   return (
-    <BookWizard
-      customerName={(session.user as any).name ?? 'there'}
-      services={eligibleServices}
-    />
+    <>
+      <div className="mx-auto max-w-xl px-6 pt-6">
+        <AccessNotice />
+      </div>
+      <BookWizard
+        customerName={(session.user as any).name ?? 'there'}
+        services={eligibleServices}
+      />
+    </>
   );
 }
