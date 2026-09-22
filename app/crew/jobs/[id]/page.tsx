@@ -9,7 +9,7 @@ import JobChecklist from '@/components/JobChecklist';
 
 export default async function JobDetailPage({ params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
-  if (!session?.user) redirect('/signin?role=crew');
+  if (!session?.user) redirect('/signin?next=/crew');
   const role = (session.user as any).role;
   const userId = (session.user as any).id as string;
 
@@ -23,7 +23,7 @@ export default async function JobDetailPage({ params }: { params: { id: string }
       redirect('/crew');
     }
   } else if (role !== 'ADMIN') {
-    redirect('/signin?role=crew');
+    redirect('/signin?next=/crew');
   }
 
   const booking = await getBookingById(job.bookingId);

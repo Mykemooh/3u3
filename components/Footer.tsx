@@ -21,8 +21,10 @@ export default function Footer() {
 
           <div className="flex flex-col items-center gap-2 md:items-start">
             <p className="text-xs font-semibold uppercase tracking-wider text-white/30">Staff</p>
-            <Link href="/signin?role=crew" className="text-sm hover:text-gold">Crew sign-in</Link>
-            <Link href="/signin?role=admin" className="text-sm hover:text-gold">Admin sign-in</Link>
+            <Link href="/signin" className="text-sm hover:text-gold">Staff sign-in</Link>
+            <p className="max-w-[200px] text-xs text-white/30">
+              Same sign-in as everyone else — you'll land on your own screen.
+            </p>
           </div>
         </div>
 

@@ -8,13 +8,14 @@ import { eq } from 'drizzle-orm';
 import { getCrewForUser, SERVICE_LABELS } from '@/lib/data';
 import SignOutButton from '@/components/SignOutButton';
 import Logo from '@/components/Logo';
+import AccessNotice from '@/components/AccessNotice';
 
 // Reads the signed-in cleaner's own jobs — live data, per-session.
 export const dynamic = 'force-dynamic';
 
 export default async function CrewHome() {
   const session = await getServerSession(authOptions);
-  if (!session?.user) redirect('/signin?role=crew');
+  if (!session?.user) redirect('/signin?next=/crew');
   const userId = (session.user as any).id as string;
   const role = (session.user as any).role;
 
@@ -61,6 +62,7 @@ export default async function CrewHome() {
         </div>
       </header>
       <main className="mx-auto max-w-xl space-y-8 px-6 py-8">
+        <AccessNotice />
         <Section title="Today" items={today} />
         <Section title="Upcoming" items={upcoming} />
         <Section title="Completed" items={completed} muted />

@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { signOutLink } from '@/lib/nav';
 import SignOutButton from '@/components/SignOutButton';
 import Logo from '@/components/Logo';
+import AccessNotice from '@/components/AccessNotice';
 
 // Every admin page reads live operational data (bookings, leads, rates,
 // crew). Setting this here cascades to all nested /admin pages, so none of
@@ -53,7 +54,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           ))}
         </nav>
       </header>
-      <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
+      <main className="mx-auto max-w-6xl px-6 py-8">
+        <AccessNotice />
+        {children}
+      </main>
     </div>
   );
 }
