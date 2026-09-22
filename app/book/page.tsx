@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth';
 import { getTenant, getServiceTypes, getClientRatesFor, formatMoney } from '@/lib/data';
 import BookWizard from '@/components/BookWizard';
 import AccessNotice from '@/components/AccessNotice';
+import { homeForRole } from '@/lib/nav';
 
 // Reads the signed-in customer's session and live rate/service data —
 // never statically cacheable.
@@ -11,9 +12,11 @@ export const dynamic = 'force-dynamic';
 
 export default async function BookPage() {
   const session = await getServerSession(authOptions);
-  if (!session?.user || (session.user as any).role !== 'CUSTOMER') {
-    redirect('/signin');
-  }
+  if (!session?.user) redirect('/signin?next=/book');
+  const role = (session.user as any).role;
+  // Staff landing here get sent to their own screen. Bouncing them to the
+  // sign-in form looks like a rejected password and explains nothing.
+  if (role !== 'CUSTOMER') redirect(`${homeForRole(role)}?denied=1`);
 
   const tenant = await getTenant();
   if (!tenant) redirect('/');

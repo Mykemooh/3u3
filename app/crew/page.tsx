@@ -6,6 +6,7 @@ import { db } from '@/db/client';
 import { bookings, users, serviceTypes, jobs, jobChecklistItems } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { getCrewForUser, SERVICE_LABELS } from '@/lib/data';
+import { homeForRole } from '@/lib/nav';
 import SignOutButton from '@/components/SignOutButton';
 import Logo from '@/components/Logo';
 import AccessNotice from '@/components/AccessNotice';
@@ -18,6 +19,9 @@ export default async function CrewHome() {
   if (!session?.user) redirect('/signin?next=/crew');
   const userId = (session.user as any).id as string;
   const role = (session.user as any).role;
+  // Authoritative role check — the middleware guards the edge but can fail
+  // open, so the page decides. Admins may look; customers may not.
+  if (role !== 'CLEANER' && role !== 'ADMIN') redirect(`${homeForRole(role)}?denied=1`);
 
   const crew = role === 'CLEANER' ? await getCrewForUser(userId) : null;
   if (role === 'CLEANER' && !crew) {

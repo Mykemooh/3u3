@@ -23,7 +23,13 @@ const VALID_FOR_DAYS = 30;
  * environment — so there's no new env var to set for this feature.
  */
 export function estimateUrl(token: string) {
-  const base = (process.env.NEXTAUTH_URL || 'http://localhost:3000').replace(/\/$/, '');
+  let base = (process.env.NEXTAUTH_URL || 'http://localhost:3000').trim().replace(/\/+$/, '');
+  // NEXTAUTH_URL is routinely set to a bare hostname. Left alone that
+  // produces "3u3.com/estimate/..." in a customer's inbox, which most mail
+  // clients will not linkify at all.
+  if (!/^https?:\/\//i.test(base)) {
+    base = `${base.startsWith('localhost') ? 'http' : 'https'}://${base}`;
+  }
   return `${base}/estimate/${token}`;
 }
 
