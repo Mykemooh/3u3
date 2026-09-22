@@ -59,7 +59,7 @@ export default function NewCustomerPage() {
         body: JSON.stringify({
           name,
           phone,
-          email: email || undefined,
+          email: email.trim(),
           addressLine1,
           serviceTypeId,
           slotStart: selected.start,
@@ -159,15 +159,19 @@ export default function NewCustomerPage() {
               />
             </div>
             <div>
-              <label className="label">Email (optional)</label>
+              <label className="label">Email</label>
               <input
                 className="input"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
+                autoComplete="email"
+                required
               />
-              <p className="mt-1 text-xs text-ink/40">Add this if you'd like an emailed confirmation.</p>
+              <p className="mt-1 text-xs text-ink/40">
+                We send your visit confirmation and your written estimate here — it's how you approve the price.
+              </p>
             </div>
             <div>
               <label className="label">Home address</label>

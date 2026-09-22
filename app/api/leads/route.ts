@@ -11,7 +11,9 @@ import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 const schema = z.object({
   name: z.string().min(1),
   phone: z.string().min(7),
-  email: z.string().email().optional(),
+  // Required: the estimate, its approval link and every later
+  // notification all travel by email. A lead without one is a dead end.
+  email: z.string().email(),
   addressLine1: z.string().min(1),
   serviceTypeId: z.string().min(1),
   slotStart: z.string(),
