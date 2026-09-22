@@ -1,76 +1,101 @@
 import Link from 'next/link';
-import Logo from '@/components/Logo';
+import LogoBadge from '@/components/LogoBadge';
 import Footer from '@/components/Footer';
-import CleaningMotion from '@/components/CleaningMotion';
-import { SERVICE_LABELS } from '@/lib/data';
+import HeroMedia from '@/components/HeroMedia';
+import WelcomeCta from '@/components/WelcomeCta';
+import { SERVICES } from '@/lib/services';
+
+// WelcomeCta reads the signed-in session to decide between "Get a quote"
+// and "Book now", so this page can't be baked at build time.
+export const dynamic = 'force-dynamic';
 
 const HOW_IT_WORKS = [
   {
-    title: 'Book a free quote visit',
-    description: "Tell us a bit about your home and pick a time — takes less than a minute.",
+    title: 'Book a free walkthrough',
+    description: 'Tell us a bit about your home and pick a time — takes less than a minute.',
   },
   {
-    title: 'We confirm your price on the spot',
-    description: 'A team member visits in person and gives you an exact price, no surprises.',
+    title: 'We price it at your door',
+    description: 'Someone comes out, looks at the actual house, and gives you an exact price. No surprises.',
   },
   {
-    title: 'Enjoy a spotless home',
-    description: 'Book one-time or recurring cleanings on a schedule that works for you.',
+    title: 'Approve it and book',
+    description: 'Say yes and your price is locked in. Book one-time or on a schedule that suits you.',
   },
 ];
 
 export default function WelcomePage() {
   return (
-    <main className="bg-ink">
-      {/* Hero */}
+    <main className="bg-white">
+      {/* Hero — white, with the film as a soft backdrop once it exists */}
       <section className="relative overflow-hidden px-6 py-20 md:py-28">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-40"
-          style={{
-            background:
-              'radial-gradient(circle at 20% 20%, rgba(210,150,30,0.35), transparent 45%), radial-gradient(circle at 80% 70%, rgba(138,109,29,0.3), transparent 50%)',
-          }}
-        />
-        <CleaningMotion />
-        <div className="relative flex flex-col items-center text-center text-white">
-          <Logo size="lg" />
-          <h1 className="mt-8 max-w-xl text-3xl font-bold leading-tight md:text-4xl">
+        <HeroMedia />
+        <div className="relative flex flex-col items-center text-center">
+          <LogoBadge size="lg" />
+          <h1 className="mt-8 max-w-xl text-3xl font-bold leading-tight text-ink md:text-5xl">
             A spotless home, booked in minutes.
           </h1>
-          <p className="mt-3 max-w-md text-white/60">
-            Get a free, no-obligation quote from a real person at your door.
+          <p className="mt-4 max-w-md text-lg text-ink/60">
+            Family owned, built in Texas. Serving Katy and the surrounding Houston area.
           </p>
-          <Link href="/new" className="btn-primary mt-8 w-full max-w-xs text-base">
+          <Link href="/new" className="btn-primary mt-10 w-full max-w-xs text-base">
             Get a free quote
           </Link>
-          <Link href="/signin" className="mt-4 text-sm text-white/50 hover:text-gold">
-            Already a customer? Sign in
+          <Link href="/services" className="mt-4 text-sm font-semibold text-bronze hover:underline">
+            See what we clean
           </Link>
         </div>
       </section>
 
-      {/* Services */}
-      <section className="section bg-white">
+      {/* Services — each one opens its own page */}
+      <section className="section border-t border-ink/5 bg-white">
         <div className="container-narrow">
           <h2 className="text-center text-2xl font-bold text-ink md:text-3xl">What we clean</h2>
-          <p className="mt-2 text-center text-sm text-ink/60">Pick the service that fits — we'll confirm your exact price at the quote visit.</p>
+          <p className="mx-auto mt-3 max-w-lg text-center text-sm text-ink/60">
+            Tap any service to see exactly what the crew does, room by room — and what it doesn't cover.
+          </p>
+
           <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {Object.values(SERVICE_LABELS).map((label) => (
-              <div
-                key={label}
-                className="card flex items-center justify-between transition hover:border-gold hover:shadow-gold"
+            {SERVICES.map((service) => (
+              <Link
+                key={service.slug}
+                href={`/services/${service.slug}`}
+                className="card group flex flex-col transition hover:border-gold hover:shadow-gold"
               >
-                <span className="font-semibold text-ink">{label}</span>
-                <span className="pill bg-gold/15 text-bronze">Available</span>
-              </div>
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="font-bold text-ink">{service.name}</h3>
+                  <span
+                    aria-hidden
+                    className="shrink-0 text-bronze transition group-hover:translate-x-0.5"
+                  >
+                    →
+                  </span>
+                </div>
+                <p className="mt-2 text-sm text-bronze">{service.tagline}</p>
+                <p className="mt-3 text-xs text-ink/40">
+                  {service.cadence} · {service.typicalLength}
+                </p>
+              </Link>
             ))}
           </div>
+
+          <p className="mt-8 text-center text-sm text-ink/50">
+            <Link href="/services" className="font-semibold text-bronze hover:underline">
+              Compare all four services →
+            </Link>
+          </p>
+        </div>
+      </section>
+
+      {/* Sign in / quote / book — changes depending on who's looking */}
+      <section className="section border-t border-ink/5 bg-cream">
+        <div className="container-narrow">
+          <WelcomeCta />
         </div>
       </section>
 
       {/* How it works */}
-      <section className="section bg-white border-t border-ink/5">
+      <section className="section border-t border-ink/5 bg-white">
         <div className="container-narrow">
           <h2 className="text-center text-2xl font-bold text-ink md:text-3xl">How it works</h2>
           <div className="mt-10 grid grid-cols-1 gap-8 md:grid-cols-3">
