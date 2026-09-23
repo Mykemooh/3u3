@@ -90,7 +90,7 @@ export default function NewCustomerPage() {
       </Link>
 
       {stepNumber && (
-        <div className="mb-6 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-ink/40">
+        <div className="mb-6 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted">
           <span className={stepNumber === 1 ? 'text-bronze' : ''}>1. Service</span>
           <span className="text-ink/20">—</span>
           <span className={stepNumber === 2 ? 'text-bronze' : ''}>2. Your details</span>
@@ -102,11 +102,11 @@ export default function NewCustomerPage() {
       {step === 'service' && (
         <div className="card w-full max-w-md">
           <h1 className="text-xl font-bold mb-1">What do you need cleaned?</h1>
-          <p className="text-sm text-ink/60 mb-6">
+          <p className="text-sm text-slate mb-6">
             Pick a service — we'll confirm your exact price at the quote visit.
           </p>
           <div className="space-y-3">
-            {services.length === 0 && <p className="text-sm text-ink/50">Loading services…</p>}
+            {services.length === 0 && <p className="text-sm text-muted">Loading services…</p>}
             {services.map((s) => (
               <button
                 key={s.id}
@@ -118,7 +118,7 @@ export default function NewCustomerPage() {
               >
                 <span className="font-semibold text-ink">{s.name}</span>
                 {SERVICE_BLURBS[s.key] && (
-                  <span className="mt-1 text-sm text-ink/60">{SERVICE_BLURBS[s.key]}</span>
+                  <span className="mt-1 text-sm text-slate">{SERVICE_BLURBS[s.key]}</span>
                 )}
               </button>
             ))}
@@ -128,11 +128,11 @@ export default function NewCustomerPage() {
 
       {step === 'form' && (
         <div className="card w-full max-w-md">
-          <button onClick={() => setStep('service')} className="text-sm text-ink/50 mb-4 hover:text-ink">
+          <button onClick={() => setStep('service')} className="text-sm text-muted mb-4 hover:text-ink">
             ← Back
           </button>
           <h1 className="text-xl font-bold mb-1">Get a free quote</h1>
-          <p className="text-sm text-ink/60 mb-6">
+          <p className="text-sm text-slate mb-6">
             {selectedService ? `${selectedService.name} — ` : ''}
             Just a few details — we'll set up an in-person visit to give you an exact price, no obligation.
           </p>
@@ -169,7 +169,7 @@ export default function NewCustomerPage() {
                 autoComplete="email"
                 required
               />
-              <p className="mt-1 text-xs text-ink/40">
+              <p className="mt-1 text-xs text-muted">
                 We send your visit confirmation and your written estimate here — it's how you approve the price.
               </p>
             </div>
@@ -192,14 +192,14 @@ export default function NewCustomerPage() {
 
       {step === 'schedule' && (
         <div className="card w-full max-w-lg">
-          <button onClick={() => setStep('form')} className="text-sm text-ink/50 mb-4 hover:text-ink">
+          <button onClick={() => setStep('form')} className="text-sm text-muted mb-4 hover:text-ink">
             ← Back
           </button>
           <h1 className="text-xl font-bold mb-1">Pick a quote visit time</h1>
-          <p className="text-sm text-ink/60 mb-6">
+          <p className="text-sm text-slate mb-6">
             A 30-minute in-person visit — we'll look at the home and give you an exact price on the spot.
           </p>
-          {loadingSlots && <p className="text-sm text-ink/50">Loading real availability…</p>}
+          {loadingSlots && <p className="text-sm text-muted">Loading real availability…</p>}
           <div className="space-y-5 max-h-[420px] overflow-y-auto pr-1">
             {days.filter((d) => d.slots.some((s) => s.available)).map((day) => (
               <div key={day.date}>
@@ -212,10 +212,10 @@ export default function NewCustomerPage() {
                       onClick={() => setSelected(slot)}
                       className={`rounded-lg border-2 px-3 py-2 text-sm font-medium transition ${
                         !slot.available
-                          ? 'cursor-not-allowed border-ink/5 bg-ink/5 text-ink/30 line-through'
+                          ? 'cursor-not-allowed border-line bg-surface text-muted line-through'
                           : selected?.start === slot.start
                           ? 'border-gold bg-gold/10 text-ink'
-                          : 'border-ink/10 hover:border-gold'
+                          : 'border-line hover:border-gold'
                       }`}
                     >
                       {formatSlotLabel(slot.start, slot.end)}
@@ -242,12 +242,12 @@ export default function NewCustomerPage() {
             ✓
           </div>
           <h1 className="text-xl font-bold mb-2">You're booked!</h1>
-          <p className="text-sm text-ink/60 mb-1">
+          <p className="text-sm text-slate mb-1">
             {selectedService?.name}
             {selectedService ? ' — ' : ''}
             {selected && `${formatDateLabel(selected.start.split('T')[0])}, ${formatSlotLabel(selected.start, selected.end)}`}
           </p>
-          <p className="text-sm text-ink/60 mb-6">
+          <p className="text-sm text-slate mb-6">
             {customerEmailSent
               ? "We've emailed you a confirmation. "
               : ''}

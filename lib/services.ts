@@ -39,6 +39,10 @@ export type ServiceContent = {
   notIncluded: string[];
   /** A local detail that a national franchise page wouldn't bother with. */
   houstonNote: string;
+  /** Photo under /public/images, shown on the card and the service page. */
+  image: string;
+  /** What the photo shows — screen readers and a failed image load see this. */
+  imageAlt: string;
 };
 
 export const ADD_ONS = [
@@ -119,6 +123,8 @@ export const SERVICES: ServiceContent[] = [
       'Moving heavy furniture or appliances',
       'Laundry, dishes left in the sink, or organising',
     ],
+    image: '/images/kitchen-counter.jpg',
+    imageAlt: 'A 3U3 cleaner wiping down a marble kitchen counter',
     houstonNote:
       'Houston humidity means bathroom grout and shower corners turn faster here than almost anywhere. On a bi-weekly standard clean we stay ahead of it; let it go a season and it usually needs a deep clean to reset.',
   },
@@ -181,6 +187,8 @@ export const SERVICES: ServiceContent[] = [
       'Mould remediation, or anything behind a wall',
       'Moving heavy furniture or appliances',
     ],
+    image: '/images/shower-glass.jpg',
+    imageAlt: 'A 3U3 cleaner scrubbing soap build-up off a glass shower screen',
     houstonNote:
       'Two things drive deep cleans here: pollen season coating every sill and ledge, and the humidity that settles into shower grout and vent covers. A lot of Katy families book one in early spring and another once summer breaks.',
   },
@@ -241,6 +249,8 @@ export const SERVICES: ServiceContent[] = [
       'Hauling away furniture or leftover belongings',
       'Garage floor degreasing — a sweep-out is an add-on',
     ],
+    image: '/images/kitchen-mop.jpg',
+    imageAlt: 'A 3U3 cleaner mopping the floor of a large empty kitchen',
     houstonNote:
       'Plenty of Houston-area leases require a professional clean before move-out, and inspectors here reliably check inside the oven, the fridge seals and the window tracks. Those are exactly the places this service is built around.',
   },
@@ -304,6 +314,8 @@ export const SERVICES: ServiceContent[] = [
       'Maintenance, repairs or assembling furniture',
       'Hauling away items guests abandoned',
     ],
+    image: '/images/making-bed.jpg',
+    imageAlt: 'A 3U3 cleaner making up a bed with fresh white linen',
     houstonNote:
       'Turnover demand in this market spikes hard around the Energy Corridor work calendar, Medical Center rotations, rodeo season and home game weekends — the windows where a missed turnover costs a booking.',
   },

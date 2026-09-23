@@ -84,7 +84,7 @@ function SignInInner() {
 
       <div className="w-full max-w-sm">
         <h1 className="text-2xl font-bold text-ink">Sign in</h1>
-        <p className="mb-6 mt-1 text-sm text-ink/60">
+        <p className="mb-6 mt-1 text-sm text-slate">
           Customers, cleaners and office staff all sign in here — we'll take you to the right place.
         </p>
 
@@ -95,8 +95,8 @@ function SignInInner() {
         )}
 
         {current && (
-          <div className="mb-4 rounded-xl border border-ink/10 bg-ink/[0.03] px-4 py-3 text-sm">
-            <p className="text-ink/70">
+          <div className="mb-4 rounded-xl border border-line bg-surface px-4 py-3 text-sm">
+            <p className="text-slate">
               Already signed in as <span className="font-semibold text-ink">{current.name}</span>
               {current.role ? ` (${current.role.toLowerCase()})` : ''}.
             </p>
@@ -111,7 +111,7 @@ function SignInInner() {
               <button
                 type="button"
                 onClick={() => signOut({ callbackUrl: '/signin' })}
-                className="text-ink/50 hover:text-ink"
+                className="text-muted hover:text-ink"
               >
                 Sign out
               </button>
@@ -137,7 +137,7 @@ function SignInInner() {
               onChange={(e) => setIdentifier(e.target.value)}
               required
             />
-            <p className="mt-1.5 text-xs text-ink/40">
+            <p className="mt-1.5 text-xs text-muted">
               Staff use their work email. Customers use the phone number they booked with.
             </p>
           </div>
@@ -164,7 +164,7 @@ function SignInInner() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-ink/60">
+        <p className="mt-6 text-center text-sm text-slate">
           New here?{' '}
           <Link href="/new" className="font-semibold text-bronze underline">
             Get a free quote
