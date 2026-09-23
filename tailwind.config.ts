@@ -23,6 +23,12 @@ const config: Config = {
         line: '#E3E6EB',      // borders, dividers — decorative only
         surface: '#F7F8FA',   // section fills
         bronze: '#8A6D1D',    // links on white    —  4.9:1
+        green: {
+          // The accent line. 5.2:1 on white, so it is safe as text as well
+          // as decoration; `light` is for the same line on the ink bands.
+          DEFAULT: '#0B7A55',
+          light: '#4ADE80',
+        },
         cream: '#FAEEDA',
         charcoal: '#242220',
       },

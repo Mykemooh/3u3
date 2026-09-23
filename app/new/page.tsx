@@ -84,7 +84,7 @@ export default function NewCustomerPage() {
   const stepNumber = step === 'service' ? 1 : step === 'form' ? 2 : step === 'schedule' ? 3 : null;
 
   return (
-    <main className="min-h-screen bg-white flex flex-col items-center px-6 py-12">
+    <main className="min-h-screen flex flex-col items-center px-6 py-12">
       <Link href="/" className="mb-10">
         <LogoBadge size="sm" />
       </Link>

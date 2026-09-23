@@ -24,16 +24,16 @@ export default async function SiteHeader() {
         </Link>
 
         <nav className="hidden items-center gap-7 md:flex">
-          <Link href="/services" className="text-sm font-semibold text-slate transition hover:text-ink">
+          <Link href="/services" className="nav-link">
             Services
           </Link>
-          <Link href="/#how-it-works" className="text-sm font-semibold text-slate transition hover:text-ink">
+          <Link href="/#how-it-works" className="nav-link">
             How it works
           </Link>
-          <Link href="/about" className="text-sm font-semibold text-slate transition hover:text-ink">
+          <Link href="/about" className="nav-link">
             About us
           </Link>
-          <Link href="/#service-area" className="text-sm font-semibold text-slate transition hover:text-ink">
+          <Link href="/#service-area" className="nav-link">
             Service area
           </Link>
         </nav>
@@ -47,7 +47,7 @@ export default async function SiteHeader() {
             <>
               <Link
                 href="/signin"
-                className="hidden text-sm font-semibold text-slate transition hover:text-ink sm:inline"
+                className="nav-link hidden sm:inline"
               >
                 Sign in
               </Link>

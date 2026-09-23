@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
 export default function ServicesIndex() {
   return (
-    <div className="bg-white">
+    <div>
       <SiteHeader />
 
       <main>
@@ -36,7 +36,7 @@ export default function ServicesIndex() {
               <Link
                 key={service.slug}
                 href={`/services/${service.slug}`}
-                className="group grid overflow-hidden rounded-2xl border border-line bg-white transition-all duration-200 hover:-translate-y-1 hover:border-gold/40 hover:shadow-card-lg md:grid-cols-2"
+                className="card-line group grid overflow-hidden rounded-2xl border border-line bg-white transition-all duration-200 hover:-translate-y-1 hover:border-gold/40 hover:shadow-card-lg md:grid-cols-2"
               >
                 <div className={`relative aspect-[16/10] bg-surface md:aspect-auto md:min-h-[300px] ${i % 2 ? 'md:order-2' : ''}`}>
                   <Image

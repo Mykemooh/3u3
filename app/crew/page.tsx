@@ -57,7 +57,7 @@ export default async function CrewHome() {
   const completed = enriched.filter((e) => e.job.status === 'COMPLETE');
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen">
       <header className="flex items-center justify-between bg-ink px-6 py-4 text-white">
         <Logo size="sm" />
         <div className="flex items-center gap-3 text-sm">
