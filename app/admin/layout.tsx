@@ -1,7 +1,8 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { signOutLink } from '@/lib/nav';
+import { signOutLink, homeForRole } from '@/lib/nav';
 import SignOutButton from '@/components/SignOutButton';
 import Logo from '@/components/Logo';
 import AccessNotice from '@/components/AccessNotice';
@@ -28,6 +29,15 @@ const NAV = [
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
+
+  // The authoritative check. The middleware guards the edge, but it can
+  // only read the session cookie by guessing at its name; this runs in
+  // Node against the real session and is the one that actually decides.
+  // Keeping it here means a middleware that fails open still can't let
+  // anyone into the admin.
+  const role = (session?.user as { role?: string } | undefined)?.role;
+  if (!session?.user) redirect('/signin?next=/admin');
+  if (role !== 'ADMIN') redirect(`${homeForRole(role)}?denied=1`);
 
   return (
     <div className="min-h-screen bg-white">
