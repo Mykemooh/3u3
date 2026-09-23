@@ -26,7 +26,7 @@ export default async function EstimatePage({
     searchParams.respond === 'approve' ? 'APPROVE' : searchParams.respond === 'decline' ? 'DECLINE' : undefined;
 
   return (
-    <div className="flex min-h-screen flex-col bg-cream">
+    <div className="flex min-h-screen flex-col bg-surface">
       <header className="bg-ink px-6 py-4">
         <Logo size="sm" className="h-10 w-auto" />
       </header>
@@ -35,7 +35,7 @@ export default async function EstimatePage({
         <div className="card">
           <p className="text-sm font-semibold uppercase tracking-widest text-bronze">Your estimate</p>
           <h1 className="mt-1 text-2xl font-bold text-ink">{service?.name ?? 'Cleaning service'}</h1>
-          <p className="text-ink/60">
+          <p className="text-slate">
             Prepared for {client?.name}
             {address ? ` · ${address.line1}, ${address.city}` : ''}
           </p>
@@ -43,7 +43,7 @@ export default async function EstimatePage({
           <table className="mt-6 w-full text-sm">
             <tbody>
               {items.map((item) => (
-                <tr key={item.id} className="border-b border-ink/5">
+                <tr key={item.id} className="border-b border-line">
                   <td className="py-2">{item.description}</td>
                   <td className="py-2 text-right">{formatMoney(item.amountCents)}</td>
                 </tr>
@@ -56,7 +56,7 @@ export default async function EstimatePage({
           </table>
 
           {quote.notes && (
-            <p className="mt-4 rounded-xl bg-gold/10 px-4 py-3 text-sm text-ink/80">{quote.notes}</p>
+            <p className="mt-4 rounded-xl bg-gold/10 px-4 py-3 text-sm text-slate">{quote.notes}</p>
           )}
 
           <EstimateResponse
@@ -70,7 +70,7 @@ export default async function EstimatePage({
           />
         </div>
 
-        <p className="mt-6 text-center text-sm text-ink/50">
+        <p className="mt-6 text-center text-sm text-muted">
           Questions? Just reply to the email we sent and we'll take care of it.
         </p>
       </main>

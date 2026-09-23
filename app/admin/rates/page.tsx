@@ -24,7 +24,7 @@ export default async function AdminRatesPage() {
     <div className="space-y-8">
       <div>
         <h1 className="mb-1 text-2xl font-bold text-ink">Client Rates</h1>
-        <p className="text-ink/60">Every returning client's rate is pre-agreed per service — never a flat rate.</p>
+        <p className="text-slate">Every returning client's rate is pre-agreed per service — never a flat rate.</p>
       </div>
 
       <div className="card max-w-2xl">
@@ -35,7 +35,7 @@ export default async function AdminRatesPage() {
       <div className="card overflow-x-auto p-0">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-ink/10 text-left text-ink/50">
+            <tr className="border-b border-line text-left text-muted">
               <th className="px-4 py-3 font-medium">Client</th>
               <th className="px-4 py-3 font-medium">Phone</th>
               <th className="px-4 py-3 font-medium">Service</th>
@@ -44,16 +44,16 @@ export default async function AdminRatesPage() {
           </thead>
           <tbody>
             {rows.map(({ client, service, rate }) => (
-              <tr key={rate.id} className="border-b border-ink/5 last:border-0">
+              <tr key={rate.id} className="border-b border-line last:border-0">
                 <td className="px-4 py-3 font-medium">{client.name}</td>
-                <td className="px-4 py-3 text-ink/70">{client.phone}</td>
-                <td className="px-4 py-3 text-ink/70">{service ? SERVICE_LABELS[service.key] : '—'}</td>
+                <td className="px-4 py-3 text-slate">{client.phone}</td>
+                <td className="px-4 py-3 text-slate">{service ? SERVICE_LABELS[service.key] : '—'}</td>
                 <td className="px-4 py-3 font-semibold text-bronze">{formatMoney(rate.rateCents)}</td>
               </tr>
             ))}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-ink/40">
+                <td colSpan={4} className="px-4 py-8 text-center text-muted">
                   No rates on file yet.
                 </td>
               </tr>

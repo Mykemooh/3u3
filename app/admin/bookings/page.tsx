@@ -25,12 +25,12 @@ export default async function AdminBookings() {
   return (
     <div>
       <h1 className="mb-1 text-2xl font-bold text-ink">Bookings</h1>
-      <p className="mb-6 text-ink/60">Every cleaning job on the books. Quote visits live under Leads.</p>
+      <p className="mb-6 text-slate">Every cleaning job on the books. Quote visits live under Leads.</p>
 
       <div className="card overflow-x-auto p-0">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-ink/10 text-left text-ink/50">
+            <tr className="border-b border-line text-left text-muted">
               <th className="px-4 py-3 font-medium">Client</th>
               <th className="px-4 py-3 font-medium">Service</th>
               <th className="px-4 py-3 font-medium">When</th>
@@ -45,7 +45,7 @@ export default async function AdminBookings() {
               const client = userMap[b.clientId];
               const service = b.serviceTypeId ? serviceMap[b.serviceTypeId] : null;
               return (
-                <tr key={b.id} className="border-b border-ink/5 last:border-0">
+                <tr key={b.id} className="border-b border-line last:border-0">
                   <td className="px-4 py-3 font-medium">
                     {client ? (
                       <Link href={`/admin/clients/${client.id}`} className="hover:text-bronze hover:underline">
@@ -56,9 +56,9 @@ export default async function AdminBookings() {
                     )}
                   </td>
                   <td className="px-4 py-3">{service ? SERVICE_LABELS[service.key] : '—'}</td>
-                  <td className="px-4 py-3 text-ink/70">{b.slotStart.replace('T', ' ')}</td>
-                  <td className="px-4 py-3 text-ink/70">{b.cadence.replace('_', ' ').toLowerCase()}</td>
-                  <td className="px-4 py-3 text-ink/70">{formatMoney(b.priceCents)}</td>
+                  <td className="px-4 py-3 text-slate">{b.slotStart.replace('T', ' ')}</td>
+                  <td className="px-4 py-3 text-slate">{b.cadence.replace('_', ' ').toLowerCase()}</td>
+                  <td className="px-4 py-3 text-slate">{formatMoney(b.priceCents)}</td>
                   <td className="px-4 py-3">
                     <span className={`pill ${STATUS_STYLE[b.status]}`}>{b.status}</span>
                   </td>
@@ -70,7 +70,7 @@ export default async function AdminBookings() {
             })}
             {bookings.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-ink/40">
+                <td colSpan={7} className="px-4 py-8 text-center text-muted">
                   No cleaning jobs yet.
                 </td>
               </tr>

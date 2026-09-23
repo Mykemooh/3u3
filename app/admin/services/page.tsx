@@ -10,7 +10,7 @@ export default async function AdminServices() {
     <div className="space-y-6">
       <div>
         <h1 className="mb-1 text-2xl font-bold text-ink">Services</h1>
-        <p className="text-ink/60">
+        <p className="text-slate">
           Duration and recurring eligibility per service — these settings drive the scheduling engine (PRD 6.4).
         </p>
       </div>
@@ -25,7 +25,7 @@ export default async function AdminServices() {
             />
           </div>
         ))}
-        {services.length === 0 && <div className="card text-center text-ink/40">No services configured yet.</div>}
+        {services.length === 0 && <div className="card text-center text-muted">No services configured yet.</div>}
       </div>
     </div>
   );

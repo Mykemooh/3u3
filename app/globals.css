@@ -3,69 +3,133 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    /* The variable tailwind.config.ts has always referenced and nothing ever
+       defined — which is why every screen rendered in Times. */
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+      'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji',
+      'Segoe UI Emoji';
+  }
+
   html {
     -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
   }
+
   body {
-    @apply bg-cream text-ink antialiased;
+    @apply bg-white text-ink antialiased;
+    font-size: 17px;
+    line-height: 1.6;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+
+  /* Headings carry their own tighter rhythm; body copy keeps the 1.6 above. */
+  h1, h2, h3, h4 {
+    @apply text-ink;
+    letter-spacing: -0.02em;
+    line-height: 1.12;
+    text-wrap: balance;
   }
 }
 
 @layer components {
+  /* ---- Type scale ------------------------------------------------------
+     Previously the page jumped from a 48px headline straight to 14px body
+     with nothing in between, which is most of why it read as unfinished.  */
+  .display {
+    @apply text-[2.5rem] font-extrabold md:text-[3.5rem];
+  }
+  .h2 {
+    @apply text-[2rem] font-bold md:text-[2.5rem];
+  }
+  .h3 {
+    @apply text-xl font-bold md:text-2xl;
+  }
+  .lead {
+    @apply text-lg text-slate;
+    line-height: 1.6;
+  }
+  .body {
+    @apply text-slate;
+  }
+  .meta {
+    /* The old ink/40 measured 2.5:1 on white — this passes at 4.6:1. */
+    @apply text-sm font-medium text-muted;
+  }
+  .eyebrow {
+    @apply text-xs font-bold uppercase tracking-[0.12em] text-bronze;
+  }
+
+  /* ---- Buttons ---------------------------------------------------------- */
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-xl bg-gold px-6 py-3 font-semibold text-ink shadow-gold transition hover:bg-gold-light active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gold px-7 py-3.5 text-base font-semibold text-ink
+      shadow-gold transition-all hover:-translate-y-0.5 hover:bg-gold-light hover:shadow-gold-lg
+      focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bronze
+      active:translate-y-0 disabled:pointer-events-none disabled:opacity-50;
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center rounded-xl border-2 border-ink/10 bg-white px-6 py-3 font-semibold text-ink transition hover:border-gold hover:text-bronze active:scale-[0.98];
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-white px-7 py-3.5 text-base
+      font-semibold text-ink transition-all hover:-translate-y-0.5 hover:border-ink/25 hover:shadow-card
+      focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bronze
+      active:translate-y-0 disabled:pointer-events-none disabled:opacity-50;
   }
   .btn-dark {
-    @apply inline-flex items-center justify-center rounded-xl bg-ink px-6 py-3 font-semibold text-cream shadow transition hover:bg-charcoal active:scale-[0.98] disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-ink px-7 py-3.5 text-base font-semibold text-white
+      transition-all hover:-translate-y-0.5 hover:bg-charcoal focus-visible:outline focus-visible:outline-2
+      focus-visible:outline-offset-2 focus-visible:outline-gold active:translate-y-0 disabled:opacity-50;
   }
+  .btn-sm {
+    @apply px-4 py-2 text-sm;
+  }
+
+  /* ---- Surfaces --------------------------------------------------------
+     One elevation language. The old .card carried a border AND a shadow,
+     which is what made everything look slightly muddy.                     */
   .card {
-    @apply rounded-2xl border border-ink/10 bg-white p-6 shadow-md shadow-ink/5;
+    @apply rounded-2xl border border-line bg-white p-6;
   }
+  .card-interactive {
+    @apply card transition-all duration-200 hover:-translate-y-1 hover:border-gold/40 hover:shadow-card-lg;
+  }
+  .panel {
+    @apply rounded-2xl bg-surface p-6;
+  }
+
+  /* ---- Forms ------------------------------------------------------------ */
   .input {
-    @apply w-full rounded-xl border-2 border-ink/10 bg-white px-4 py-3 text-ink placeholder:text-ink/30 focus:border-gold focus:outline-none;
+    @apply w-full rounded-xl border border-line bg-white px-4 py-3 text-ink transition
+      placeholder:text-muted focus:border-gold focus:outline-none focus:ring-4 focus:ring-gold/15;
   }
   .label {
-    @apply mb-1.5 block text-sm font-medium text-ink/70;
+    @apply mb-1.5 block text-sm font-semibold text-ink;
   }
   .pill {
     @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold;
   }
+
+  /* ---- Layout ----------------------------------------------------------- */
   .section {
     @apply px-6 py-16 md:py-24;
   }
   .container-narrow {
     @apply mx-auto w-full max-w-5xl;
   }
+  .container-wide {
+    @apply mx-auto w-full max-w-6xl;
+  }
+  /* Keeps prose to a comfortable 65-75 character measure. */
+  .measure {
+    @apply max-w-[46ch];
+  }
   .step-dot {
-    @apply flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold;
+    @apply flex h-11 w-11 items-center justify-center rounded-full text-base font-bold;
   }
-}
-
-@layer utilities {
-  @keyframes shine-sweep {
-    0% { transform: translateX(-60%) translateY(-60%) rotate(20deg); opacity: 0; }
-    10% { opacity: 0.5; }
-    50% { opacity: 0.35; }
-    90% { opacity: 0; }
-    100% { transform: translateX(60%) translateY(60%) rotate(20deg); opacity: 0; }
-  }
-  @keyframes sparkle-float {
-    0% { transform: translateY(0) scale(0.6); opacity: 0; }
-    20% { opacity: 1; }
-    100% { transform: translateY(-90px) scale(1); opacity: 0; }
-  }
-  .animate-shine-sweep {
-    animation: shine-sweep 6s ease-in-out infinite;
-  }
-  .animate-sparkle {
-    animation: sparkle-float linear infinite;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .animate-shine-sweep, .animate-sparkle {
-      animation: none;
-    }
+  .media {
+    @apply overflow-hidden rounded-2xl bg-surface;
   }
 }

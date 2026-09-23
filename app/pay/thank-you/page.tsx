@@ -13,7 +13,7 @@ export default function PayThankYouPage() {
         ✓
       </div>
       <h1 className="text-xl font-bold text-ink mb-2">Payment received — thank you!</h1>
-      <p className="max-w-sm text-sm text-ink/60 mb-6">
+      <p className="max-w-sm text-sm text-slate mb-6">
         A receipt is on its way to your email. We appreciate your business.
       </p>
       <Link href="/" className="btn-secondary">

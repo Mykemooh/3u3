@@ -78,8 +78,8 @@ export default async function CrewHome() {
 function Section({ title, items, muted }: { title: string; items: any[]; muted?: boolean }) {
   return (
     <div>
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-ink/50">{title}</h2>
-      {items.length === 0 && <p className="text-sm text-ink/40">Nothing here.</p>}
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">{title}</h2>
+      {items.length === 0 && <p className="text-sm text-muted">Nothing here.</p>}
       <div className="space-y-3">
         {items.map(({ job, booking, client, service, total, done }) => (
           <Link
@@ -90,7 +90,7 @@ function Section({ title, items, muted }: { title: string; items: any[]; muted?:
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-semibold text-ink">{client?.name}</p>
-                <p className="text-sm text-ink/60">
+                <p className="text-sm text-slate">
                   {service ? SERVICE_LABELS[service.key] : 'Service'} · {booking!.slotStart.replace('T', ' ')}
                 </p>
               </div>

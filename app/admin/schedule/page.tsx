@@ -45,7 +45,7 @@ export default async function AdminSchedule({ searchParams }: { searchParams: { 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-ink">Schedule</h1>
-          <p className="text-ink/60">
+          <p className="text-slate">
             {totalJobs} {totalJobs === 1 ? 'job' : 'jobs'} this week
             {unassignedCount > 0 && ` · ${unassignedCount} needing a crew`}
           </p>
@@ -58,7 +58,7 @@ export default async function AdminSchedule({ searchParams }: { searchParams: { 
           <Link href={`/admin/schedule?week=${shiftWeek(start, 1)}`} className="btn-secondary !px-4 !py-2 text-sm">
             →
           </Link>
-          <Link href="/admin/schedule" className="ml-1 text-sm text-ink/50 hover:text-ink">
+          <Link href="/admin/schedule" className="ml-1 text-sm text-muted hover:text-ink">
             Today
           </Link>
         </div>
@@ -72,7 +72,7 @@ export default async function AdminSchedule({ searchParams }: { searchParams: { 
               <div
                 key={date}
                 className={`rounded-lg px-2 py-1.5 text-center text-sm font-semibold ${
-                  isToday(date) ? 'bg-gold/20 text-bronze' : 'text-ink/60'
+                  isToday(date) ? 'bg-gold/20 text-bronze' : 'text-slate'
                 }`}
               >
                 {dayLabel(date)}
@@ -85,8 +85,8 @@ export default async function AdminSchedule({ searchParams }: { searchParams: { 
                 {dates.map((date) => (
                   <div
                     key={date}
-                    className={`min-h-[90px] space-y-2 rounded-xl border border-ink/5 p-1.5 ${
-                      isToday(date) ? 'bg-gold/5' : 'bg-ink/[0.02]'
+                    className={`min-h-[90px] space-y-2 rounded-xl border border-line p-1.5 ${
+                      isToday(date) ? 'bg-gold/5' : 'bg-surface'
                     }`}
                   >
                     {byCrew[crew.id][date].map((entry) => (
@@ -138,11 +138,11 @@ export default async function AdminSchedule({ searchParams }: { searchParams: { 
             )}
 
             <div className="contents">
-              <div className="flex items-center pr-2 text-sm font-semibold text-ink/50">Quote visits</div>
+              <div className="flex items-center pr-2 text-sm font-semibold text-muted">Quote visits</div>
               {dates.map((date) => (
                 <div
                   key={date}
-                  className={`min-h-[70px] space-y-2 rounded-xl border border-dashed border-ink/10 p-1.5 ${
+                  className={`min-h-[70px] space-y-2 rounded-xl border border-dashed border-line p-1.5 ${
                     isToday(date) ? 'bg-gold/5' : ''
                   }`}
                 >
@@ -150,11 +150,11 @@ export default async function AdminSchedule({ searchParams }: { searchParams: { 
                     <Link
                       key={entry.bookingId}
                       href={`/admin/leads`}
-                      className="block rounded-xl border border-ink/10 bg-white p-2 text-xs hover:border-gold"
+                      className="block rounded-xl border border-line bg-white p-2 text-xs hover:border-gold"
                     >
                       <span className="font-semibold text-ink">{entry.slotStart.split('T')[1].slice(0, 5)}</span>
                       <p className="font-medium text-ink">{entry.clientName}</p>
-                      {entry.addressLine && <p className="truncate text-ink/40">{entry.addressLine}</p>}
+                      {entry.addressLine && <p className="truncate text-muted">{entry.addressLine}</p>}
                     </Link>
                   ))}
                 </div>
@@ -164,7 +164,7 @@ export default async function AdminSchedule({ searchParams }: { searchParams: { 
         </div>
       </div>
 
-      <p className="mt-6 text-sm text-ink/50">
+      <p className="mt-6 text-sm text-muted">
         Quote visits are your own calendar, not crew capacity — that's why they sit on their own row. Moving a job
         to a crew that's already busy at that time is refused, the same as when a customer books.
       </p>

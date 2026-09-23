@@ -109,7 +109,7 @@ export default function EstimateResponse({
 
   if (status === 'DECLINED') {
     return (
-      <p className="mt-6 rounded-xl bg-ink/5 px-4 py-3 text-sm text-ink/70">
+      <p className="mt-6 rounded-xl bg-surface px-4 py-3 text-sm text-slate">
         Thanks for letting us know — no hard feelings. If anything changes, we'd be glad to hear from you.
       </p>
     );
@@ -128,7 +128,7 @@ export default function EstimateResponse({
           </a>
         ) : (
           <form onSubmit={savePassword} className="mt-4">
-            <p className="mb-3 text-sm text-ink/70">
+            <p className="mb-3 text-sm text-slate">
               Create a password and you can pick your first cleaning time right now.
             </p>
             <label className="label" htmlFor="estimate-password">
@@ -146,7 +146,7 @@ export default function EstimateResponse({
               onChange={(e) => setPassword(e.target.value)}
             />
             {clientPhone && (
-              <p className="mt-1.5 text-xs text-ink/50">You'll sign in with {clientPhone} from now on.</p>
+              <p className="mt-1.5 text-xs text-muted">You'll sign in with {clientPhone} from now on.</p>
             )}
             {passwordError && <p className="mt-2 text-sm text-red-600">{passwordError}</p>}
             <button type="submit" disabled={savingPassword} className="btn-primary mt-4 w-full">
@@ -162,7 +162,7 @@ export default function EstimateResponse({
   // rejects that anyway).
   return (
     <div className="mt-6">
-      {expiresAt && <p className="mb-3 text-sm text-ink/50">Good through {expiresAt}.</p>}
+      {expiresAt && <p className="mb-3 text-sm text-muted">Good through {expiresAt}.</p>}
       {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
       <button type="button" onClick={() => respond('APPROVE')} disabled={busy} className="btn-primary w-full">
         {busy ? 'One moment…' : 'Approve this estimate'}
@@ -171,7 +171,7 @@ export default function EstimateResponse({
         type="button"
         onClick={() => respond('DECLINE')}
         disabled={busy}
-        className="mt-3 w-full text-sm text-ink/50 hover:text-ink"
+        className="mt-3 w-full text-sm text-muted hover:text-ink"
       >
         No thanks
       </button>

@@ -6,11 +6,11 @@ import { getTenant, formatMoney } from '@/lib/data';
 import { getEstimatesForTenant } from '@/lib/estimates';
 
 const STATUS_STYLE: Record<string, string> = {
-  DRAFT: 'bg-ink/5 text-ink/60',
+  DRAFT: 'bg-surface text-slate',
   SENT: 'bg-amber-100 text-amber-700',
   APPROVED: 'bg-emerald-100 text-emerald-700',
   DECLINED: 'bg-red-100 text-red-700',
-  EXPIRED: 'bg-ink/10 text-ink/50',
+  EXPIRED: 'bg-line text-muted',
 };
 
 export default async function AdminEstimates() {
@@ -31,7 +31,7 @@ export default async function AdminEstimates() {
   return (
     <div>
       <h1 className="mb-1 text-2xl font-bold text-ink">Estimates</h1>
-      <p className="mb-6 text-ink/60">
+      <p className="mb-6 text-slate">
         What you quote after a walkthrough. Approving one puts the price on file and lets the client book
         themselves.
       </p>
@@ -50,8 +50,8 @@ export default async function AdminEstimates() {
                   <p className="font-semibold text-ink">{client?.name ?? 'Unknown client'}</p>
                   <span className={`pill ${STATUS_STYLE[estimate.status]}`}>{estimate.status}</span>
                 </div>
-                <p className="text-sm text-ink/60">{serviceMap[estimate.serviceTypeId] ?? 'Cleaning service'}</p>
-                <p className="text-sm text-ink/40">
+                <p className="text-sm text-slate">{serviceMap[estimate.serviceTypeId] ?? 'Cleaning service'}</p>
+                <p className="text-sm text-muted">
                   {estimate.sentAt ? `Sent ${estimate.sentAt.toLocaleDateString()}` : 'Not sent yet'}
                 </p>
               </div>
@@ -60,7 +60,7 @@ export default async function AdminEstimates() {
           );
         })}
         {estimates.length === 0 && (
-          <div className="card text-center text-ink/40">
+          <div className="card text-center text-muted">
             No estimates yet — start one from a lead after you've done the walkthrough.
           </div>
         )}

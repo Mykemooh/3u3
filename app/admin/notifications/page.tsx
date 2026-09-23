@@ -21,30 +21,30 @@ export default async function AdminNotifications() {
     <div className="space-y-6">
       <div>
         <h1 className="mb-1 text-2xl font-bold text-ink">Notifications</h1>
-        <p className="text-ink/60">Every email/SMS sent, and the blended cost against the PRD's $0.05 target.</p>
+        <p className="text-slate">Every email/SMS sent, and the blended cost against the PRD's $0.05 target.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="card">
           <p className="text-3xl font-black text-bronze">{log.length}</p>
-          <p className="text-sm text-ink/60">Notifications sent</p>
+          <p className="text-sm text-slate">Notifications sent</p>
         </div>
         <div className="card">
           <p className="text-3xl font-black text-bronze">${(totalCostCents / 100).toFixed(2)}</p>
-          <p className="text-sm text-ink/60">Total cost</p>
+          <p className="text-sm text-slate">Total cost</p>
         </div>
         <div className="card">
           <p className={`text-3xl font-black ${avgCostCents <= target ? 'text-emerald-600' : 'text-red-600'}`}>
             ${(avgCostCents / 100).toFixed(3)}
           </p>
-          <p className="text-sm text-ink/60">Avg. cost per notification (target ≤ $0.05)</p>
+          <p className="text-sm text-slate">Avg. cost per notification (target ≤ $0.05)</p>
         </div>
       </div>
 
       <div className="card overflow-x-auto p-0">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-ink/10 text-left text-ink/50">
+            <tr className="border-b border-line text-left text-muted">
               <th className="px-4 py-3 font-medium">When</th>
               <th className="px-4 py-3 font-medium">Channel</th>
               <th className="px-4 py-3 font-medium">Trigger</th>
@@ -55,18 +55,18 @@ export default async function AdminNotifications() {
           </thead>
           <tbody>
             {log.map((n) => (
-              <tr key={n.id} className="border-b border-ink/5 last:border-0">
-                <td className="px-4 py-3 text-ink/70">{n.createdAt.toLocaleString()}</td>
+              <tr key={n.id} className="border-b border-line last:border-0">
+                <td className="px-4 py-3 text-slate">{n.createdAt.toLocaleString()}</td>
                 <td className="px-4 py-3">{n.channel}</td>
-                <td className="px-4 py-3 text-ink/70">{n.triggerEvent.replaceAll('_', ' ').toLowerCase()}</td>
-                <td className="px-4 py-3 text-ink/70">{n.recipient}</td>
-                <td className="px-4 py-3 text-ink/70">${(n.costCents / 100).toFixed(3)}</td>
+                <td className="px-4 py-3 text-slate">{n.triggerEvent.replaceAll('_', ' ').toLowerCase()}</td>
+                <td className="px-4 py-3 text-slate">{n.recipient}</td>
+                <td className="px-4 py-3 text-slate">${(n.costCents / 100).toFixed(3)}</td>
                 <td className="px-4 py-3"><span className={`pill ${STATUS_STYLE[n.status]}`}>{n.status}</span></td>
               </tr>
             ))}
             {log.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-ink/40">No notifications logged yet.</td>
+                <td colSpan={6} className="px-4 py-8 text-center text-muted">No notifications logged yet.</td>
               </tr>
             )}
           </tbody>

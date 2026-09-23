@@ -1,34 +1,70 @@
 import Link from 'next/link';
 import Logo from '@/components/Logo';
+import { SERVICES } from '@/lib/services';
 
 export default function Footer() {
   return (
-    <footer className="bg-ink text-white/60">
-      <div className="container-narrow px-6 py-12">
-        <div className="flex flex-col items-center gap-8 text-center md:flex-row md:items-start md:justify-between md:text-left">
-          <div className="flex flex-col items-center md:items-start">
-            <Logo variant="light" size="sm" />
-            <p className="mt-3 max-w-[220px] text-xs text-white/40">
-              Family Owned by Parents of Three boys, Built in Texas
+    <footer className="bg-ink text-white">
+      <div className="container-wide px-6 py-14">
+        <div className="grid gap-10 md:grid-cols-4">
+          <div>
+            <Logo variant="light" size="sm" className="h-10 w-auto" />
+            <p className="mt-4 max-w-[230px] text-sm text-white/55">
+              Family owned by parents of three boys, built in Texas. Serving Katy and the surrounding Houston
+              area.
             </p>
           </div>
 
-          <div className="flex flex-col items-center gap-2 md:items-start">
-            <p className="text-xs font-semibold uppercase tracking-wider text-white/30">Get started</p>
-            <Link href="/new" className="text-sm hover:text-gold">Get a free quote</Link>
-            <Link href="/signin" className="text-sm hover:text-gold">Sign in</Link>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-white/40">Services</p>
+            <ul className="mt-4 space-y-2.5">
+              {SERVICES.map((s) => (
+                <li key={s.slug}>
+                  <Link href={`/services/${s.slug}`} className="text-sm text-white/75 transition hover:text-gold">
+                    {s.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
 
-          <div className="flex flex-col items-center gap-2 md:items-start">
-            <p className="text-xs font-semibold uppercase tracking-wider text-white/30">Staff</p>
-            <Link href="/signin" className="text-sm hover:text-gold">Staff sign-in</Link>
-            <p className="max-w-[200px] text-xs text-white/30">
-              Same sign-in as everyone else — you'll land on your own screen.
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-white/40">Get started</p>
+            <ul className="mt-4 space-y-2.5">
+              <li>
+                <Link href="/new" className="text-sm text-white/75 transition hover:text-gold">
+                  Get a free quote
+                </Link>
+              </li>
+              <li>
+                <Link href="/services" className="text-sm text-white/75 transition hover:text-gold">
+                  All services
+                </Link>
+              </li>
+              <li>
+                <Link href="/#how-it-works" className="text-sm text-white/75 transition hover:text-gold">
+                  How it works
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-white/40">Account</p>
+            <ul className="mt-4 space-y-2.5">
+              <li>
+                <Link href="/signin" className="text-sm text-white/75 transition hover:text-gold">
+                  Sign in
+                </Link>
+              </li>
+            </ul>
+            <p className="mt-4 max-w-[220px] text-xs text-white/40">
+              Customers, cleaners and office staff all sign in at the same place.
             </p>
           </div>
         </div>
 
-        <div className="mt-10 border-t border-white/10 pt-6 text-center text-xs text-white/30">
+        <div className="mt-12 border-t border-white/10 pt-6 text-xs text-white/40">
           © {new Date().getFullYear()} 3U3 Cleaning. All rights reserved.
         </div>
       </div>

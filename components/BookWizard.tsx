@@ -99,7 +99,7 @@ export default function BookWizard({
     return (
       <main className="min-h-screen bg-white flex flex-col items-center justify-center px-6 py-12 text-center">
         <LogoBadge size="sm" />
-        <p className="mt-8 max-w-sm text-ink/60">
+        <p className="mt-8 max-w-sm text-slate">
           Hi {customerName} — we don't have an agreed rate on file for you yet. Please contact us directly to get set up.
         </p>
         <Link href="/" className="btn-secondary mt-6">
@@ -118,13 +118,13 @@ export default function BookWizard({
       {step === 'service' && (
         <div className="card w-full max-w-md">
           <h1 className="text-xl font-bold mb-1">Welcome back, {customerName.split(' ')[0]}</h1>
-          <p className="text-sm text-ink/60 mb-6">Pick a service — you'll see your own agreed rate.</p>
+          <p className="text-sm text-slate mb-6">Pick a service — you'll see your own agreed rate.</p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {services.map((s) => (
               <button
                 key={s.id}
                 onClick={() => pickService(s)}
-                className="flex flex-col items-start gap-2 rounded-xl border-2 border-ink/10 px-4 py-4 text-left transition hover:border-gold"
+                className="flex flex-col items-start gap-2 rounded-xl border-2 border-line px-4 py-4 text-left transition hover:border-gold"
               >
                 <span className="font-semibold">{s.name}</span>
                 <span className="pill bg-gold/15 text-bronze">{s.rateLabel}</span>
@@ -136,14 +136,14 @@ export default function BookWizard({
 
       {step === 'schedule' && service && (
         <div className="card w-full max-w-lg">
-          <button onClick={() => setStep('service')} className="text-sm text-ink/50 mb-4 hover:text-ink">
+          <button onClick={() => setStep('service')} className="text-sm text-muted mb-4 hover:text-ink">
             ← Back
           </button>
           <h1 className="text-xl font-bold mb-1">{service.name}</h1>
-          <p className="text-sm text-ink/60 mb-6">
+          <p className="text-sm text-slate mb-6">
             Your rate: <span className="font-semibold text-bronze">{service.rateLabel}</span> · pick a real open slot on our crew's calendar.
           </p>
-          {loadingSlots && <p className="text-sm text-ink/50">Loading real availability…</p>}
+          {loadingSlots && <p className="text-sm text-muted">Loading real availability…</p>}
           <div className="space-y-5 max-h-[380px] overflow-y-auto pr-1">
             {days.filter((d) => d.slots.some((s) => s.available)).map((day) => (
               <div key={day.date}>
@@ -156,10 +156,10 @@ export default function BookWizard({
                       onClick={() => setSelected(slot)}
                       className={`rounded-lg border-2 px-3 py-2 text-sm font-medium transition ${
                         !slot.available
-                          ? 'cursor-not-allowed border-ink/5 bg-ink/5 text-ink/30 line-through'
+                          ? 'cursor-not-allowed border-line bg-surface text-muted line-through'
                           : selected?.start === slot.start
                           ? 'border-gold bg-gold/10 text-ink'
-                          : 'border-ink/10 hover:border-gold'
+                          : 'border-line hover:border-gold'
                       }`}
                     >
                       {formatSlotLabel(slot.start, slot.end)}
@@ -169,7 +169,7 @@ export default function BookWizard({
               </div>
             ))}
             {!loadingSlots && days.every((d) => !d.slots.some((s) => s.available)) && (
-              <p className="text-sm text-ink/50">No open slots in the next 10 days — please check back soon.</p>
+              <p className="text-sm text-muted">No open slots in the next 10 days — please check back soon.</p>
             )}
           </div>
           <button disabled={!selected} onClick={proceedFromSchedule} className="btn-primary w-full mt-6">
@@ -180,18 +180,18 @@ export default function BookWizard({
 
       {step === 'cadence' && service && selected && (
         <div className="card w-full max-w-md">
-          <button onClick={() => setStep('schedule')} className="text-sm text-ink/50 mb-4 hover:text-ink">
+          <button onClick={() => setStep('schedule')} className="text-sm text-muted mb-4 hover:text-ink">
             ← Back
           </button>
           <h1 className="text-xl font-bold mb-1">How often?</h1>
-          <p className="text-sm text-ink/60 mb-6">Last step — set your cadence for {service.name.toLowerCase()}.</p>
+          <p className="text-sm text-slate mb-6">Last step — set your cadence for {service.name.toLowerCase()}.</p>
           <div className="grid grid-cols-1 gap-3 mb-6 sm:grid-cols-3">
             {(['ONE_TIME', 'BIWEEKLY', 'MONTHLY'] as Cadence[]).map((c) => (
               <button
                 key={c}
                 onClick={() => setCadence(c)}
                 className={`rounded-xl border-2 px-4 py-3 text-center font-medium transition ${
-                  cadence === c ? 'border-gold bg-gold/10' : 'border-ink/10 hover:border-gold'
+                  cadence === c ? 'border-gold bg-gold/10' : 'border-line hover:border-gold'
                 }`}
               >
                 {CADENCE_LABEL[c]}
@@ -199,7 +199,7 @@ export default function BookWizard({
             ))}
           </div>
           {cadence !== 'ONE_TIME' && (
-            <p className="mb-4 rounded-lg bg-cream px-4 py-3 text-sm text-ink/70">
+            <p className="mb-4 rounded-lg bg-surface px-4 py-3 text-sm text-slate">
               You're set for {cadence === 'BIWEEKLY' ? 'every other' : 'every'}{' '}
               {new Date(selected.start).toLocaleDateString('en-US', { weekday: 'long' })},{' '}
               {formatSlotLabel(selected.start, selected.end)}.
@@ -218,13 +218,13 @@ export default function BookWizard({
             ✓
           </div>
           <h1 className="text-xl font-bold mb-2">Booking confirmed!</h1>
-          <div className="mb-6 space-y-1 text-sm text-ink/70">
+          <div className="mb-6 space-y-1 text-sm text-slate">
             <p className="font-semibold text-ink">{service.name}</p>
             <p>{formatDateLabel(selected.start.split('T')[0])}</p>
             <p>{formatSlotLabel(selected.start, selected.end)}</p>
             <p>{CADENCE_LABEL[cadence]} · {service.rateLabel}</p>
           </div>
-          <p className="mb-6 text-xs text-ink/50">
+          <p className="mb-6 text-xs text-muted">
             You'll get an email confirmation now, and a reminder before each visit.
           </p>
           <Link href="/" className="btn-secondary w-full">
