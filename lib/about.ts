@@ -45,6 +45,24 @@ export const PILLARS: Pillar[] = [
 export const ABOUT_CLOSING =
   "If those sound like the people you'd want in your home, start with a free walkthrough. We come out, look at the actual house, tell you honestly what it needs, and give you a price on the spot.";
 
+/**
+ * Where the name comes from — the most commercially useful fact on the page,
+ * so it gets its own band rather than a line buried in the story.
+ *
+ * It is written as a promise with its exceptions attached. A claim a customer
+ * can catch you failing is worth less than the same claim with the honest
+ * caveat already said out loud.
+ */
+export const NAME_STORY = {
+  heading: 'Three cleaners. Under three hours.',
+  body: [
+    "That is the whole idea, and it is why we will never send one person to spend a day in your house. A crew of three moves through a home together — one takes the kitchen, one the bathrooms, one the floors and bedrooms — and most homes are finished and gone inside three hours.",
+    "So you get your Saturday back, not just a clean house. Nobody is in your space long enough for it to feel like an intrusion, and no one's day gets stretched out past what the job is worth.",
+  ],
+  caveat:
+    "The honest exceptions: a first deep clean, an empty move-out, or a larger home can run longer. The walkthrough is where we tell you which one you are — before you book, not after.",
+};
+
 /** The shorter version, for the block on the home page. */
 export const ABOUT_TEASER =
-  "We're parents of three young boys, raising them in Katy and building this business around them. It runs on three things: faith that honest work finds its people, family — ours and yours — and a future worth handing on.";
+  "The name is the promise — three cleaners, under three hours, and your Saturday back. We're parents of three young boys, raising them in Katy and building this around them: on faith, on family, and on a future worth handing to somebody.";

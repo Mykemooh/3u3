@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import SiteHeader from '@/components/SiteHeader';
 import Footer from '@/components/Footer';
 import FamilyPortrait from '@/components/FamilyPortrait';
-import { ABOUT_INTRO, ABOUT_CLOSING, PILLARS } from '@/lib/about';
+import { ABOUT_INTRO, ABOUT_CLOSING, NAME_STORY, PILLARS } from '@/lib/about';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,6 +46,33 @@ export default function AboutPage() {
             </div>
 
             <FamilyPortrait className="mx-auto w-full max-w-sm lg:max-w-none" />
+          </div>
+        </section>
+
+        {/* ---------- Where the name comes from ---------- */}
+        <section className="px-6 pb-4">
+          <div className="container-wide overflow-hidden rounded-3xl bg-ink px-8 py-12 md:px-14 md:py-16">
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-gold">
+              Where the name comes from
+            </p>
+
+            <div className="mt-4 grid gap-8 lg:grid-cols-[0.85fr_1fr] lg:gap-14">
+              <h2 className="h2 text-white">{NAME_STORY.heading}</h2>
+
+              <div>
+                <div className="space-y-4">
+                  {NAME_STORY.body.map((paragraph) => (
+                    <p key={paragraph.slice(0, 24)} className="text-lg text-white/75">
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
+
+                <p className="mt-7 border-l-2 border-gold pl-5 text-base text-white/60">
+                  {NAME_STORY.caveat}
+                </p>
+              </div>
+            </div>
           </div>
         </section>
 
