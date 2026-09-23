@@ -30,6 +30,9 @@ export default async function SiteHeader() {
           <Link href="/#how-it-works" className="text-sm font-semibold text-slate transition hover:text-ink">
             How it works
           </Link>
+          <Link href="/about" className="text-sm font-semibold text-slate transition hover:text-ink">
+            About us
+          </Link>
           <Link href="/#service-area" className="text-sm font-semibold text-slate transition hover:text-ink">
             Service area
           </Link>

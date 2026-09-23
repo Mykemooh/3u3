@@ -3,7 +3,9 @@ import Image from 'next/image';
 import SiteHeader from '@/components/SiteHeader';
 import Footer from '@/components/Footer';
 import WelcomeCta from '@/components/WelcomeCta';
+import FamilyPortrait from '@/components/FamilyPortrait';
 import { SERVICES } from '@/lib/services';
+import { ABOUT_TEASER } from '@/lib/about';
 
 // WelcomeCta and SiteHeader both read the session to decide between
 // "Get a quote" and "Book now", so this page can't be baked at build time.
@@ -146,6 +148,34 @@ export default function WelcomePage() {
                   <p className="body mt-3">{step.description}</p>
                 </div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ---------- Who you're actually letting in ---------- */}
+        <section className="section border-t border-line bg-surface">
+          <div className="container-wide grid items-center gap-10 lg:grid-cols-[1fr_1.2fr] lg:gap-16">
+            <FamilyPortrait className="mx-auto w-full max-w-[19rem] lg:max-w-none" />
+
+            <div>
+              <p className="eyebrow">About us</p>
+              <h2 className="h2 mt-3">A family business, in the plain sense of it.</h2>
+              <p className="lead mt-5 max-w-[52ch]">{ABOUT_TEASER}</p>
+
+              <ul className="mt-7 flex flex-wrap gap-2.5">
+                {['Faith', 'Family', 'Future'].map((f) => (
+                  <li
+                    key={f}
+                    className="rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold text-slate"
+                  >
+                    {f}
+                  </li>
+                ))}
+              </ul>
+
+              <Link href="/about" className="btn-secondary mt-8">
+                Read our story
+              </Link>
             </div>
           </div>
         </section>
