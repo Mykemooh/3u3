@@ -40,7 +40,7 @@ export default function WelcomePage() {
     <>
       <SiteHeader />
 
-      <main className="bg-white">
+      <main>
         {/* ---------- Hero: words left, the work itself on the right ---------- */}
         <section className="px-6 pb-16 pt-12 md:pb-24 md:pt-20">
           <div className="container-wide grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
@@ -91,7 +91,7 @@ export default function WelcomePage() {
                 <Link
                   key={service.slug}
                   href={`/services/${service.slug}`}
-                  className="group overflow-hidden rounded-2xl border border-line bg-white transition-all duration-200 hover:-translate-y-1 hover:border-gold/40 hover:shadow-card-lg"
+                  className="card-line group overflow-hidden rounded-2xl border border-line bg-white transition-all duration-200 hover:-translate-y-1 hover:border-gold/40 hover:shadow-card-lg"
                 >
                   <div className="relative aspect-[16/10] overflow-hidden bg-surface">
                     <Image

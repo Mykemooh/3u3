@@ -7,7 +7,7 @@ import LogoBadge from '@/components/LogoBadge';
 // screen, safe even if the customer closes the tab immediately.
 export default function PayThankYouPage() {
   return (
-    <main className="min-h-screen bg-white flex flex-col items-center justify-center px-6 py-12 text-center">
+    <main className="min-h-screen flex flex-col items-center justify-center px-6 py-12 text-center">
       <LogoBadge size="sm" />
       <div className="mx-auto mt-8 mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gold/15 text-2xl">
         ✓

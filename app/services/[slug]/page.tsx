@@ -27,7 +27,7 @@ export default function ServicePage({ params }: { params: { slug: string } }) {
   const others = SERVICES.filter((s) => s.slug !== service.slug);
 
   return (
-    <div className="bg-white">
+    <div>
       <SiteHeader />
 
       <main className="mx-auto max-w-3xl px-6 py-12">

@@ -77,7 +77,7 @@ function SignInInner() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-white px-6 py-12">
+    <main className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
       <Link href="/" className="mb-10">
         <LogoBadge />
       </Link>

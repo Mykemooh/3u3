@@ -74,13 +74,15 @@
   }
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-white px-7 py-3.5 text-base
-      font-semibold text-ink transition-all hover:-translate-y-0.5 hover:border-ink/25 hover:shadow-card
+      font-semibold text-ink transition-all duration-200 hover:-translate-y-0.5 hover:border-gold hover:bg-gold
+      hover:text-ink hover:shadow-gold
       focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bronze
       active:translate-y-0 disabled:pointer-events-none disabled:opacity-50;
   }
   .btn-dark {
     @apply inline-flex items-center justify-center gap-2 rounded-xl bg-ink px-7 py-3.5 text-base font-semibold text-white
-      transition-all hover:-translate-y-0.5 hover:bg-charcoal focus-visible:outline focus-visible:outline-2
+      transition-all duration-200 hover:-translate-y-0.5 hover:bg-gold hover:text-ink hover:shadow-gold
+      focus-visible:outline focus-visible:outline-2
       focus-visible:outline-offset-2 focus-visible:outline-gold active:translate-y-0 disabled:opacity-50;
   }
   .btn-sm {
@@ -131,5 +133,136 @@
   }
   .media {
     @apply overflow-hidden rounded-2xl bg-surface;
+  }
+
+  /* ---- Motion ----------------------------------------------------------
+     One rule across the site: every button answers the pointer the same
+     way, and every button that isn't already the quote button becomes it
+     on hover — so "the gold one is the one that does something" holds
+     even mid-interaction.
+
+     Everything here is transform and opacity only, which the compositor
+     handles without re-laying-out the page, and all of it is switched off
+     under prefers-reduced-motion at the bottom of this file.              */
+
+  .btn-primary,
+  .btn-secondary,
+  .btn-dark {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+  }
+
+  /* A slow light sweep, once, on hover. It reads as the surface catching
+     the light rather than as an animation playing. */
+  .btn-primary::after,
+  .btn-secondary::after,
+  .btn-dark::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(
+      115deg,
+      transparent 25%,
+      rgba(255, 255, 255, 0.5) 50%,
+      transparent 75%
+    );
+    transform: translateX(-130%);
+    transition: transform 0.75s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .btn-primary:hover::after,
+  .btn-secondary:hover::after,
+  .btn-dark:hover::after {
+    transform: translateX(130%);
+  }
+
+  .btn-primary:active,
+  .btn-secondary:active,
+  .btn-dark:active {
+    transform: translateY(1px) scale(0.985);
+  }
+
+  /* ---- The green line ---------------------------------------------------
+     A single accent that draws itself from the left. It is the one non-gold
+     colour on the site, which is exactly why it works as a pointer trail:
+     nothing else moves like this, so the eye follows it.                   */
+  .nav-link {
+    @apply relative text-sm font-semibold text-slate transition-colors duration-200 hover:text-ink;
+  }
+  .nav-link::after,
+  .link-underline::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -0.35rem;
+    height: 2px;
+    border-radius: 999px;
+    background: theme('colors.green.DEFAULT');
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .nav-link:hover::after,
+  .nav-link:focus-visible::after,
+  .link-underline:hover::after,
+  .link-underline:focus-visible::after {
+    transform: scaleX(1);
+  }
+  .link-underline {
+    @apply relative;
+  }
+
+  /* The same line, drawn across the top of a card as the pointer lands. */
+  .card-line {
+    position: relative;
+  }
+  .card-line::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 3px;
+    z-index: 2;
+    background: linear-gradient(
+      to right,
+      theme('colors.green.DEFAULT'),
+      theme('colors.green.light')
+    );
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .card-line:hover::before,
+  .card-line:focus-within::before {
+    transform: scaleX(1);
+  }
+}
+
+/* Anyone who has asked their system for less motion gets the colour and
+   contrast changes and none of the movement. */
+@media (prefers-reduced-motion: reduce) {
+  .btn-primary,
+  .btn-secondary,
+  .btn-dark,
+  .nav-link::after,
+  .link-underline::after,
+  .card-line::before {
+    transition-duration: 0.01ms !important;
+  }
+  .btn-primary::after,
+  .btn-secondary::after,
+  .btn-dark::after {
+    display: none;
+  }
+  .btn-primary:hover,
+  .btn-secondary:hover,
+  .btn-dark:hover,
+  .btn-primary:active,
+  .btn-secondary:active,
+  .btn-dark:active {
+    transform: none !important;
   }
 }
