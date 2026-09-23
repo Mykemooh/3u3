@@ -102,7 +102,7 @@ export default function InvoiceEditor({
               onChange={(e) => updateItem(idx, { description: e.target.value })}
             />
             <div className="flex items-center gap-1">
-              <span className="text-ink/40">$</span>
+              <span className="text-muted">$</span>
               <input
                 className="input w-24"
                 type="number"
@@ -116,7 +116,7 @@ export default function InvoiceEditor({
               type="button"
               onClick={() => removeItem(idx)}
               disabled={items.length === 1}
-              className="text-ink/40 hover:text-red-600 disabled:opacity-30"
+              className="text-muted hover:text-red-600 disabled:opacity-30"
               aria-label="Remove line item"
             >
               ✕
@@ -129,7 +129,7 @@ export default function InvoiceEditor({
         + Add line item
       </button>
 
-      <div className="mt-4 flex items-center justify-between border-t border-ink/10 pt-4">
+      <div className="mt-4 flex items-center justify-between border-t border-line pt-4">
         <span className="font-semibold text-ink">Total</span>
         <span className="text-lg font-bold text-ink">${toDollarsStr(totalCents)}</span>
       </div>

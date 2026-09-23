@@ -26,7 +26,7 @@ export default async function EstimatePage({
     searchParams.respond === 'approve' ? 'APPROVE' : searchParams.respond === 'decline' ? 'DECLINE' : undefined;
 
   return (
-    <div className="flex min-h-screen flex-col bg-cream">
+    <div className="flex min-h-screen flex-col bg-surface">
       <header className="bg-ink px-6 py-4">
         <Logo size="sm" className="h-10 w-auto" />
       </header>

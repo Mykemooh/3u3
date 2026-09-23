@@ -73,12 +73,12 @@ export default async function WelcomeCta() {
       </Link>
 
       <div className="mt-8 w-full max-w-lg text-left">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink/40">Your pricing</p>
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">Your pricing</p>
         <ul className="space-y-1.5">
           {priced.map((s) => {
             const content = serviceByKey(s.key);
             return (
-              <li key={s.id} className="flex items-center justify-between border-b border-ink/5 py-2 text-sm">
+              <li key={s.id} className="flex items-center justify-between border-b border-line py-2 text-sm">
                 <Link
                   href={content ? `/services/${content.slug}` : '/services'}
                   className="font-medium text-ink hover:text-bronze"
@@ -93,17 +93,17 @@ export default async function WelcomeCta() {
 
         {unpriced.length > 0 && (
           <>
-            <p className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-ink/40">
+            <p className="mb-2 mt-6 text-xs font-semibold uppercase tracking-wider text-muted">
               Want something else?
             </p>
-            <p className="mb-3 text-sm text-ink/60">
+            <p className="mb-3 text-sm text-slate">
               We haven't priced these for your home yet — a short walkthrough sorts that out.
             </p>
             <ul className="space-y-1.5">
               {unpriced.map((s) => {
                 const content = serviceByKey(s.key);
                 return (
-                  <li key={s.id} className="flex items-center justify-between border-b border-ink/5 py-2 text-sm">
+                  <li key={s.id} className="flex items-center justify-between border-b border-line py-2 text-sm">
                     <Link
                       href={content ? `/services/${content.slug}` : '/services'}
                       className="font-medium text-ink hover:text-bronze"
@@ -136,7 +136,7 @@ function SignedOut() {
       <Link href="/signin" className="mt-4 text-sm font-semibold text-bronze hover:underline">
         Already a customer? Sign in
       </Link>
-      <p className="mt-6 max-w-sm text-xs text-ink/40">
+      <p className="mt-6 max-w-sm text-xs text-muted">
         Serving Katy and the surrounding Houston area.{' '}
         <Link href="/services" className="underline hover:text-bronze">
           See everything we clean
@@ -159,7 +159,7 @@ function Panel({
   return (
     <div className="flex flex-col items-center text-center">
       <h2 className="text-2xl font-bold text-ink md:text-3xl">{heading}</h2>
-      <p className="mt-3 max-w-md text-ink/60">{blurb}</p>
+      <p className="mt-3 max-w-md text-slate">{blurb}</p>
       <div className="mt-8 flex w-full flex-col items-center">{children}</div>
     </div>
   );

@@ -74,7 +74,7 @@ export default function JobChecklist({
             ✓ This job is complete — every room has a before/after pair (or a logged skip).
           </div>
         )}
-        <p className="text-sm font-semibold text-ink/60">
+        <p className="text-sm font-semibold text-slate">
           {doneCount}/{localItems.length} rooms documented
         </p>
         {localItems.map((item) => (
@@ -83,7 +83,7 @@ export default function JobChecklist({
       </main>
 
       {!isJobComplete && (
-        <div className="fixed bottom-0 left-0 right-0 border-t border-ink/10 bg-white px-6 py-4">
+        <div className="fixed bottom-0 left-0 right-0 border-t border-line bg-white px-6 py-4">
           <div className="mx-auto max-w-xl">
             {completeError && <p className="mb-2 text-sm text-red-600">{completeError}</p>}
             <button disabled={!allDone || completing} onClick={markComplete} className="btn-primary w-full">
@@ -148,14 +148,14 @@ function ChecklistRow({
       ? 'border-emerald-300 bg-emerald-50'
       : item.status === 'SKIPPED'
       ? 'border-amber-300 bg-amber-50'
-      : 'border-ink/10 bg-white';
+      : 'border-line bg-white';
 
   return (
     <div className={`card border-2 ${statusStyle}`}>
       <div className="mb-2 flex items-start justify-between">
         <div>
           <p className="font-semibold text-ink">{item.roomName}</p>
-          {item.taskDetail && <p className="text-xs text-ink/50">{item.taskDetail}</p>}
+          {item.taskDetail && <p className="text-xs text-muted">{item.taskDetail}</p>}
         </div>
         <span
           className={`pill ${
@@ -163,7 +163,7 @@ function ChecklistRow({
               ? 'bg-emerald-100 text-emerald-700'
               : item.status === 'SKIPPED'
               ? 'bg-amber-100 text-amber-700'
-              : 'bg-ink/5 text-ink/40'
+              : 'bg-surface text-muted'
           }`}
         >
           {item.status === 'COMPLETE' ? 'Done' : item.status === 'SKIPPED' ? 'Skipped' : 'Pending'}
@@ -223,7 +223,7 @@ function ChecklistRow({
       {!locked && item.status !== 'COMPLETE' && (
         <div className="mt-3">
           {!showSkip ? (
-            <button onClick={() => setShowSkip(true)} className="text-xs font-medium text-ink/40 hover:text-ink/70">
+            <button onClick={() => setShowSkip(true)} className="text-xs font-medium text-muted hover:text-slate">
               Skip this room…
             </button>
           ) : (
@@ -263,7 +263,7 @@ function PhotoSlot({
       type="button"
       onClick={onPick}
       disabled={disabled || uploading}
-      className="group relative flex aspect-square w-full flex-col items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-ink/15 bg-cream text-xs text-ink/40 hover:border-gold disabled:opacity-60"
+      className="group relative flex aspect-square w-full flex-col items-center justify-center overflow-hidden rounded-lg border-2 border-dashed border-line bg-surface text-xs text-muted hover:border-gold disabled:opacity-60"
     >
       {photoPath ? (
         <img src={photoPath} alt={label} className="h-full w-full object-cover" />

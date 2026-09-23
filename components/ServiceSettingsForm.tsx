@@ -44,7 +44,7 @@ export default function ServiceSettingsForm({
           onChange={(e) => setDurationMinutes(Number(e.target.value))}
         />
       </div>
-      <label className="flex items-center gap-2 pb-3 text-sm font-medium text-ink/70">
+      <label className="flex items-center gap-2 pb-3 text-sm font-medium text-slate">
         <input
           type="checkbox"
           checked={recurringEligible}

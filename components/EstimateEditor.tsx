@@ -131,7 +131,7 @@ export default function EstimateEditor({
               onChange={(e) => updateItem(idx, { description: e.target.value })}
             />
             <div className="flex items-center gap-1">
-              <span className="text-ink/40">$</span>
+              <span className="text-muted">$</span>
               <input
                 className="input w-24"
                 type="number"
@@ -150,7 +150,7 @@ export default function EstimateEditor({
                 setItems((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== idx) : prev));
               }}
               disabled={items.length === 1}
-              className="text-ink/40 hover:text-red-600 disabled:opacity-30"
+              className="text-muted hover:text-red-600 disabled:opacity-30"
               aria-label="Remove line"
             >
               ✕
@@ -171,7 +171,7 @@ export default function EstimateEditor({
       </button>
 
       <label className="label mt-5" htmlFor="estimate-notes">
-        Note to the client <span className="font-normal text-ink/40">(optional)</span>
+        Note to the client <span className="font-normal text-muted">(optional)</span>
       </label>
       <textarea
         id="estimate-notes"
@@ -184,7 +184,7 @@ export default function EstimateEditor({
         }}
       />
 
-      <div className="mt-4 flex items-center justify-between border-t border-ink/10 pt-4">
+      <div className="mt-4 flex items-center justify-between border-t border-line pt-4">
         <span className="font-semibold text-ink">Total</span>
         <span className="text-lg font-bold text-ink">${toDollarsStr(totalCents)}</span>
       </div>

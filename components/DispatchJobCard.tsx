@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 const JOB_STATUS_STYLE: Record<string, string> = {
-  PENDING: 'bg-ink/5 text-ink/50',
+  PENDING: 'bg-surface text-muted',
   IN_PROGRESS: 'bg-amber-100 text-amber-700',
   COMPLETE: 'bg-emerald-100 text-emerald-700',
 };
@@ -69,7 +69,7 @@ export default function DispatchJobCard({
   }
 
   return (
-    <div className={`rounded-xl border border-ink/10 bg-white p-2 text-xs ${busy ? 'opacity-50' : ''}`}>
+    <div className={`rounded-xl border border-line bg-white p-2 text-xs ${busy ? 'opacity-50' : ''}`}>
       <div className="flex items-center justify-between gap-1">
         <span className="font-semibold text-ink">
           {timeLabel(slotStart)}–{timeLabel(slotEnd)}
@@ -79,12 +79,12 @@ export default function DispatchJobCard({
       <Link href={`/admin/clients/${clientId}`} className="mt-0.5 block font-medium text-ink hover:text-bronze">
         {clientName}
       </Link>
-      <p className="text-ink/50">{serviceName}</p>
-      {addressLine && <p className="truncate text-ink/40">{addressLine}</p>}
+      <p className="text-muted">{serviceName}</p>
+      {addressLine && <p className="truncate text-muted">{addressLine}</p>}
 
       {crews.length > 1 && (
         <select
-          className="mt-1.5 w-full rounded-lg border border-ink/10 bg-cream px-1.5 py-1 text-xs text-ink/70 focus:border-gold focus:outline-none"
+          className="mt-1.5 w-full rounded-lg border border-line bg-surface px-1.5 py-1 text-xs text-slate focus:border-gold focus:outline-none"
           value={crewId ?? ''}
           disabled={busy}
           onChange={(e) => move(e.target.value)}

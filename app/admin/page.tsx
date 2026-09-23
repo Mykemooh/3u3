@@ -24,14 +24,14 @@ export default async function AdminOverview() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-ink">Good to see you</h1>
-        <p className="text-ink/60">Here's what's happening across 3U3 Cleaning.</p>
+        <p className="text-slate">Here's what's happening across 3U3 Cleaning.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {stats.map((s) => (
           <Link key={s.label} href={s.href} className="card block transition hover:border-gold">
             <p className="text-3xl font-black text-bronze">{s.value}</p>
-            <p className="text-sm text-ink/60">{s.label}</p>
+            <p className="text-sm text-slate">{s.label}</p>
           </Link>
         ))}
       </div>
@@ -39,7 +39,7 @@ export default async function AdminOverview() {
       {crew && (
         <div className="card">
           <h2 className="mb-3 font-semibold text-ink">Crew schedule (default)</h2>
-          <p className="text-sm text-ink/60">
+          <p className="text-sm text-slate">
             {Math.floor(crew.workStartMinutes / 60)}:00 – {Math.floor(crew.workEndMinutes / 60)}:00 ·{' '}
             {crew.homesPerDay} homes/day · {crew.commuteBufferMinutes}min commute buffer
           </p>
@@ -55,13 +55,13 @@ export default async function AdminOverview() {
           .sort((a, b) => a.slotStart.localeCompare(b.slotStart))
           .slice(0, 5)
           .map((b) => (
-            <div key={b.id} className="flex items-center justify-between border-b border-ink/5 py-2 text-sm last:border-0">
+            <div key={b.id} className="flex items-center justify-between border-b border-line py-2 text-sm last:border-0">
               <span>{b.isQuoteVisit ? 'Quote visit' : 'Cleaning job'}</span>
-              <span className="text-ink/60">{b.slotStart.replace('T', ' ')}</span>
+              <span className="text-slate">{b.slotStart.replace('T', ' ')}</span>
             </div>
           ))}
         {upcomingQuoteVisits.length + upcomingJobs.length === 0 && (
-          <p className="text-sm text-ink/50">Nothing scheduled yet.</p>
+          <p className="text-sm text-muted">Nothing scheduled yet.</p>
         )}
       </div>
     </div>

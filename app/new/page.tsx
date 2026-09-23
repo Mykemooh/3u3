@@ -92,9 +92,9 @@ export default function NewCustomerPage() {
       {stepNumber && (
         <div className="mb-6 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted">
           <span className={stepNumber === 1 ? 'text-bronze' : ''}>1. Service</span>
-          <span className="text-ink/20">—</span>
+          <span className="text-muted">—</span>
           <span className={stepNumber === 2 ? 'text-bronze' : ''}>2. Your details</span>
-          <span className="text-ink/20">—</span>
+          <span className="text-muted">—</span>
           <span className={stepNumber === 3 ? 'text-bronze' : ''}>3. Pick a time</span>
         </div>
       )}

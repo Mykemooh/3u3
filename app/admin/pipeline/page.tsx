@@ -20,7 +20,7 @@ export default async function AdminPipeline() {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-ink">Pipeline</h1>
-        <p className="text-ink/60">
+        <p className="text-slate">
           {inFlight} {inFlight === 1 ? 'client' : 'clients'} in flight · {formatMoney(open)} not yet collected
         </p>
       </div>
@@ -32,21 +32,21 @@ export default async function AdminPipeline() {
             const total = column.reduce((t, c) => t + (c.amountCents ?? 0), 0);
             return (
               <div key={stage.key} className="flex-1">
-                <div className={`rounded-t-xl border-t-4 bg-ink/[0.03] px-3 py-2 ${stage.accent}`}>
+                <div className={`rounded-t-xl border-t-4 bg-surface px-3 py-2 ${stage.accent}`}>
                   <div className="flex items-baseline justify-between">
                     <span className="text-sm font-semibold text-ink">{stage.label}</span>
-                    <span className="text-sm font-bold text-ink/40">{column.length}</span>
+                    <span className="text-sm font-bold text-muted">{column.length}</span>
                   </div>
-                  <p className="text-xs text-ink/40">{stage.hint}</p>
+                  <p className="text-xs text-muted">{stage.hint}</p>
                   {total > 0 && <p className="mt-0.5 text-xs font-semibold text-bronze">{formatMoney(total)}</p>}
                 </div>
 
-                <div className="space-y-2 rounded-b-xl bg-ink/[0.02] p-2">
+                <div className="space-y-2 rounded-b-xl bg-surface p-2">
                   {column.map((card) => (
                     <Link
                       key={`${stage.key}-${card.clientId}`}
                       href={card.href}
-                      className="block rounded-xl border border-ink/10 bg-white p-2.5 text-xs transition hover:border-gold"
+                      className="block rounded-xl border border-line bg-white p-2.5 text-xs transition hover:border-gold"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <span className="font-semibold text-ink">{card.clientName}</span>
@@ -56,12 +56,12 @@ export default async function AdminPipeline() {
                           </span>
                         )}
                       </div>
-                      <p className="mt-0.5 text-ink/50">{card.detail}</p>
-                      {card.clientPhone && <p className="text-ink/30">{card.clientPhone}</p>}
+                      <p className="mt-0.5 text-muted">{card.detail}</p>
+                      {card.clientPhone && <p className="text-muted">{card.clientPhone}</p>}
                     </Link>
                   ))}
                   {column.length === 0 && (
-                    <p className="px-1 py-4 text-center text-xs text-ink/25">Empty</p>
+                    <p className="px-1 py-4 text-center text-xs text-muted">Empty</p>
                   )}
                 </div>
               </div>
@@ -73,7 +73,7 @@ export default async function AdminPipeline() {
       {lost.length > 0 && (
         <div className="mt-8">
           <h2 className="mb-1 font-semibold text-ink">Didn't go ahead</h2>
-          <p className="mb-3 text-sm text-ink/50">
+          <p className="mb-3 text-sm text-muted">
             Kept on purpose — these are the ones worth a call in a few months.
           </p>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -85,10 +85,10 @@ export default async function AdminPipeline() {
               >
                 <div>
                   <p className="font-semibold text-ink">{card.clientName}</p>
-                  <p className="text-xs text-ink/50">{card.detail}</p>
+                  <p className="text-xs text-muted">{card.detail}</p>
                 </div>
                 {card.amountCents != null && (
-                  <span className="text-sm font-semibold text-ink/40">{formatMoney(card.amountCents)}</span>
+                  <span className="text-sm font-semibold text-muted">{formatMoney(card.amountCents)}</span>
                 )}
               </Link>
             ))}
@@ -96,7 +96,7 @@ export default async function AdminPipeline() {
         </div>
       )}
 
-      <p className="mt-8 text-sm text-ink/50">
+      <p className="mt-8 text-sm text-muted">
         Every stage here is worked out from your real records — a booked walkthrough, a sent estimate, a finished
         job, a paid invoice. There's no status to keep up to date by hand, so this can't drift out of step with
         what's actually happening.

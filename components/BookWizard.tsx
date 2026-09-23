@@ -199,7 +199,7 @@ export default function BookWizard({
             ))}
           </div>
           {cadence !== 'ONE_TIME' && (
-            <p className="mb-4 rounded-lg bg-cream px-4 py-3 text-sm text-slate">
+            <p className="mb-4 rounded-lg bg-surface px-4 py-3 text-sm text-slate">
               You're set for {cadence === 'BIWEEKLY' ? 'every other' : 'every'}{' '}
               {new Date(selected.start).toLocaleDateString('en-US', { weekday: 'long' })},{' '}
               {formatSlotLabel(selected.start, selected.end)}.

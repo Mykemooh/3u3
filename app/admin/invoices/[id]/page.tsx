@@ -13,7 +13,7 @@ export default async function AdminInvoiceDetail({ params }: { params: { id: str
 
   return (
     <div className="mx-auto max-w-2xl">
-      <Link href="/admin/invoices" className="mb-4 inline-block text-sm text-ink/50 hover:text-ink">
+      <Link href="/admin/invoices" className="mb-4 inline-block text-sm text-muted hover:text-ink">
         ← All invoices
       </Link>
 
@@ -21,7 +21,7 @@ export default async function AdminInvoiceDetail({ params }: { params: { id: str
         <div className="mb-4 flex items-start justify-between">
           <div>
             <h1 className="text-xl font-bold text-ink">Invoice — {client?.name ?? 'Unknown client'}</h1>
-            <p className="text-sm text-ink/60">
+            <p className="text-sm text-slate">
               {service?.name ?? 'Cleaning service'}
               {booking && ` · ${booking.slotStart.replace('T', ' ')}`}
             </p>
@@ -41,7 +41,7 @@ export default async function AdminInvoiceDetail({ params }: { params: { id: str
             <table className="w-full text-sm">
               <tbody>
                 {items.map((item) => (
-                  <tr key={item.id} className="border-b border-ink/5">
+                  <tr key={item.id} className="border-b border-line">
                     <td className="py-2">{item.description}</td>
                     <td className="py-2 text-right">{formatMoney(item.amountCents)}</td>
                   </tr>
@@ -54,7 +54,7 @@ export default async function AdminInvoiceDetail({ params }: { params: { id: str
             </table>
 
             <div className="mt-6 space-y-2 text-sm">
-              {invoice.sentAt && <p className="text-ink/60">Sent {invoice.sentAt.toLocaleString()}</p>}
+              {invoice.sentAt && <p className="text-slate">Sent {invoice.sentAt.toLocaleString()}</p>}
               {invoice.hostedInvoiceUrl && invoice.status === 'SENT' && (
                 <p>
                   <a href={invoice.hostedInvoiceUrl} target="_blank" rel="noreferrer" className="font-semibold text-bronze hover:underline">
@@ -64,7 +64,7 @@ export default async function AdminInvoiceDetail({ params }: { params: { id: str
               )}
               {invoice.invoicePdfUrl && (
                 <p>
-                  <a href={invoice.invoicePdfUrl} target="_blank" rel="noreferrer" className="text-ink/60 hover:underline">
+                  <a href={invoice.invoicePdfUrl} target="_blank" rel="noreferrer" className="text-slate hover:underline">
                     Download PDF
                   </a>
                 </p>

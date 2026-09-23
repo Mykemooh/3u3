@@ -7,11 +7,11 @@ import BookingStatusActions from '@/components/BookingStatusActions';
 import StartEstimateButton from '@/components/StartEstimateButton';
 
 const ESTIMATE_STYLE: Record<string, string> = {
-  DRAFT: 'bg-ink/5 text-ink/60',
+  DRAFT: 'bg-surface text-slate',
   SENT: 'bg-amber-100 text-amber-700',
   APPROVED: 'bg-emerald-100 text-emerald-700',
   DECLINED: 'bg-red-100 text-red-700',
-  EXPIRED: 'bg-ink/10 text-ink/50',
+  EXPIRED: 'bg-line text-muted',
 };
 
 const STATUS_STYLE: Record<string, string> = {
@@ -70,7 +70,7 @@ export default async function AdminLeads() {
   return (
     <div>
       <h1 className="mb-1 text-2xl font-bold text-ink">Leads</h1>
-      <p className="mb-6 text-ink/60">Every quote-visit request, from first capture to won or lost.</p>
+      <p className="mb-6 text-slate">Every quote-visit request, from first capture to won or lost.</p>
 
       <div className="grid grid-cols-1 gap-3">
         {leads.map((lead) => {
@@ -85,18 +85,18 @@ export default async function AdminLeads() {
                   <p className="font-semibold text-ink">{client?.name ?? 'Unknown'}</p>
                   <span className={`pill ${STATUS_STYLE[lead.status]}`}>{lead.status}</span>
                   {lead.serviceTypeId && serviceMap[lead.serviceTypeId] && (
-                    <span className="pill bg-ink/5 text-ink/60">{serviceMap[lead.serviceTypeId]}</span>
+                    <span className="pill bg-surface text-slate">{serviceMap[lead.serviceTypeId]}</span>
                   )}
                   {estimate && (
                     <span className={`pill ${ESTIMATE_STYLE[estimate.status]}`}>Estimate {estimate.status}</span>
                   )}
                   {won && <span className="pill bg-gold/15 text-bronze">Won — rate on file</span>}
                 </div>
-                <p className="text-sm text-ink/60">
+                <p className="text-sm text-slate">
                   {client?.phone} {client?.email ? `· ${client.email}` : ''}
                 </p>
-                {address && <p className="text-sm text-ink/60">{address.line1}, {address.city}, {address.state}</p>}
-                <p className="text-sm text-ink/50">Visit: {lead.slotStart.replace('T', ' ')}</p>
+                {address && <p className="text-sm text-slate">{address.line1}, {address.city}, {address.state}</p>}
+                <p className="text-sm text-muted">Visit: {lead.slotStart.replace('T', ' ')}</p>
               </div>
               <div className="flex items-center gap-3">
                 {client && (
@@ -125,7 +125,7 @@ export default async function AdminLeads() {
           );
         })}
         {leads.length === 0 && (
-          <div className="card text-center text-ink/40">No leads yet — new quote requests will show up here.</div>
+          <div className="card text-center text-muted">No leads yet — new quote requests will show up here.</div>
         )}
       </div>
     </div>
