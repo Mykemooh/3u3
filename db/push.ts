@@ -210,6 +210,51 @@ async function main() {
     -- never reach an already-deployed database no matter how many times
     -- this script is re-run.
     ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+
+    -- Job media: one row per before/after photo or video, per room.
+    CREATE TABLE IF NOT EXISTS job_media (
+      id TEXT PRIMARY KEY,
+      job_id TEXT NOT NULL REFERENCES jobs(id),
+      item_id TEXT NOT NULL REFERENCES job_checklist_items(id),
+      phase TEXT NOT NULL CHECK (phase IN ('BEFORE','AFTER')),
+      kind TEXT NOT NULL CHECK (kind IN ('PHOTO','VIDEO')),
+      url TEXT NOT NULL,
+      storage_key TEXT,
+      content_type TEXT,
+      size_bytes INTEGER,
+      duration_seconds REAL,
+      uploaded_by TEXT REFERENCES users(id),
+      expires_at TIMESTAMPTZ,
+      deleted_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS job_media_job_idx ON job_media(job_id);
+    CREATE INDEX IF NOT EXISTS job_media_item_idx ON job_media(item_id);
+
+    -- Photos taken before job_media existed lived only on the checklist row.
+    -- Copy them across once so they show up in the client's gallery too.
+    INSERT INTO job_media (id, job_id, item_id, phase, kind, url, created_at)
+      SELECT gen_random_uuid()::text, i.job_id, i.id, 'BEFORE', 'PHOTO', i.before_photo_path, COALESCE(i.completed_at, i.created_at)
+      FROM job_checklist_items i
+      WHERE i.before_photo_path IS NOT NULL
+        AND NOT EXISTS (SELECT 1 FROM job_media m WHERE m.item_id = i.id AND m.url = i.before_photo_path);
+    INSERT INTO job_media (id, job_id, item_id, phase, kind, url, created_at)
+      SELECT gen_random_uuid()::text, i.job_id, i.id, 'AFTER', 'PHOTO', i.after_photo_path, COALESCE(i.completed_at, i.created_at)
+      FROM job_checklist_items i
+      WHERE i.after_photo_path IS NOT NULL
+        AND NOT EXISTS (SELECT 1 FROM job_media m WHERE m.item_id = i.id AND m.url = i.after_photo_path);
+
+    -- Sequential, human-facing invoice numbers (1001, 1002, ...). Existing
+    -- invoices are numbered in the order they were created.
+    ALTER TABLE invoices ADD COLUMN IF NOT EXISTS invoice_number INTEGER;
+    UPDATE invoices SET invoice_number = numbered.n
+      FROM (
+        SELECT id, (SELECT COALESCE(MAX(invoice_number), 1000) FROM invoices)
+                   + ROW_NUMBER() OVER (ORDER BY created_at, id) AS n
+        FROM invoices WHERE invoice_number IS NULL
+      ) AS numbered
+      WHERE invoices.id = numbered.id;
+    CREATE UNIQUE INDEX IF NOT EXISTS invoices_number_unique ON invoices(tenant_id, invoice_number);
   `);
 
   console.log('Schema pushed to Postgres.');

@@ -16,3 +16,7 @@ public/uploads/jobs/*
 # committed by accident. .env.example carries no real values, so it stays.
 .env*
 !.env.example
+
+# Job media written by local dev (production uses R2 / Blob)
+public/uploads/photos/
+public/uploads/videos/

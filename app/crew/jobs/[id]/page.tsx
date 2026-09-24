@@ -1,48 +1,49 @@
 import { getServerSession } from 'next-auth';
 import { redirect, notFound } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
-import { db } from '@/db/client';
-import { addresses } from '@/db/schema';
-import { eq } from 'drizzle-orm';
-import { getJobById, getBookingById, getUserById, getServiceType, getChecklistItemsForJob, getCrewForUser, SERVICE_LABELS } from '@/lib/data';
-import JobChecklist from '@/components/JobChecklist';
+import { homeForRole } from '@/lib/nav';
+import { SERVICE_LABELS } from '@/lib/data';
+import { loadJob, canWorkJob, viewerFrom } from '@/lib/jobs';
+import { formatSlot, formatClock } from '@/lib/time';
+import { formatSlotLabel } from '@/lib/scheduling';
+import { MEDIA_LIMITS } from '@/lib/storage';
+import AppShell, { CREW_TABS } from '@/components/app/AppShell';
+import CrewJob from '@/components/CrewJob';
 
-export default async function JobDetailPage({ params }: { params: { id: string } }) {
+export const dynamic = 'force-dynamic';
+
+export default async function CrewJobPage({ params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
-  if (!session?.user) redirect('/signin?next=/crew');
-  const role = (session.user as any).role;
-  const userId = (session.user as any).id as string;
+  const viewer = viewerFrom(session);
+  if (!viewer) redirect(`/signin?next=/crew/jobs/${params.id}`);
 
-  const job = await getJobById(params.id);
-  if (!job) notFound();
+  const data = await loadJob(params.id);
+  if (!data) notFound();
+  // Cleaners see only their own crew's jobs; customers are sent home.
+  if (!(await canWorkJob(viewer, data.job))) redirect(`${homeForRole(viewer.role)}?denied=1`);
 
-  if (role === 'CLEANER') {
-    const crew = await getCrewForUser(userId);
-    if (!crew || crew.id !== job.crewId) {
-      // Cleaners see only their own assigned jobs (PRD section 8).
-      redirect('/crew');
-    }
-  } else if (role !== 'ADMIN') {
-    redirect('/signin?next=/crew');
-  }
-
-  const booking = await getBookingById(job.bookingId);
-  if (!booking) notFound();
-  const client = await getUserById(booking.clientId);
-  const service = booking.serviceTypeId ? await getServiceType(booking.serviceTypeId) : null;
-  const address = booking.addressId
-    ? (await db.select().from(addresses).where(eq(addresses.id, booking.addressId)).limit(1))[0]
-    : null;
-  const items = await getChecklistItemsForJob(job.id);
+  const { job, booking, client, service, address, items, media } = data;
+  const whenLabel = `${formatSlot(booking.slotStart).split(' · ')[0]} · ${formatSlotLabel(booking.slotStart, booking.slotEnd)}`;
 
   return (
-    <JobChecklist
-      job={job}
-      client={client}
-      serviceLabel={service ? SERVICE_LABELS[service.key] : 'Service'}
-      address={address}
-      slotStart={booking.slotStart}
-      items={items}
-    />
+    <AppShell name={session?.user?.name} tabs={CREW_TABS} homeHref={viewer.role === 'ADMIN' ? '/admin' : '/crew'}>
+      <CrewJob
+        job={{
+          id: job.id,
+          status: job.status,
+          startedLabel: job.startedAt ? formatClock(job.startedAt) : null,
+          completedLabel: job.completedAt ? formatClock(job.completedAt) : null,
+        }}
+        client={{ name: client?.name ?? 'Client', phone: client?.phone ?? null }}
+        serviceLabel={service ? SERVICE_LABELS[service.key] ?? service.name : 'Cleaning'}
+        whenLabel={whenLabel}
+        addressLabel={address ? `${address.line1}, ${address.city}, ${address.state}${address.zip ? ` ${address.zip}` : ''}` : null}
+        items={items.map((i) => ({ id: i.id, roomName: i.roomName, taskDetail: i.taskDetail, status: i.status, skipReason: i.skipReason }))}
+        media={media.map((m) => ({ id: m.id, itemId: m.itemId, phase: m.phase, kind: m.kind, url: m.url }))}
+        perPhase={MEDIA_LIMITS.perPhase}
+        videoSeconds={MEDIA_LIMITS.videoSeconds}
+        isAdmin={viewer.role === 'ADMIN'}
+      />
+    </AppShell>
   );
 }

@@ -1,4 +1,5 @@
 import { db } from '@/db/client';
+import { businessTodayISO } from '@/lib/time';
 import { bookings, jobs, users, serviceTypes, crews, addresses } from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 
@@ -27,7 +28,7 @@ function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number) {
  * a crew starting from Sunday.
  */
 export function startOfWeek(dateISO?: string): string {
-  const base = dateISO ? new Date(`${dateISO}T12:00:00`) : new Date();
+  const base = new Date(`${dateISO ?? businessTodayISO()}T12:00:00`);
   const day = base.getDay(); // 0 = Sunday
   const diff = day === 0 ? -6 : 1 - day;
   base.setDate(base.getDate() + diff);

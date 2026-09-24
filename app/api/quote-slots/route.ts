@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/db/client';
 import { bookings } from '@/db/schema';
 import { generateUpcomingQuoteVisitSlots } from '@/lib/scheduling';
+import { businessTodayDate } from '@/lib/time';
 import { getTenant } from '@/lib/data';
 import { eq } from 'drizzle-orm';
 
@@ -19,6 +20,6 @@ export async function GET() {
     .filter((b) => b.isQuoteVisit && b.status !== 'CANCELLED')
     .map((b) => b.slotStart);
 
-  const days = generateUpcomingQuoteVisitSlots(existing, 10);
+  const days = generateUpcomingQuoteVisitSlots(existing, 10, businessTodayDate());
   return NextResponse.json({ days });
 }

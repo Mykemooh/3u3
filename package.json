@@ -4,12 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "tsx scripts/migrate-on-build.ts && next build",
     "start": "next start",
     "lint": "next lint",
     "db:push": "tsx --env-file=.env.local db/push.ts",
     "db:seed": "tsx --env-file=.env.local db/seed.ts",
-    "setup": "npm run db:push && npm run db:seed"
+    "setup": "npm run db:push && npm run db:seed",
+    "verify:storage": "tsx scripts/verify-sigv4.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.0",

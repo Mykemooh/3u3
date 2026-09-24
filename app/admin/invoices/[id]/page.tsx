@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getInvoiceWithItems } from '@/lib/invoices';
+import { getInvoiceWithItems, invoiceLabel } from '@/lib/invoices';
+import { db } from '@/db/client';
+import { jobs } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import { getServiceType, formatMoney } from '@/lib/data';
 import { isStripeConfigured } from '@/lib/stripe';
 import InvoiceEditor from '@/components/InvoiceEditor';
@@ -8,8 +11,9 @@ import InvoiceEditor from '@/components/InvoiceEditor';
 export default async function AdminInvoiceDetail({ params }: { params: { id: string } }) {
   const data = await getInvoiceWithItems(params.id);
   if (!data) notFound();
-  const { invoice, items, client, booking } = data;
+  const { invoice, items, client, booking, address } = data;
   const service = booking?.serviceTypeId ? await getServiceType(booking.serviceTypeId) : undefined;
+  const job = booking ? (await db.select().from(jobs).where(eq(jobs.bookingId, booking.id)).limit(1))[0] : undefined;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -20,11 +24,29 @@ export default async function AdminInvoiceDetail({ params }: { params: { id: str
       <div className="card">
         <div className="mb-4 flex items-start justify-between">
           <div>
-            <h1 className="text-xl font-bold text-ink">Invoice — {client?.name ?? 'Unknown client'}</h1>
+            <p className="text-xs font-bold uppercase tracking-wide text-bronze">{invoiceLabel(invoice)}</p>
+            <h1 className="text-xl font-bold text-ink">{client?.name ?? 'Unknown client'}</h1>
             <p className="text-sm text-slate">
               {service?.name ?? 'Cleaning service'}
-              {booking && ` · ${booking.slotStart.replace('T', ' ')}`}
+              {booking && ` · ${booking.slotStart.replace('T', ' ').slice(0, 16)}`}
             </p>
+            {address ? (
+              <p className="text-sm text-slate">
+                {address.line1}, {address.city}, {address.state} {address.zip ?? ''}
+              </p>
+            ) : (
+              <p className="text-sm text-amber-700">No service address on file — add one so it prints on the invoice.</p>
+            )}
+            <div className="mt-3 flex flex-wrap gap-3 text-sm font-semibold">
+              {job && (
+                <Link href={`/account/jobs/${job.id}`} className="text-bronze hover:underline">
+                  Before-and-after photos
+                </Link>
+              )}
+              <Link href={`/account/invoices/${invoice.id}`} className="text-bronze hover:underline">
+                {invoice.status === 'DRAFT' ? "Preview the client's invoice" : "Client's invoice view"}
+              </Link>
+            </div>
           </div>
           <span className="pill bg-gold/15 text-bronze">{invoice.status}</span>
         </div>

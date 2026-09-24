@@ -3,6 +3,7 @@ import { db } from '@/db/client';
 import { users } from '@/db/schema';
 import { inArray } from 'drizzle-orm';
 import { getTenant, getAllInvoicesForTenant, formatMoney } from '@/lib/data';
+import { invoiceLabel } from '@/lib/invoices';
 
 const STATUS_STYLE: Record<string, string> = {
   DRAFT: 'bg-surface text-slate',
@@ -33,6 +34,7 @@ export default async function AdminInvoices() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-line text-left text-muted">
+              <th className="px-4 py-3 font-medium">Invoice</th>
               <th className="px-4 py-3 font-medium">Client</th>
               <th className="px-4 py-3 font-medium">Amount</th>
               <th className="px-4 py-3 font-medium">Status</th>
@@ -45,6 +47,7 @@ export default async function AdminInvoices() {
               const client = clientMap[inv.clientId];
               return (
                 <tr key={inv.id} className="border-b border-line last:border-0">
+                  <td className="px-4 py-3 font-semibold tabular-nums">{invoiceLabel(inv)}</td>
                   <td className="px-4 py-3 font-medium">{client?.name ?? '—'}</td>
                   <td className="px-4 py-3">{formatMoney(inv.totalCents)}</td>
                   <td className="px-4 py-3">
