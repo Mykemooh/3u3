@@ -102,8 +102,8 @@ export default function BookWizard({
         <p className="mt-8 max-w-sm text-slate">
           Hi {customerName} — we don't have an agreed rate on file for you yet. Please contact us directly to get set up.
         </p>
-        <Link href="/" className="btn-secondary mt-6">
-          Back to home
+        <Link href="/account" className="btn-secondary mt-6">
+          Back to your account
         </Link>
       </main>
     );
@@ -111,7 +111,7 @@ export default function BookWizard({
 
   return (
     <main className="min-h-screen bg-white flex flex-col items-center px-6 py-10 text-ink">
-      <Link href="/" className="mb-8">
+      <Link href="/account" className="mb-8" aria-label="Back to your account">
         <LogoBadge size="sm" />
       </Link>
 
@@ -225,10 +225,10 @@ export default function BookWizard({
             <p>{CADENCE_LABEL[cadence]} · {service.rateLabel}</p>
           </div>
           <p className="mb-6 text-xs text-muted">
-            You'll get an email confirmation now, and a reminder before each visit.
+            A confirmation is on its way to your email. When the crew finishes, you'll get before-and-after photos of every room.
           </p>
-          <Link href="/" className="btn-secondary w-full">
-            Back to home
+          <Link href="/account" className="btn-primary w-full">
+            See it in your account
           </Link>
         </div>
       )}

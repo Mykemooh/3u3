@@ -41,7 +41,7 @@ export default async function SiteHeader() {
         <div className="flex items-center gap-2 sm:gap-3">
           {user?.role ? (
             <Link href={homeForRole(user.role)} className="btn-primary btn-sm">
-              {user.role === 'CUSTOMER' ? 'Book now' : 'Dashboard'}
+              {user.role === 'CUSTOMER' ? 'My account' : 'Dashboard'}
             </Link>
           ) : (
             <>

@@ -266,3 +266,60 @@
     transform: none !important;
   }
 }
+
+/* ---- The flow line ---------------------------------------------------
+   The logo's gold wave, carried under the signed-in app's header. It is
+   the one decorative flourish in the app, and it is the same line that
+   fills the journey rail as a cleaning moves from booked to paid.        */
+@layer components {
+  .flow-line {
+    height: 6px;
+    background:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 6' preserveAspectRatio='none'%3E%3Cpath d='M0 3 Q15 0 30 3 T60 3 T90 3 T120 3' fill='none' stroke='%23D2961E' stroke-width='1.6'/%3E%3C/svg%3E")
+      repeat-x center / 120px 6px,
+      #16181B;
+    opacity: 0.9;
+  }
+  .journey-fill {
+    transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .journey-pulse {
+    box-shadow: 0 0 0 0 rgba(210, 150, 30, 0.45);
+    animation: journey-pulse 2.2s ease-out infinite;
+  }
+  @keyframes journey-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(210, 150, 30, 0.45); }
+    70% { box-shadow: 0 0 0 10px rgba(210, 150, 30, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(210, 150, 30, 0); }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journey-pulse { animation: none; }
+  .journey-fill { transition: none; }
+}
+
+/* ---- Printing an invoice -------------------------------------------------
+   "Save as PDF" from the browser prints just the invoice sheet, with the
+   dark logo band kept (browsers drop background colours unless told not to). */
+@media print {
+  body * { visibility: hidden; }
+  .print-sheet, .print-sheet * { visibility: visible; }
+  .print-sheet { position: absolute; inset: 0; margin: 0; box-shadow: none !important; border: 0 !important; }
+  .print-sheet, .print-sheet * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .no-print { display: none !important; }
+  @page { margin: 12mm; }
+}
+
+@layer components {
+  /* Driveway actions on a crew job: big, equal, thumb-sized. */
+  .quick-action {
+    @apply flex flex-col items-center justify-center gap-1 rounded-xl border border-line bg-white px-2 py-3 text-xs font-semibold text-ink
+      transition hover:border-gold hover:bg-cream/60 active:scale-[0.98];
+  }
+  /* The "add photo / add video" tile in a room's before/after grid. */
+  .media-add {
+    @apply flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-gold/60 bg-white
+      text-[11px] font-semibold text-bronze transition hover:bg-cream/60 active:scale-[0.98];
+  }
+}

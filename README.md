@@ -67,13 +67,43 @@ tenant, service, and checklist records are already per-tenant, just seeded
 with one tenant today, so onboarding a second cleaning business is a data
 exercise rather than a rewrite.
 
+## September 2026 update — job media, client portal, invoices
+
+- **Crew flow is explicit: Start job → document rooms → Finish.** Uploads are
+  refused until the job is started, and locked once it's finished. Start and
+  finish times are recorded and shown to the client.
+- **Photos *and* videos per room, before and after** (up to 4 per side).
+  Each file is a row in `job_media`. A room counts as done with at least one
+  before photo and one after photo; videos are optional extras. Photos are
+  shrunk on the phone (~300 KB) before upload.
+- **Storage: Cloudflare R2 preferred** (10 GB free, free viewing), uploaded
+  straight from the phone with a signed URL. Falls back to Vercel Blob
+  (photos only) or local disk. Setup: `docs/storage-r2.md`.
+- **Finishing a job** marks it complete, drafts the invoice (numbered
+  `INV-1001`, dated line at the agreed rate), emails the client a link to
+  their before-and-after gallery, and emails the owner to review the invoice.
+- **Client portal at `/account`** (customers now land here after sign-in):
+  the live cleaning with a Booked → Cleaning → Done → Invoice → Paid rail,
+  past cleanings, a drag-to-compare before/after gallery, and branded
+  invoices (logo, number, name, address, breakdown) that save cleanly as PDF.
+  Draft invoices are never visible to clients; admins can preview them.
+- **Booking confirmations are actually sent now** (they were only logged),
+  plus an owner alert for every new booking.
+- **Timezone fix:** "today"/"upcoming" use Katy time, not the server's UTC
+  (after 7 PM today's jobs used to drop off the crew list).
+- **Schema updates run automatically on deploy** (`npm run build` runs
+  `db/push.ts` first; every statement is additive and re-runnable). If the
+  database can't be reached, the build fails and the previous deploy stays live.
+- **Video clean-up:** daily Vercel cron deletes videos older than
+  `VIDEO_RETENTION_DAYS`, if set. Photos are never deleted.
+
 ## Tech stack
 
 - **Next.js 14** (App Router) + TypeScript + Tailwind CSS
 - **Postgres** via `pg` (node-postgres) + Drizzle ORM — works with any
   standard Postgres connection string, including Vercel Postgres
-- **Vercel Blob** for job photos in production, with an automatic fallback
-  to local disk (`public/uploads/`) for local dev — see `lib/storage.ts`
+- **Cloudflare R2** (preferred) or **Vercel Blob** for job photos and videos, with an
+  automatic fallback to local disk (`public/uploads/`) for local dev — see `lib/storage.ts`
 - **NextAuth** (credentials-based: phone+password for customers,
   email+password for staff)
 

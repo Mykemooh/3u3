@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getTenant } from '@/lib/data';
 import { getWeekSchedule, startOfWeek, shiftWeek } from '@/lib/dispatch';
+import { businessTodayISO } from '@/lib/time';
 import DispatchJobCard from '@/components/DispatchJobCard';
 
 function dayLabel(dateISO: string) {
@@ -17,9 +18,7 @@ function weekLabel(dates: string[]) {
 }
 
 function isToday(dateISO: string) {
-  const now = new Date();
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  return dateISO === today;
+  return dateISO === businessTodayISO();
 }
 
 // The dispatch board: crews down the side, the week across the top. Built

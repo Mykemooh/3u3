@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { generateUpcomingSlots } from '@/lib/scheduling';
+import { businessTodayDate } from '@/lib/time';
 import { getTenant, getServiceType, getPrimaryCrew, getBookingsForCrewOnOrAfter } from '@/lib/data';
 
 // Reads live booking data — must run per-request. Without this, Next tries
@@ -22,7 +23,7 @@ export async function GET(req: Request) {
   if (!service || !crew) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const existing = (await getBookingsForCrewOnOrAfter(crew.id)).filter((b) => !b.isQuoteVisit);
-  const days = generateUpcomingSlots(crew, service.defaultDurationMinutes, existing, 10);
+  const days = generateUpcomingSlots(crew, service.defaultDurationMinutes, existing, 10, businessTodayDate());
 
   return NextResponse.json({ days, crewId: crew.id });
 }

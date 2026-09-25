@@ -182,6 +182,33 @@ export const jobChecklistItems = pgTable('job_checklist_items', {
 });
 
 // ---------------------------------------------------------------------------
+// Job media — every before/after photo and video, one row per file, per room.
+// This is what the client's before-and-after gallery reads from. The two
+// legacy columns on job_checklist_items (before/afterPhotoPath) are kept in
+// step with the first photo of each phase so older code keeps working.
+//
+// expiresAt is set on videos only, when VIDEO_RETENTION_DAYS is configured:
+// the daily clean-up job deletes the file after that, keeping storage
+// inside the free tier. Photos are kept for good.
+// ---------------------------------------------------------------------------
+export const jobMedia = pgTable('job_media', {
+  id: id(),
+  jobId: text('job_id').notNull().references(() => jobs.id),
+  itemId: text('item_id').notNull().references(() => jobChecklistItems.id),
+  phase: text('phase', { enum: ['BEFORE', 'AFTER'] }).notNull(),
+  kind: text('kind', { enum: ['PHOTO', 'VIDEO'] }).notNull(),
+  url: text('url').notNull(),
+  storageKey: text('storage_key'),
+  contentType: text('content_type'),
+  sizeBytes: integer('size_bytes'),
+  durationSeconds: real('duration_seconds'),
+  uploadedBy: text('uploaded_by').references(() => users.id),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  ...timestamps,
+});
+
+// ---------------------------------------------------------------------------
 // Estimates — the missing middle of the lifecycle. A quote visit (above)
 // only books the walkthrough; this is what comes out of it. The admin
 // builds priced line items, sends it, and the client approves or declines
@@ -248,6 +275,8 @@ export const invoices = pgTable('invoices', {
   hostedInvoiceUrl: text('hosted_invoice_url'),
   invoicePdfUrl: text('invoice_pdf_url'),
   stripePaymentIntentId: text('stripe_payment_intent_id'),
+  // Human-facing sequential number (1001, 1002, ...) printed on the invoice.
+  invoiceNumber: integer('invoice_number'),
   receiptUrl: text('receipt_url'),
   sentAt: timestamp('sent_at', { withTimezone: true }),
   paidAt: timestamp('paid_at', { withTimezone: true }),

@@ -1,6 +1,7 @@
 import { db } from '@/db/client';
-import { invoices, invoiceItems, bookings, users, serviceTypes } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { invoices, invoiceItems, bookings, users, serviceTypes, addresses } from '@/db/schema';
+import { eq, sql } from 'drizzle-orm';
+import { formatSlotDateLong } from '@/lib/time';
 import { getStripe } from '@/lib/stripe';
 import { getOwnerEmail } from '@/lib/data';
 import { logNotification } from '@/lib/bookings';
@@ -32,24 +33,55 @@ export async function createDraftInvoiceForBooking(bookingId: string): Promise<s
   const amountCents = booking.priceCents ?? 0;
   const invoiceId = crypto.randomUUID();
 
-  await db.insert(invoices).values({
-    id: invoiceId,
-    tenantId: booking.tenantId,
-    bookingId: booking.id,
-    clientId: booking.clientId,
-    status: 'DRAFT',
-    totalCents: amountCents,
-  });
+  // Next sequential number for this business. The unique index on
+  // (tenant_id, invoice_number) turns a rare simultaneous draft into a
+  // retry rather than a duplicate number.
+  for (let attempt = 0; ; attempt += 1) {
+    const next = await nextInvoiceNumber(booking.tenantId);
+    try {
+      await db.insert(invoices).values({
+        id: invoiceId,
+        tenantId: booking.tenantId,
+        bookingId: booking.id,
+        clientId: booking.clientId,
+        status: 'DRAFT',
+        totalCents: amountCents,
+        invoiceNumber: next,
+      });
+      break;
+    } catch (err) {
+      const again = (await db.select().from(invoices).where(eq(invoices.bookingId, bookingId)).limit(1))[0];
+      if (again) return again.id;
+      if (attempt >= 2) throw err;
+    }
+  }
 
+  // The flat per-home rate, dated, so the line reads the way the client
+  // remembers the visit: "Standard Cleaning — September 24, 2026".
   await db.insert(invoiceItems).values({
     id: crypto.randomUUID(),
     invoiceId,
-    description: service ? service.name : 'Cleaning service',
+    description: `${service ? service.name : 'Cleaning service'} — ${formatSlotDateLong(booking.slotStart)}`,
     amountCents,
     sortOrder: 0,
   });
 
   return invoiceId;
+}
+
+async function nextInvoiceNumber(tenantId: string): Promise<number> {
+  const row = (
+    await db
+      .select({ max: sql<number | null>`max(${invoices.invoiceNumber})` })
+      .from(invoices)
+      .where(eq(invoices.tenantId, tenantId))
+  )[0];
+  return Math.max(1000, Number(row?.max ?? 1000)) + 1;
+}
+
+/** "INV-1001" — or a short id for any invoice that predates numbering. */
+export function invoiceLabel(invoice: { id: string; invoiceNumber: number | null }) {
+  return invoice.invoiceNumber ? `INV-${invoice.invoiceNumber}` : `INV-${invoice.id.slice(0, 6).toUpperCase()}`;
 }
 
 export async function getInvoiceWithItems(invoiceId: string) {
@@ -60,7 +92,15 @@ export async function getInvoiceWithItems(invoiceId: string) {
   );
   const client = (await db.select().from(users).where(eq(users.id, invoice.clientId)).limit(1))[0];
   const booking = (await db.select().from(bookings).where(eq(bookings.id, invoice.bookingId)).limit(1))[0];
-  return { invoice, items, client, booking };
+  const address = booking?.addressId
+    ? (await db.select().from(addresses).where(eq(addresses.id, booking.addressId)).limit(1))[0]
+    : client
+    ? (await db.select().from(addresses).where(eq(addresses.userId, client.id)).limit(1))[0]
+    : undefined;
+  const service = booking?.serviceTypeId
+    ? (await db.select().from(serviceTypes).where(eq(serviceTypes.id, booking.serviceTypeId)).limit(1))[0]
+    : undefined;
+  return { invoice, items, client, booking, address, service };
 }
 
 /** Replaces an invoice's line items wholesale — only while it's still a DRAFT. */
@@ -95,10 +135,16 @@ async function getOrCreateStripeCustomer(clientId: string): Promise<string> {
   if (client.stripeCustomerId) return client.stripeCustomerId;
 
   const stripe = getStripe();
+  // The service address goes on the Stripe customer so it prints on
+  // Stripe's hosted invoice page and PDF, not just on ours.
+  const address = (await db.select().from(addresses).where(eq(addresses.userId, client.id)).limit(1))[0];
   const customer = await stripe.customers.create({
     name: client.name,
     email: client.email ?? undefined,
     phone: client.phone ?? undefined,
+    address: address
+      ? { line1: address.line1, city: address.city, state: address.state, postal_code: address.zip ?? undefined, country: 'US' }
+      : undefined,
     metadata: { userId: client.id },
   });
   await db.update(users).set({ stripeCustomerId: customer.id }).where(eq(users.id, client.id));
@@ -131,6 +177,9 @@ export async function sendInvoice(invoiceId: string): Promise<{ url: string }> {
 
     const stripeInvoice = await stripe.invoices.create({
       customer: customerId,
+      // Our own number, shown on Stripe's page and PDF. (Not Stripe's `number`
+      // field: a retried send would collide with a half-created earlier one.)
+      custom_fields: [{ name: 'Invoice', value: invoiceLabel(invoice) }],
       collection_method: 'send_invoice',
       days_until_due: 7,
       auto_advance: false,

@@ -11,7 +11,7 @@ export type Role = 'ADMIN' | 'CLEANER' | 'CUSTOMER';
 export function homeForRole(role?: string | null): string {
   if (role === 'ADMIN') return '/admin';
   if (role === 'CLEANER') return '/crew';
-  return '/book';
+  return '/account';
 }
 
 /** Whether a role may open a given path. Admins can see everything. */
@@ -21,5 +21,6 @@ export function canAccess(role: string | null | undefined, pathname: string): bo
   if (pathname.startsWith('/admin')) return false;
   if (pathname.startsWith('/crew')) return role === 'CLEANER';
   if (pathname.startsWith('/book')) return role === 'CUSTOMER';
+  if (pathname.startsWith('/account')) return role === 'CUSTOMER';
   return true;
 }
