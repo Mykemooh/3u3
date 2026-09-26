@@ -21,9 +21,9 @@ export default function ServicesIndex() {
       <main>
         <section className="px-6 pb-12 pt-12 text-center md:pt-16">
           <div className="container-narrow">
-            <h1 className="mt-4 flex flex-wrap items-baseline justify-center gap-x-3 gap-y-2">
+            <h1 className="mt-4 flex flex-wrap items-baseline justify-center gap-x-1.5 gap-y-2">
               <span className="text-7xl font-black leading-none text-ink md:text-9xl">3</span>
-              <span className="text-2xl font-semibold leading-none text-slate md:text-3xl">Services,</span>
+              <span className="text-2xl font-semibold leading-none text-slate md:text-3xl">Services</span>
               <span className="leading-none">
                 <span className="bg-gradient-to-br from-gold to-green-light bg-clip-text text-7xl font-black text-transparent md:text-9xl">
                   U
@@ -42,19 +42,28 @@ export default function ServicesIndex() {
         <section className="border-y border-line bg-surface px-6 py-16">
           <div className="container-wide grid grid-cols-1 gap-6 md:grid-cols-3">
             {SERVICES.map((service) => (
-              <div key={service.slug} className="card-interactive flex flex-col text-left">
-                <div className="relative h-16 w-16 overflow-hidden rounded-full shadow-card">
-                  <Image src={service.image} alt={service.imageAlt} fill sizes="64px" className="object-cover" />
+              <div
+                key={service.slug}
+                className="group relative flex flex-col overflow-hidden rounded-2xl border border-line bg-white text-left transition-all duration-200 hover:-translate-y-1 hover:border-gold/40 hover:shadow-card-lg"
+              >
+                <Image
+                  src={service.image}
+                  alt=""
+                  fill
+                  sizes="(max-width: 768px) 100vw, 33vw"
+                  className="object-cover opacity-40"
+                  aria-hidden="true"
+                />
+                <div className="relative flex flex-1 flex-col p-7">
+                  <h2 className="h3">{service.name}</h2>
+                  <p className="body mt-3 flex-1">{service.summary}</p>
+                  <Link
+                    href={`/services/${service.slug}`}
+                    className="mt-5 inline-block self-start text-sm font-semibold text-bronze underline underline-offset-2 hover:text-ink"
+                  >
+                    See what&apos;s included
+                  </Link>
                 </div>
-                <h2 className="h3 mt-5">{service.name}</h2>
-                <p className="mt-2 font-semibold text-gold">{service.tagline}</p>
-                <p className="body mt-4 flex-1">{service.summary}</p>
-                <Link
-                  href={`/services/${service.slug}`}
-                  className="mt-5 text-sm font-semibold text-bronze underline underline-offset-2 hover:text-ink"
-                >
-                  See what&apos;s included
-                </Link>
               </div>
             ))}
           </div>
