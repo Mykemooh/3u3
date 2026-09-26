@@ -57,10 +57,14 @@ export default function WelcomePage() {
         </Link>
       </div>
 
-      <div className="relative mx-auto mt-24 max-w-sm overflow-hidden py-2">
+      <Link href="/services" className="mt-5 text-sm text-slate underline underline-offset-2 hover:text-ink">
+        Browse our services
+      </Link>
+
+      <div className="relative mx-auto mt-24 max-w-sm overflow-hidden py-14">
         <p className="text-center text-lg font-semibold text-ink">Come on, commit to something!</p>
         <span
-          className="broom-sweep pointer-events-none absolute top-1/2 -translate-y-1/2 text-2xl"
+          className="broom-sweep pointer-events-none absolute top-1/2 -translate-y-1/2 text-[96px] leading-none"
           aria-hidden="true"
         >
           🧹

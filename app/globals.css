@@ -351,7 +351,7 @@
 
   /* A broom emoji flying left-to-right, on loop, over the line below it. */
   .broom-sweep {
-    animation: broom-sweep-move 2.8s linear infinite;
+    animation: broom-sweep-move 5.6s linear infinite;
   }
   @keyframes broom-sweep-move {
     0% { left: -10%; }
