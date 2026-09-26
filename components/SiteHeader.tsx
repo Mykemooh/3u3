@@ -25,14 +25,8 @@ export default async function SiteHeader() {
           <Link href="/services" className="nav-link">
             Services
           </Link>
-          <Link href="/#how-it-works" className="nav-link">
-            How it works
-          </Link>
           <Link href="/about" className="nav-link">
             About us
-          </Link>
-          <Link href="/#service-area" className="nav-link">
-            Service area
           </Link>
         </nav>
 
