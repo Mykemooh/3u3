@@ -13,7 +13,6 @@ const SERVICE_BLURBS: Record<string, string> = {
   STANDARD: 'Regular upkeep — kitchens, bathrooms, floors, dusting.',
   DEEP: 'A deeper one-time or quarterly clean, top to bottom.',
   MOVE_IN_OUT: 'Empty-home clean for moving in or out.',
-  AIRBNB: 'Fast turnover between guests, reset to staging standard.',
 };
 
 export default function NewCustomerPage() {

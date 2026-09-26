@@ -81,7 +81,7 @@ export default function WelcomePage() {
         <section className="section border-t border-line bg-surface">
           <div className="container-wide">
             <p className="eyebrow">What we clean</p>
-            <h2 className="h2 mt-3">Four services, each with its own checklist.</h2>
+            <h2 className="h2 mt-3">Three services, each with its own checklist.</h2>
             <p className="lead measure mt-4">
               Tap any one to see exactly what the crew does, room by room — and what it doesn&apos;t cover.
             </p>

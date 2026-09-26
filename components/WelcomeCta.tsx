@@ -165,5 +165,5 @@ function Panel({
   );
 }
 
-/** Used by the landing page to list the four services as cards. */
+/** Used by the landing page to list the active services as cards. */
 export const SERVICE_CARDS = SERVICES;

@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'Cleaning services in Katy & Houston — 3U3 Cleaning',
   description:
-    'Standard, deep, move-in/move-out and Airbnb turnover cleaning for homes in Katy and the surrounding Houston area. Exact price confirmed in person, before any work starts.',
+    'Standard, deep and move-in/move-out cleaning for homes in Katy and the surrounding Houston area. Exact price confirmed in person, before any work starts.',
 };
 
 export default function ServicesIndex() {
@@ -22,7 +22,7 @@ export default function ServicesIndex() {
         <section className="px-6 pb-12 pt-12 md:pt-16">
           <div className="container-wide">
             <p className="eyebrow">What we clean</p>
-            <h1 className="display mt-4">Four services, each with its own checklist.</h1>
+            <h1 className="display mt-4">Three services, each with its own checklist.</h1>
             <p className="lead measure mt-5">
               Whichever fits, the price is confirmed in person before any work starts — never estimated from a
               form.
