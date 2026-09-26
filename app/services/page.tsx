@@ -40,29 +40,26 @@ export default function ServicesIndex() {
         </section>
 
         <section className="border-y border-line bg-surface px-6 py-16">
-          <div className="container-wide grid grid-cols-1 gap-6 md:grid-cols-3">
+          <div className="container-wide space-y-6">
             {SERVICES.map((service) => (
-              <div
-                key={service.slug}
-                className="group relative flex flex-col overflow-hidden rounded-2xl border border-line bg-white text-left transition-all duration-200 hover:-translate-y-1 hover:border-gold/40 hover:shadow-card-lg"
-              >
-                <Image
-                  src={service.image}
-                  alt=""
-                  fill
-                  sizes="(max-width: 768px) 100vw, 33vw"
-                  className="object-cover opacity-40"
-                  aria-hidden="true"
-                />
-                <div className="relative flex flex-1 flex-col p-7">
-                  <h2 className="h3">{service.name}</h2>
-                  <p className="body mt-3 flex-1">{service.summary}</p>
-                  <Link
-                    href={`/services/${service.slug}`}
-                    className="mt-5 inline-block self-start text-sm font-semibold text-bronze underline underline-offset-2 hover:text-ink"
-                  >
-                    See what&apos;s included
-                  </Link>
+              <div key={service.slug} className="overflow-hidden rounded-3xl bg-ink">
+                <div className="grid items-center gap-8 md:grid-cols-2">
+                  <div className="p-10 md:p-14">
+                    <h2 className="h2 text-white">{service.name}</h2>
+                    <p className="mt-4 max-w-md text-lg text-white/70">{service.summary}</p>
+                    <Link href={`/services/${service.slug}`} className="btn-primary mt-8">
+                      See what&apos;s included
+                    </Link>
+                  </div>
+                  <div className="relative hidden aspect-[4/3] md:block">
+                    <Image
+                      src={service.image}
+                      alt={service.imageAlt}
+                      fill
+                      sizes="50vw"
+                      className="object-cover"
+                    />
+                  </div>
                 </div>
               </div>
             ))}
