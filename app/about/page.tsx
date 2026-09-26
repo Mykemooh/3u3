@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import SiteHeader from '@/components/SiteHeader';
 import Footer from '@/components/Footer';
 import FamilyPortrait from '@/components/FamilyPortrait';
-import { ABOUT_INTRO, ABOUT_CLOSING, NAME_STORY, PILLARS } from '@/lib/about';
+import { ABOUT_INTRO, ABOUT_CLOSING, ABOUT_SIGNATURE, NAME_STORY, PILLARS } from '@/lib/about';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +33,7 @@ export default function AboutPage() {
                     {paragraph}
                   </p>
                 ))}
+                <p className="font-semibold text-ink">{ABOUT_SIGNATURE}</p>
               </div>
 
               <div className="mt-9 flex flex-col gap-3 sm:flex-row">

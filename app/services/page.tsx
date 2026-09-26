@@ -23,7 +23,11 @@ export default function ServicesIndex() {
         <section className="px-6 pb-12 pt-12 text-center md:pt-16">
           <div className="container-narrow">
             <h1 className="display mt-4">
-              <span className="text-gold">3U3</span>, 3 Services, Under 3 Hours.
+              <span className="font-black text-ink">3</span> Services,{' '}
+              <span className="bg-gradient-to-br from-gold to-green-light bg-clip-text font-black text-transparent">
+                U
+              </span>
+              nder <span className="font-black text-ink">3</span> Hours.
             </h1>
             <p className="lead measure mx-auto mt-5">
               3 sparkling options, each designed to deliver a professionally cleaned space in Under 3 Hours.
