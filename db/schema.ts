@@ -163,6 +163,12 @@ export const jobs = pgTable('jobs', {
   status: text('status', { enum: ['PENDING', 'IN_PROGRESS', 'COMPLETE'] }).notNull().default('PENDING'),
   startedAt: timestamp('started_at', { withTimezone: true }),
   completedAt: timestamp('completed_at', { withTimezone: true }),
+  // Per-job photo policy, admin-editable (CrewJob settings panel): lets a
+  // job opt out of the before photo, or of photo documentation entirely,
+  // for service types where it doesn't make sense. Defaults preserve the
+  // original behavior — before and after both required.
+  requireBeforePhoto: boolean('require_before_photo').notNull().default(true),
+  noPhotosNeeded: boolean('no_photos_needed').notNull().default(false),
   ...timestamps,
 });
 

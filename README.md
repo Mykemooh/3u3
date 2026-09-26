@@ -72,10 +72,15 @@ exercise rather than a rewrite.
 - **Crew flow is explicit: Start job → document rooms → Finish.** Uploads are
   refused until the job is started, and locked once it's finished. Start and
   finish times are recorded and shown to the client.
-- **Photos *and* videos per room, before and after** (up to 4 per side).
+- **Photos *and* videos per room, before and after** (up to 6 per side).
   Each file is a row in `job_media`. A room counts as done with at least one
   before photo and one after photo; videos are optional extras. Photos are
   shrunk on the phone (~300 KB) before upload.
+- **Per-job photo policy, admin-editable:** an admin can uncheck "require a
+  before photo" (after photo still required) or check "no pictures needed"
+  to skip photo documentation for a job entirely — rooms are then marked
+  done by hand. For services that expand beyond cleaning and don't need
+  before/after evidence.
 - **Storage: Cloudflare R2 preferred** (10 GB free, free viewing), uploaded
   straight from the phone with a signed URL. Falls back to Vercel Blob
   (photos only) or local disk. Setup: `docs/storage-r2.md`.

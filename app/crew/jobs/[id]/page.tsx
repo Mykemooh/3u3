@@ -33,6 +33,8 @@ export default async function CrewJobPage({ params }: { params: { id: string } }
           status: job.status,
           startedLabel: job.startedAt ? formatClock(job.startedAt) : null,
           completedLabel: job.completedAt ? formatClock(job.completedAt) : null,
+          requireBeforePhoto: job.requireBeforePhoto,
+          noPhotosNeeded: job.noPhotosNeeded,
         }}
         client={{ name: client?.name ?? 'Client', phone: client?.phone ?? null }}
         serviceLabel={service ? SERVICE_LABELS[service.key] ?? service.name : 'Cleaning'}

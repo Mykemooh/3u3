@@ -1,20 +1,21 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { addMedia, requireOpenItem, setSkip, viewerFrom, JobError } from '@/lib/jobs';
+import { addMedia, requireOpenItem, setSkip, setItemDone, viewerFrom, JobError } from '@/lib/jobs';
 import { apiError } from '@/lib/api';
 import { effectiveMaxBytes, isAllowedType, mediaKey, saveServerUpload } from '@/lib/storage';
 
 /**
- * Skip / un-skip a room (with a reason), plus the original single-photo
- * upload kept for any crew phone still running the previous version of the
- * page. New uploads go through ./media.
+ * Skip / un-skip a room (with a reason), mark / unmark a room done by hand
+ * (no-photos-needed jobs only), plus the original single-photo upload kept
+ * for any crew phone still running the previous version of the page. New
+ * uploads go through ./media.
  */
 export async function POST(req: Request, { params }: { params: { jobId: string; itemId: string } }) {
   try {
     const viewer = viewerFrom(await getServerSession(authOptions));
     const form = await req.formData();
-    const kind = form.get('kind') as string; // 'skip' | 'unskip' | 'before' | 'after'
+    const kind = form.get('kind') as string; // 'skip' | 'unskip' | 'done' | 'undone' | 'before' | 'after'
 
     if (kind === 'skip') {
       const reason = String(form.get('skipReason') || '').trim();
@@ -23,6 +24,9 @@ export async function POST(req: Request, { params }: { params: { jobId: string; 
     }
     if (kind === 'unskip') {
       return NextResponse.json({ item: await setSkip(params.jobId, params.itemId, viewer, null) });
+    }
+    if (kind === 'done' || kind === 'undone') {
+      return NextResponse.json({ item: await setItemDone(params.jobId, params.itemId, viewer, kind === 'done') });
     }
     if (kind === 'before' || kind === 'after') {
       const { item } = await requireOpenItem(params.jobId, params.itemId, viewer);
