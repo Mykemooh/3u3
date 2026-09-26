@@ -3,6 +3,7 @@ import Image from 'next/image';
 import type { Metadata } from 'next';
 import SiteHeader from '@/components/SiteHeader';
 import Footer from '@/components/Footer';
+import ServiceAccordion from '@/components/ServiceAccordion';
 import { SERVICES, ADD_ONS } from '@/lib/services';
 
 export const dynamic = 'force-dynamic';
@@ -19,50 +20,21 @@ export default function ServicesIndex() {
       <SiteHeader />
 
       <main>
-        <section className="px-6 pb-12 pt-12 md:pt-16">
-          <div className="container-wide">
-            <p className="eyebrow">What we clean</p>
-            <h1 className="display mt-4">Three services, each with its own checklist.</h1>
-            <p className="lead measure mt-5">
-              Whichever fits, the price is confirmed in person before any work starts — never estimated from a
-              form.
+        <section className="px-6 pb-12 pt-12 text-center md:pt-16">
+          <div className="container-narrow">
+            <h1 className="display mt-4">
+              <span className="text-gold">3U3</span>, 3 Services, Under 3 Hours.
+            </h1>
+            <p className="lead measure mx-auto mt-5">
+              3 sparkling options, each designed to deliver a professionally cleaned space in Under 3 Hours.
             </p>
           </div>
         </section>
 
         <section className="px-6 pb-16">
-          <div className="container-wide space-y-6">
-            {SERVICES.map((service, i) => (
-              <Link
-                key={service.slug}
-                href={`/services/${service.slug}`}
-                className="card-line group grid overflow-hidden rounded-2xl border border-line bg-white transition-all duration-200 hover:-translate-y-1 hover:border-gold/40 hover:shadow-card-lg md:grid-cols-2"
-              >
-                <div className={`relative aspect-[16/10] bg-surface md:aspect-auto md:min-h-[300px] ${i % 2 ? 'md:order-2' : ''}`}>
-                  <Image
-                    src={service.image}
-                    alt={service.imageAlt}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                    className="object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                </div>
-
-                <div className="p-7 md:p-10">
-                  <h2 className="h3">{service.name}</h2>
-                  <p className="mt-2 font-medium text-bronze">{service.tagline}</p>
-                  <p className="body mt-4">{service.summary}</p>
-                  <p className="meta mt-5">
-                    {service.cadence} · {service.typicalLength}
-                  </p>
-                  <span className="mt-6 inline-flex items-center gap-2 font-semibold text-bronze">
-                    See what&apos;s included
-                    <span aria-hidden className="transition-transform group-hover:translate-x-1">
-                      →
-                    </span>
-                  </span>
-                </div>
-              </Link>
+          <div className="container-narrow space-y-5">
+            {SERVICES.map((service) => (
+              <ServiceAccordion key={service.slug} service={service} />
             ))}
           </div>
         </section>
