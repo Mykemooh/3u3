@@ -5,6 +5,7 @@ import { getTenant, getServiceTypes, getClientRatesFor, formatMoney } from '@/li
 import BookWizard from '@/components/BookWizard';
 import AccessNotice from '@/components/AccessNotice';
 import { homeForRole } from '@/lib/nav';
+import { HIDDEN_SERVICE_KEYS } from '@/lib/services';
 
 // Reads the signed-in customer's session and live rate/service data —
 // never statically cacheable.
@@ -25,6 +26,7 @@ export default async function BookPage() {
   const rates = await getClientRatesFor((session.user as any).id);
 
   const eligibleServices = services
+    .filter((s) => !HIDDEN_SERVICE_KEYS.includes(s.key))
     .map((s) => ({
       ...s,
       rateCents: rates.find((r) => r.serviceTypeId === s.id)?.rateCents ?? null,

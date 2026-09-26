@@ -1,8 +1,9 @@
 
 /**
- * Marketing copy for the four services, keyed to the same
+ * Marketing copy for the services currently offered, keyed to the same
  * STANDARD / DEEP / MOVE_IN_OUT / AIRBNB values the database uses, so the
- * public pages and the booking flow can never drift apart.
+ * public pages and the booking flow can never drift apart. AIRBNB is
+ * withdrawn for now (see HIDDEN_SERVICE_KEYS below) and has no entry here.
  *
  * Two deliberate omissions:
  *
@@ -21,6 +22,15 @@
  */
 
 export type ServiceKey = 'STANDARD' | 'DEEP' | 'MOVE_IN_OUT' | 'AIRBNB';
+
+/**
+ * Withdrawn from customer-facing surfaces for now (marketing site, the
+ * quote flow, and the returning-customer booking picker) without touching
+ * the database: the schema enum, any tenant's service_types row, and any
+ * client's existing rate all stay put. Dropping a key from this list is all
+ * it takes to bring a service back into circulation.
+ */
+export const HIDDEN_SERVICE_KEYS: ServiceKey[] = ['AIRBNB'];
 
 export type ServiceContent = {
   key: ServiceKey;
@@ -253,71 +263,6 @@ export const SERVICES: ServiceContent[] = [
     imageAlt: 'A 3U3 cleaner mopping the floor of a large empty kitchen',
     houstonNote:
       'Plenty of Houston-area leases require a professional clean before move-out, and inspectors here reliably check inside the oven, the fridge seals and the window tracks. Those are exactly the places this service is built around.',
-  },
-  {
-    key: 'AIRBNB',
-    slug: 'airbnb-turnover-cleaning',
-    name: 'Airbnb / Rental Turnover',
-    tagline: 'A same-day reset between guests, with photo proof the place was left right.',
-    summary:
-      'A fast, checklist-driven turnover built for short-term rentals: the property reset and staged for the next guest, linens changed, consumables restocked from your supplies, and before-and-after photos of every room sent through so you can see the state it was left in without driving over.',
-    bestFor: [
-      'Short-term rental hosts managing remotely',
-      'Same-day checkout-to-check-in windows',
-      'Hosts who have been burned by a turnover nobody can verify',
-      'Property managers running several units',
-    ],
-    cadence: 'Per turnover, as often as your calendar needs',
-    typicalLength: 'Sized to your checkout-to-check-in window',
-    includes: [
-      {
-        area: 'Reset and stage',
-        items: [
-          'All bed linens stripped and changed, beds staged hotel-style',
-          'Fresh towels folded and set out in every bathroom',
-          'Laundry started on site where a machine is available',
-          'Furniture and décor returned to their photographed positions',
-        ],
-      },
-      {
-        area: 'Kitchen',
-        items: [
-          'Dishwasher emptied or run, dishes put away',
-          'Refrigerator cleared of anything guests left behind',
-          'Counters, sink, stovetop and appliance fronts cleaned',
-          'Coffee, filters and consumables restocked from your supplies',
-          'Trash and recycling taken out',
-        ],
-      },
-      {
-        area: 'Bathrooms and living areas',
-        items: [
-          'Toilets, showers, sinks and mirrors reset',
-          'Paper goods, soap and amenities restocked from your supplies',
-          'Floors vacuumed and mopped throughout',
-          'Surfaces dusted and high-touch points wiped',
-        ],
-      },
-      {
-        area: 'Reporting',
-        items: [
-          'Before-and-after photos of every room, room by room',
-          'Anything damaged, missing or left behind flagged with a photo',
-          'Low-stock consumables noted before you run out',
-        ],
-      },
-    ],
-    notIncluded: [
-      'Providing linens, towels or consumables — we use what you stock',
-      'Guest communication, key handover or lockbox management',
-      'Deep cleaning or carpet treatment — book those separately',
-      'Maintenance, repairs or assembling furniture',
-      'Hauling away items guests abandoned',
-    ],
-    image: '/images/making-bed.jpg',
-    imageAlt: 'A 3U3 cleaner making up a bed with fresh white linen',
-    houstonNote:
-      'Turnover demand in this market spikes hard around the Energy Corridor work calendar, Medical Center rotations, rodeo season and home game weekends — the windows where a missed turnover costs a booking.',
   },
 ];
 

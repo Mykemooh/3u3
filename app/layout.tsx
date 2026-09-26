@@ -21,7 +21,7 @@ import BrandWatermark from '@/components/BrandWatermark';
 export const metadata: Metadata = {
   title: '3U3 Cleaning — House cleaning in Katy & Houston',
   description:
-    'Family owned, built in Texas. Standard, deep, move-in/move-out and Airbnb turnover cleaning. A real person confirms your exact price at your door.',
+    'Family owned, built in Texas. Standard, deep and move-in/move-out cleaning. A real person confirms your exact price at your door.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
