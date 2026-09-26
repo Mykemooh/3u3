@@ -3,7 +3,6 @@ import Image from 'next/image';
 import type { Metadata } from 'next';
 import SiteHeader from '@/components/SiteHeader';
 import Footer from '@/components/Footer';
-import ServiceAccordion from '@/components/ServiceAccordion';
 import { SERVICES, ADD_ONS } from '@/lib/services';
 
 export const dynamic = 'force-dynamic';
@@ -22,23 +21,41 @@ export default function ServicesIndex() {
       <main>
         <section className="px-6 pb-12 pt-12 text-center md:pt-16">
           <div className="container-narrow">
-            <h1 className="display mt-4">
-              <span className="font-black text-ink">3</span> Services,{' '}
-              <span className="bg-gradient-to-br from-gold to-green-light bg-clip-text font-black text-transparent">
-                U
+            <h1 className="mt-4 flex flex-wrap items-baseline justify-center gap-x-3 gap-y-2">
+              <span className="text-7xl font-black leading-none text-ink md:text-9xl">3</span>
+              <span className="text-2xl font-semibold leading-none text-slate md:text-3xl">Services,</span>
+              <span className="leading-none">
+                <span className="bg-gradient-to-br from-gold to-green-light bg-clip-text text-7xl font-black text-transparent md:text-9xl">
+                  U
+                </span>
+                <span className="text-2xl font-semibold text-slate md:text-3xl">nder</span>
               </span>
-              nder <span className="font-black text-ink">3</span> Hours.
+              <span className="text-7xl font-black leading-none text-ink md:text-9xl">3</span>
+              <span className="text-2xl font-semibold leading-none text-slate md:text-3xl">Hours.</span>
             </h1>
-            <p className="lead measure mx-auto mt-5">
+            <p className="lead measure mx-auto mt-8">
               3 sparkling options, each designed to deliver a professionally cleaned space in Under 3 Hours.
             </p>
           </div>
         </section>
 
-        <section className="px-6 pb-16">
-          <div className="container-narrow space-y-5">
+        <section className="border-y border-line bg-surface px-6 py-16">
+          <div className="container-wide grid grid-cols-1 gap-6 md:grid-cols-3">
             {SERVICES.map((service) => (
-              <ServiceAccordion key={service.slug} service={service} />
+              <div key={service.slug} className="card-interactive flex flex-col text-left">
+                <div className="relative h-16 w-16 overflow-hidden rounded-full shadow-card">
+                  <Image src={service.image} alt={service.imageAlt} fill sizes="64px" className="object-cover" />
+                </div>
+                <h2 className="h3 mt-5">{service.name}</h2>
+                <p className="mt-2 font-semibold text-gold">{service.tagline}</p>
+                <p className="body mt-4 flex-1">{service.summary}</p>
+                <Link
+                  href={`/services/${service.slug}`}
+                  className="mt-5 text-sm font-semibold text-bronze underline underline-offset-2 hover:text-ink"
+                >
+                  See what&apos;s included
+                </Link>
+              </div>
             ))}
           </div>
         </section>
