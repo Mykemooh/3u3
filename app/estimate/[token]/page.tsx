@@ -28,7 +28,7 @@ export default async function EstimatePage({
   return (
     <div className="flex min-h-screen flex-col bg-surface">
       <header className="bg-ink px-6 py-4">
-        <Logo size="sm" className="h-10 w-auto" />
+        <Logo variant="light" size="sm" />
       </header>
 
       <main className="mx-auto w-full max-w-lg flex-1 px-6 py-10">

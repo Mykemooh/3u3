@@ -10,10 +10,10 @@ async function main() {
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       tagline TEXT,
-      primary_color TEXT NOT NULL DEFAULT '#D2961E',
-      ink_color TEXT NOT NULL DEFAULT '#1A1A1A',
-      bronze_color TEXT NOT NULL DEFAULT '#8A6D1D',
-      cream_color TEXT NOT NULL DEFAULT '#FAEEDA',
+      primary_color TEXT NOT NULL DEFAULT '#2563EB',
+      ink_color TEXT NOT NULL DEFAULT '#0B1F3B',
+      bronze_color TEXT NOT NULL DEFAULT '#1D4ED8',
+      cream_color TEXT NOT NULL DEFAULT '#EFF6FF',
       service_area_radius_miles INTEGER NOT NULL DEFAULT 25,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );

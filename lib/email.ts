@@ -47,8 +47,8 @@ export function quoteVisitCustomerEmail(input: {
   return {
     subject: `You're booked — ${input.dateLabel} at ${input.timeLabel}`,
     html: `
-      <div style="font-family:sans-serif;color:#1A1A1A;max-width:480px;margin:0 auto;">
-        <h2 style="color:#8A6D1D;">3U3 Cleaning</h2>
+      <div style="font-family:sans-serif;color:#0B1F3B;max-width:480px;margin:0 auto;">
+        <h2 style="color:#1D4ED8;">3U3 Cleaning</h2>
         <p>Hi ${esc(input.name)},</p>
         <p>Thanks for reaching out! Your free quote visit is confirmed${
           input.serviceName ? ` for <strong>${esc(input.serviceName)}</strong>` : ''
@@ -111,13 +111,13 @@ export function estimateEmail(input: {
   return {
     subject: `Your estimate from 3U3 Cleaning — ${money(input.totalCents)}`,
     html: `
-      <div style="font-family:sans-serif;color:#1A1A1A;max-width:480px;margin:0 auto;">
-        <h2 style="color:#8A6D1D;">3U3 Cleaning — Your estimate</h2>
+      <div style="font-family:sans-serif;color:#0B1F3B;max-width:480px;margin:0 auto;">
+        <h2 style="color:#1D4ED8;">3U3 Cleaning — Your estimate</h2>
         <p>Hi ${esc(input.name)}, thanks for having us out to take a look. Here's your price for <strong>${esc(input.serviceName)}</strong>:</p>
         ${itemRows(input.items, input.totalCents)}
-        ${input.notes ? `<p style="background:#FAEEDA;padding:12px;border-radius:8px;">${esc(input.notes)}</p>` : ''}
+        ${input.notes ? `<p style="background:#EFF6FF;padding:12px;border-radius:8px;">${esc(input.notes)}</p>` : ''}
         <p style="text-align:center;margin:28px 0;">
-          <a href="${input.url}?respond=approve" style="background:#D2961E;color:#1A1A1A;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">Approve estimate</a>
+          <a href="${input.url}?respond=approve" style="background:#2563EB;color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">Approve estimate</a>
         </p>
         <p style="text-align:center;margin:12px 0;">
           <a href="${input.url}?respond=decline" style="color:#6b6b6b;font-size:13px;">No thanks</a>
@@ -142,8 +142,8 @@ export function estimateRespondedOwnerEmail(input: {
       ? `Estimate approved: ${esc(input.clientName)} — ${money(input.totalCents)}`
       : `Estimate declined: ${esc(input.clientName)}`,
     html: `
-      <div style="font-family:sans-serif;color:#1A1A1A;max-width:480px;margin:0 auto;">
-        <h2 style="color:#8A6D1D;">Estimate ${input.approved ? 'approved' : 'declined'}</h2>
+      <div style="font-family:sans-serif;color:#0B1F3B;max-width:480px;margin:0 auto;">
+        <h2 style="color:#1D4ED8;">Estimate ${input.approved ? 'approved' : 'declined'}</h2>
         <p><strong>${esc(input.clientName)}</strong>${input.clientPhone ? ` (${esc(input.clientPhone)})` : ''} ${
           input.approved ? 'approved' : 'declined'
         } their ${esc(input.serviceName)} estimate of <strong>${money(input.totalCents)}</strong>.</p>
@@ -167,8 +167,8 @@ export function invoiceEmail(input: {
   return {
     subject: `Your invoice from 3U3 Cleaning — ${money(input.totalCents)}`,
     html: `
-      <div style="font-family:sans-serif;color:#1A1A1A;max-width:480px;margin:0 auto;">
-        <h2 style="color:#8A6D1D;">3U3 Cleaning — Invoice</h2>
+      <div style="font-family:sans-serif;color:#0B1F3B;max-width:480px;margin:0 auto;">
+        <h2 style="color:#1D4ED8;">3U3 Cleaning — Invoice</h2>
         <p>Hi ${esc(input.name)}, thanks for having us out! Here's your invoice:</p>
         <table style="width:100%;border-collapse:collapse;margin:16px 0;">
           ${input.items
@@ -186,7 +186,7 @@ export function invoiceEmail(input: {
           </tr>
         </table>
         <p style="text-align:center;margin:24px 0;">
-          <a href="${input.payUrl}" style="background:#D2961E;color:#1A1A1A;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">Pay now</a>
+          <a href="${input.payUrl}" style="background:#2563EB;color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">Pay now</a>
         </p>
         <p style="color:#6b6b6b;font-size:13px;">— 3U3 Cleaning, Katy, TX</p>
       </div>
@@ -198,12 +198,12 @@ export function paymentReceivedCustomerEmail(input: { name: string; totalCents: 
   return {
     subject: `Payment received — thank you!`,
     html: `
-      <div style="font-family:sans-serif;color:#1A1A1A;max-width:480px;margin:0 auto;">
-        <h2 style="color:#8A6D1D;">Payment received</h2>
+      <div style="font-family:sans-serif;color:#0B1F3B;max-width:480px;margin:0 auto;">
+        <h2 style="color:#1D4ED8;">Payment received</h2>
         <p>Hi ${esc(input.name)}, we've received your payment of <strong>${money(input.totalCents)}</strong>. Thank you!</p>
         ${
           input.receiptUrl
-            ? `<p><a href="${input.receiptUrl}" style="color:#8A6D1D;">View your receipt</a></p>`
+            ? `<p><a href="${input.receiptUrl}" style="color:#1D4ED8;">View your receipt</a></p>`
             : ''
         }
         <p style="color:#6b6b6b;font-size:13px;margin-top:24px;">— 3U3 Cleaning, Katy, TX</p>
@@ -220,8 +220,8 @@ export function paymentReceivedOwnerEmail(input: {
   return {
     subject: `Payment received: ${esc(input.clientName)} — ${money(input.totalCents)}`,
     html: `
-      <div style="font-family:sans-serif;color:#1A1A1A;max-width:480px;margin:0 auto;">
-        <h2 style="color:#8A6D1D;">Payment received</h2>
+      <div style="font-family:sans-serif;color:#0B1F3B;max-width:480px;margin:0 auto;">
+        <h2 style="color:#1D4ED8;">Payment received</h2>
         <p><strong>${esc(input.clientName)}</strong> just paid <strong>${money(input.totalCents)}</strong>.</p>
         <ul>
           ${input.items.map((i) => `<li>${esc(i.description)} — ${money(i.amountCents)}</li>`).join('')}
@@ -244,8 +244,8 @@ export function newLeadOwnerEmail(input: {
   return {
     subject: `New lead: ${esc(input.name)} — quote visit ${input.dateLabel}`,
     html: `
-      <div style="font-family:sans-serif;color:#1A1A1A;max-width:480px;margin:0 auto;">
-        <h2 style="color:#8A6D1D;">New quote-visit request</h2>
+      <div style="font-family:sans-serif;color:#0B1F3B;max-width:480px;margin:0 auto;">
+        <h2 style="color:#1D4ED8;">New quote-visit request</h2>
         <p><strong>${esc(input.name)}</strong> just booked a quote visit${
           input.serviceName ? ` (interested in ${esc(input.serviceName)})` : ''
         }.</p>
@@ -269,8 +269,8 @@ function branded(body: string, preheader = '') {
   return `
   <div style="background:#F7F8FA;padding:24px 12px;">
     <span style="display:none;max-height:0;overflow:hidden;">${esc(preheader)}</span>
-    <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#16181B;">
-      <div style="background:#16181B;padding:20px;text-align:center;">
+    <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0B1F3B;">
+      <div style="background:#0B1F3B;padding:20px;text-align:center;">
         <img src="${appUrl('/brand/logo-640.png')}" alt="3U3 Cleaning" width="180" style="width:180px;max-width:60%;height:auto;" />
       </div>
       <div style="padding:28px 28px 8px;font-size:16px;line-height:1.6;">${body}</div>
@@ -280,7 +280,7 @@ function branded(body: string, preheader = '') {
 }
 
 function button(href: string, label: string) {
-  return `<p style="text-align:center;margin:28px 0;"><a href="${href}" style="background:#D2961E;color:#16181B;padding:14px 28px;border-radius:12px;text-decoration:none;font-weight:bold;display:inline-block;">${esc(label)}</a></p>`;
+  return `<p style="text-align:center;margin:28px 0;"><a href="${href}" style="background:#2563EB;color:#ffffff;padding:14px 28px;border-radius:12px;text-decoration:none;font-weight:bold;display:inline-block;">${esc(label)}</a></p>`;
 }
 
 export function jobCompleteCustomerEmail(input: {
@@ -326,7 +326,7 @@ export function jobCompleteOwnerEmail(input: {
        <p><strong>${esc(input.clientName)}</strong> · ${esc(input.serviceName)} · ${esc(input.dateLabel)}</p>
        <p>The client has been sent their before-and-after photos. A draft invoice at their agreed rate is waiting for your review.</p>
        ${button(input.invoiceUrl, 'Review and send invoice')}
-       <p style="text-align:center;"><a href="${input.galleryUrl}" style="color:#8A6D1D;">View the photos</a></p>`,
+       <p style="text-align:center;"><a href="${input.galleryUrl}" style="color:#1D4ED8;">View the photos</a></p>`,
     ),
   };
 }

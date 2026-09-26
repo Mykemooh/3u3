@@ -129,7 +129,7 @@ function NextJobCard({ row }: { row: Row }) {
         </div>
       </div>
       <div className="flow-line" aria-hidden="true" />
-      <div className="bg-gold px-6 py-3 text-center font-semibold text-ink">{started ? 'Open job' : 'Open job and start'}</div>
+      <div className="bg-gold px-6 py-3 text-center font-semibold text-white">{started ? 'Open job' : 'Open job and start'}</div>
     </Link>
   );
 }

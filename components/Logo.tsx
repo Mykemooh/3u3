@@ -1,15 +1,16 @@
-import Image from 'next/image';
-
 const SIZES = {
-  sm: { w: 120, h: 80 },
-  md: { w: 180, h: 120 },
-  lg: { w: 280, h: 187 },
+  sm: 'text-2xl',
+  md: 'text-4xl',
+  lg: 'text-6xl',
 };
 
-// The real 3U3 logo (white wordmark, gold "U" with water-droplet accent and
-// wave underline, backlit glow) — designed only for dark backgrounds, so
-// every placement on a light page wraps it in a dark container.
+/**
+ * The 3U3 wordmark: bold navy numerals with the U in a blue-to-green
+ * gradient. Built as real text (not an image) so it reads crisply on light
+ * and dark backgrounds alike at any size — `variant` picks which.
+ */
 export default function Logo({
+  variant = 'dark',
   size = 'md',
   className = '',
 }: {
@@ -17,15 +18,12 @@ export default function Logo({
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }) {
-  const { w, h } = SIZES[size];
+  const numeralColor = variant === 'light' ? 'text-white' : 'text-ink';
   return (
-    <Image
-      src="/logo.png"
-      alt="3U3 Cleaning"
-      width={w}
-      height={h}
-      priority
-      className={`select-none ${className}`}
-    />
+    <span className={`inline-flex select-none items-baseline font-black tracking-tight ${SIZES[size]} ${className}`}>
+      <span className={numeralColor}>3</span>
+      <span className="bg-gradient-to-br from-gold to-green-light bg-clip-text text-transparent">U</span>
+      <span className={numeralColor}>3</span>
+    </span>
   );
 }

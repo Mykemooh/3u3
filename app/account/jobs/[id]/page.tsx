@@ -97,7 +97,7 @@ export default async function JobGallery({ params }: { params: { id: string } })
                       )}
                       <figcaption
                         className={`pointer-events-none absolute left-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                          m.phase === 'AFTER' ? 'bg-gold text-ink' : 'bg-ink/75 text-white'
+                          m.phase === 'AFTER' ? 'bg-gold text-white' : 'bg-ink/75 text-white'
                         }`}
                       >
                         {m.phase === 'AFTER' ? 'After' : 'Before'}

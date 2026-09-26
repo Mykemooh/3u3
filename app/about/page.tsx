@@ -93,7 +93,7 @@ export default function AboutPage() {
                 >
                   <span
                     aria-hidden
-                    className="flex h-12 w-12 items-center justify-center rounded-full bg-gold text-xl font-extrabold text-ink"
+                    className="flex h-12 w-12 items-center justify-center rounded-full bg-gold text-xl font-extrabold text-white"
                   >
                     F
                   </span>

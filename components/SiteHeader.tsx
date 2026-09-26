@@ -18,9 +18,7 @@ export default async function SiteHeader() {
     <header className="sticky top-0 z-50 border-b border-line bg-white/85 backdrop-blur-md">
       <div className="container-wide flex items-center justify-between gap-4 px-6 py-3">
         <Link href="/" aria-label="3U3 Cleaning home" className="flex items-center">
-          <span className="inline-flex items-center rounded-xl bg-ink px-3.5 py-2">
-            <Logo size="sm" className="h-11 w-auto" />
-          </span>
+          <Logo size="sm" />
         </Link>
 
         <nav className="hidden items-center gap-7 md:flex">

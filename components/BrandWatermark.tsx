@@ -1,18 +1,16 @@
-import Image from 'next/image';
-
 /**
- * The logo, very large, pinned to the left edge behind everything on the page.
+ * The wordmark, very large, pinned to the left edge behind everything on the
+ * page. Rendered as text (matching components/Logo.tsx) rather than a raster
+ * image — the old logo-mark.png was baked-in gold/ink pixels from the prior
+ * brand and can't be recolored, so it's built from the same live styles the
+ * header logo uses, which follow the brand palette automatically.
  *
- * Three things make this safe to put under live text:
+ * Two things make this safe to put under live text:
  *
- * 1. `public/logo-mark.png` is a light-background cut of the brand mark — ink
- *    and gold on transparency, with the dark glow and the tagline stripped.
- *    The original logo.png is white artwork made for a dark box and would be
- *    invisible here.
- * 2. A white veil sits between the mark and the page, so the artwork can never
+ * 1. A white veil sits between the mark and the page, so the artwork can never
  *    push text below its contrast target no matter which section it lands in.
  *    VEIL is the one number to turn if it wants to be louder or quieter.
- * 3. `fixed` + `pointer-events-none` + `aria-hidden`: it never scrolls into a
+ * 2. `fixed` + `pointer-events-none` + `aria-hidden`: it never scrolls into a
  *    heading, never eats a click, and is not announced to a screen reader.
  *
  * It sits at z-0 with the page content at z-10, which means any section
@@ -28,17 +26,13 @@ export default function BrandWatermark() {
       aria-hidden
       className="pointer-events-none fixed inset-y-0 left-0 z-0 hidden w-[40vw] max-w-[560px] select-none overflow-hidden sm:block"
     >
-      <div className="absolute left-[-3%] top-1/2 w-[106%] -translate-y-1/2">
-        <div className="relative aspect-[1200/564]">
-          <Image
-            src="/logo-mark.png"
-            alt=""
-            fill
-            sizes="40vw"
-            className="object-contain"
-            priority={false}
-          />
-        </div>
+      <div
+        className="absolute left-[-6%] top-1/2 flex -translate-y-1/2 items-baseline font-black leading-none tracking-tight text-ink"
+        style={{ fontSize: 'min(26vw, 380px)' }}
+      >
+        <span>3</span>
+        <span className="bg-gradient-to-br from-gold to-green-light bg-clip-text text-transparent">U</span>
+        <span>3</span>
       </div>
 
       {/* The veil. Slightly heavier on the right, where the mark runs under

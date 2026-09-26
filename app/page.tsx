@@ -35,6 +35,26 @@ const HOW_IT_WORKS = [
   },
 ];
 
+// PLACEHOLDER — not real customers. Swap every quote/name/location for an
+// actual review before this ships; do not present these as genuine.
+const TESTIMONIALS_PLACEHOLDER = [
+  {
+    quote: '"[Placeholder review — replace with a real customer quote before launch.]"',
+    name: 'Placeholder Name',
+    context: 'Placeholder — Katy, TX',
+  },
+  {
+    quote: '"[Placeholder review — replace with a real customer quote before launch.]"',
+    name: 'Placeholder Name',
+    context: 'Placeholder — Houston, TX',
+  },
+  {
+    quote: '"[Placeholder review — replace with a real customer quote before launch.]"',
+    name: 'Placeholder Name',
+    context: 'Placeholder — Cypress, TX',
+  },
+];
+
 export default function WelcomePage() {
   return (
     <>
@@ -142,7 +162,7 @@ export default function WelcomePage() {
                     />
                   </div>
                   <div className="mt-6 flex items-center gap-3">
-                    <span className="step-dot bg-gold text-ink">{i + 1}</span>
+                    <span className="step-dot bg-gold text-white">{i + 1}</span>
                     <h3 className="text-lg font-bold">{step.title}</h3>
                   </div>
                   <p className="body mt-3">{step.description}</p>
@@ -176,6 +196,37 @@ export default function WelcomePage() {
               <Link href="/about" className="btn-secondary mt-8">
                 Read our story
               </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* ---------- Testimonials — PLACEHOLDER copy, swap before launch ---------- */}
+        <section className="section border-t border-line">
+          <div className="container-wide">
+            <p className="eyebrow">What clients say</p>
+            <h2 className="h2 mt-3">Placeholder reviews — swap these for real ones.</h2>
+            <p className="lead measure mt-4">
+              This section is wired up and ready; it just needs your actual customer quotes in place of these
+              placeholders.
+            </p>
+
+            <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
+              {TESTIMONIALS_PLACEHOLDER.map((t, i) => (
+                <figure key={i} className="card flex flex-col">
+                  <div className="flex gap-0.5 text-gold" aria-hidden="true">
+                    {Array.from({ length: 5 }).map((_, star) => (
+                      <svg key={star} viewBox="0 0 20 20" className="h-4 w-4 fill-current">
+                        <path d="M10 1.5l2.6 5.4 5.9.8-4.3 4.2 1 5.9L10 15l-5.2 2.8 1-5.9-4.3-4.2 5.9-.8L10 1.5Z" />
+                      </svg>
+                    ))}
+                  </div>
+                  <blockquote className="body mt-4 flex-1 italic text-slate">{t.quote}</blockquote>
+                  <figcaption className="mt-5 border-t border-line pt-4">
+                    <p className="font-semibold text-ink">{t.name}</p>
+                    <p className="meta">{t.context}</p>
+                  </figcaption>
+                </figure>
+              ))}
             </div>
           </div>
         </section>

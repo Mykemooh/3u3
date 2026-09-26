@@ -8,7 +8,10 @@ export default function Footer() {
       <div className="container-wide px-6 py-14">
         <div className="grid gap-10 md:grid-cols-4">
           <div>
-            <Logo variant="light" size="sm" className="h-10 w-auto" />
+            <Logo variant="light" size="sm" />
+            <p className="mt-2 text-xs font-semibold uppercase tracking-[0.12em] text-gold-light">
+              Clean spaces. Brighter days.
+            </p>
             <p className="mt-4 max-w-[230px] text-sm text-white/55">
               Family owned by parents of three boys, built in Texas. Serving Katy and the surrounding Houston
               area.
