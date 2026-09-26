@@ -62,7 +62,7 @@ export default function WelcomePage() {
       </Link>
 
       <div className="relative mx-auto mt-24 max-w-sm overflow-hidden py-14">
-        <p className="text-center text-lg font-semibold text-ink">Come on, commit to something!</p>
+        <p className="sweep-reveal-text text-center text-lg font-semibold text-ink">Come on, commit to something!</p>
         <span
           className="broom-sweep pointer-events-none absolute top-1/2 -translate-y-1/2 text-[96px] leading-none"
           aria-hidden="true"

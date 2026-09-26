@@ -349,7 +349,10 @@
     100% { background-position: 0% 50%; }
   }
 
-  /* A broom emoji flying left-to-right, on loop, over the line below it. */
+  /* A broom emoji flying left-to-right, on loop, over the line below it —
+     and the words themselves stay hidden until the broom passes over them,
+     revealed left-to-right in lockstep (same duration/timing on both), so
+     the broom looks like it's sweeping the sentence into existence.       */
   .broom-sweep {
     animation: broom-sweep-move 5.6s linear infinite;
   }
@@ -357,9 +360,17 @@
     0% { left: -10%; }
     100% { left: 105%; }
   }
+  .sweep-reveal-text {
+    animation: sweep-reveal-text 5.6s linear infinite;
+  }
+  @keyframes sweep-reveal-text {
+    0%, 8% { clip-path: inset(0 100% 0 0); }
+    92%, 100% { clip-path: inset(0 0% 0 0); }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .u-gradient-mask { animation: none; background-position: 35% 50%; }
   .broom-sweep { animation: none; left: 50%; transform: translate(-50%, -50%) !important; }
+  .sweep-reveal-text { animation: none; clip-path: none; }
 }
