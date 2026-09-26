@@ -326,3 +326,40 @@
       text-[11px] font-semibold text-bronze transition hover:bg-cream/60 active:scale-[0.98];
   }
 }
+
+/* ---- Homepage hero mark ----------------------------------------------
+   The U's real shape, masked out of its own artwork (mark-u-mask.png) so
+   an animated gradient can play through it — a raster image's baked-in
+   color can't animate on its own, a CSS gradient behind a mask can.     */
+@layer components {
+  .u-gradient-mask {
+    background: linear-gradient(120deg, #2563eb 0%, #10b981 35%, #2563eb 70%, #10b981 100%);
+    background-size: 300% 300%;
+    -webkit-mask-image: url('/brand/mark-u-mask.png');
+    mask-image: url('/brand/mark-u-mask.png');
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    animation: u-gradient-shift 5s ease-in-out infinite;
+  }
+  @keyframes u-gradient-shift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  /* A broom emoji flying left-to-right, on loop, over the line below it. */
+  .broom-sweep {
+    animation: broom-sweep-move 2.8s linear infinite;
+  }
+  @keyframes broom-sweep-move {
+    0% { left: -10%; }
+    100% { left: 105%; }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .u-gradient-mask { animation: none; background-position: 35% 50%; }
+  .broom-sweep { animation: none; left: 50%; transform: translate(-50%, -50%) !important; }
+}
