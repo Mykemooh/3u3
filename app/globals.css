@@ -65,23 +65,26 @@
     @apply text-xs font-bold uppercase tracking-[0.12em] text-bronze;
   }
 
-  /* ---- Buttons ---------------------------------------------------------- */
+  /* ---- Buttons ----------------------------------------------------------
+     Pill-shaped with the brand's green-to-blue gradient (the same gradient
+     as the logo's U, run in reverse) — matching the exported "Book Now"
+     button reference. One gradient, used the same way everywhere.        */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gold px-7 py-3.5 text-base font-semibold text-white
-      shadow-gold transition-all hover:-translate-y-0.5 hover:bg-gold-light hover:shadow-gold-lg
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-green-light to-gold px-7 py-3.5 text-base font-semibold text-white
+      shadow-gold transition-all hover:-translate-y-0.5 hover:brightness-110 hover:shadow-gold-lg
       focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bronze
       active:translate-y-0 disabled:pointer-events-none disabled:opacity-50;
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-white px-7 py-3.5 text-base
-      font-semibold text-ink transition-all duration-200 hover:-translate-y-0.5 hover:border-gold hover:bg-gold
-      hover:text-white hover:shadow-gold
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-line bg-white px-7 py-3.5 text-base
+      font-semibold text-ink transition-all duration-200 hover:-translate-y-0.5 hover:border-transparent
+      hover:bg-gradient-to-r hover:from-green-light hover:to-gold hover:text-white hover:shadow-gold
       focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bronze
       active:translate-y-0 disabled:pointer-events-none disabled:opacity-50;
   }
   .btn-dark {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-ink px-7 py-3.5 text-base font-semibold text-white
-      transition-all duration-200 hover:-translate-y-0.5 hover:bg-gold hover:text-white hover:shadow-gold
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-ink px-7 py-3.5 text-base font-semibold text-white
+      transition-all duration-200 hover:-translate-y-0.5 hover:bg-gradient-to-r hover:from-green-light hover:to-gold hover:shadow-gold
       focus-visible:outline focus-visible:outline-2
       focus-visible:outline-offset-2 focus-visible:outline-gold active:translate-y-0 disabled:opacity-50;
   }

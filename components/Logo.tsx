@@ -1,13 +1,13 @@
-const SIZES = {
-  sm: 'text-2xl',
-  md: 'text-4xl',
-  lg: 'text-6xl',
-};
+import Image from 'next/image';
+
+const HEIGHTS = { sm: 34, md: 54, lg: 82 };
+const ASPECT = 641 / 208; // native size of the exported mark
 
 /**
- * The 3U3 wordmark: bold navy numerals with the U in a blue-to-green
- * gradient. Built as real text (not an image) so it reads crisply on light
- * and dark backgrounds alike at any size — `variant` picks which.
+ * The real 3U3 wordmark (exported brand asset, cropped to just the mark —
+ * no tagline, since callers that want one render it as their own text, e.g.
+ * Footer). Two variants: navy numerals for light backgrounds, white
+ * numerals for dark ones. Both keep the mark's blue-to-green gradient U.
  */
 export default function Logo({
   variant = 'dark',
@@ -18,12 +18,17 @@ export default function Logo({
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }) {
-  const numeralColor = variant === 'light' ? 'text-white' : 'text-ink';
+  const h = HEIGHTS[size];
+  const w = Math.round(h * ASPECT);
+  const src = variant === 'light' ? '/brand/logo-light-mark.png' : '/brand/logo-navy-mark.png';
   return (
-    <span className={`inline-flex select-none items-baseline font-black tracking-tight ${SIZES[size]} ${className}`}>
-      <span className={numeralColor}>3</span>
-      <span className="bg-gradient-to-br from-gold to-green-light bg-clip-text text-transparent">U</span>
-      <span className={numeralColor}>3</span>
-    </span>
+    <Image
+      src={src}
+      alt="3U3 Cleaning"
+      width={w}
+      height={h}
+      priority
+      className={`select-none ${className}`}
+    />
   );
 }

@@ -1,9 +1,8 @@
+import Image from 'next/image';
+
 /**
- * The wordmark, very large, pinned to the left edge behind everything on the
- * page. Rendered as text (matching components/Logo.tsx) rather than a raster
- * image — the old logo-mark.png was baked-in gold/ink pixels from the prior
- * brand and can't be recolored, so it's built from the same live styles the
- * header logo uses, which follow the brand palette automatically.
+ * The real wordmark, very large, pinned to the left edge behind everything
+ * on the page.
  *
  * Two things make this safe to put under live text:
  *
@@ -26,13 +25,8 @@ export default function BrandWatermark() {
       aria-hidden
       className="pointer-events-none fixed inset-y-0 left-0 z-0 hidden w-[40vw] max-w-[560px] select-none overflow-hidden sm:block"
     >
-      <div
-        className="absolute left-[-6%] top-1/2 flex -translate-y-1/2 items-baseline font-black leading-none tracking-tight text-ink"
-        style={{ fontSize: 'min(26vw, 380px)' }}
-      >
-        <span>3</span>
-        <span className="bg-gradient-to-br from-gold to-green-light bg-clip-text text-transparent">U</span>
-        <span>3</span>
+      <div className="absolute left-[-6%] top-1/2 w-[80vw] max-w-[900px] -translate-y-1/2">
+        <Image src="/brand/logo-navy-mark.png" alt="" width={641} height={208} className="h-auto w-full" />
       </div>
 
       {/* The veil. Slightly heavier on the right, where the mark runs under

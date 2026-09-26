@@ -11,6 +11,13 @@ import { ABOUT_TEASER } from '@/lib/about';
 // "Get a quote" and "Book now", so this page can't be baked at build time.
 export const dynamic = 'force-dynamic';
 
+const TRUST_BAR: { label: string; blurb: string; icon: 'sparkle' | 'shield' | 'leaf' | 'home'; accent: 'gold' | 'green' }[] = [
+  { label: 'Reliable', blurb: 'On time. Every time.', icon: 'sparkle', accent: 'green' },
+  { label: 'Trusted', blurb: 'Vetted team. Professional care.', icon: 'shield', accent: 'gold' },
+  { label: 'Healthy', blurb: 'Cleaner spaces. Better living.', icon: 'leaf', accent: 'green' },
+  { label: 'Customized', blurb: 'Your space. Your needs.', icon: 'home', accent: 'gold' },
+];
+
 const HOW_IT_WORKS = [
   {
     title: 'Book a free walkthrough',
@@ -75,6 +82,7 @@ export default function WelcomePage() {
               <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                 <Link href="/new" className="btn-primary">
                   Get a free quote
+                  <span aria-hidden="true">→</span>
                 </Link>
                 <Link href="/services" className="btn-secondary">
                   See what we clean
@@ -94,6 +102,19 @@ export default function WelcomePage() {
                 className="object-cover"
               />
             </div>
+          </div>
+        </section>
+
+        {/* ---------- Trust bar: four short reasons, right under the fold ---------- */}
+        <section className="border-y border-line bg-white px-6 py-10">
+          <div className="container-wide grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-4 md:divide-x md:divide-line">
+            {TRUST_BAR.map((item) => (
+              <div key={item.label} className="flex flex-col items-center gap-2 text-center md:px-6">
+                <TrustIcon name={item.icon} className={item.accent === 'gold' ? 'text-gold' : 'text-green-light'} />
+                <p className="text-sm font-bold uppercase tracking-[0.1em] text-ink">{item.label}</p>
+                <p className="text-sm text-slate">{item.blurb}</p>
+              </div>
+            ))}
           </div>
         </section>
 
@@ -268,5 +289,49 @@ export default function WelcomePage() {
 
       <Footer />
     </>
+  );
+}
+
+const TRUST_ICON_PATHS: Record<string, React.ReactNode> = {
+  sparkle: (
+    <>
+      <path d="M11 3.5 12.4 8l4.6 1.4-4.6 1.4L11 15.3l-1.4-4.5L5 9.4l4.6-1.4L11 3.5Z" />
+      <path d="M17.5 14.5 18.2 17l2.3.8-2.3.8-.7 2.4-.7-2.4-2.3-.8 2.3-.8.7-2.5Z" />
+    </>
+  ),
+  shield: (
+    <>
+      <path d="M12 3.5 18.5 6v5c0 4.5-3 7.8-6.5 9-3.5-1.2-6.5-4.5-6.5-9V6L12 3.5Z" />
+      <path d="m9.3 12.2 2 2 3.8-4.2" />
+    </>
+  ),
+  leaf: (
+    <>
+      <path d="M5 19c9-.2 13.5-5.6 14-14.5-9 .3-13.6 5.4-14 14.5Z" />
+      <path d="M6 18c3-3.4 6-6.4 12.5-12.8" />
+    </>
+  ),
+  home: (
+    <>
+      <path d="M4 11.2 12 4l8 7.2" />
+      <path d="M6 10v9a1 1 0 0 0 1 1h3v-6h4v6h3a1 1 0 0 0 1-1v-9" />
+    </>
+  ),
+};
+
+function TrustIcon({ name, className = '' }: { name: 'sparkle' | 'shield' | 'leaf' | 'home'; className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={`h-8 w-8 ${className}`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {TRUST_ICON_PATHS[name]}
+    </svg>
   );
 }
