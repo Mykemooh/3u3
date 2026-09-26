@@ -121,6 +121,8 @@ async function main() {
       status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','IN_PROGRESS','COMPLETE')),
       started_at TIMESTAMPTZ,
       completed_at TIMESTAMPTZ,
+      require_before_photo BOOLEAN NOT NULL DEFAULT true,
+      no_photos_needed BOOLEAN NOT NULL DEFAULT false,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 
@@ -246,6 +248,11 @@ async function main() {
 
     -- Sequential, human-facing invoice numbers (1001, 1002, ...). Existing
     -- invoices are numbered in the order they were created.
+    -- Per-job photo policy (admin-editable): a room can require before+after
+    -- photos (default), skip the before photo, or skip photos entirely.
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS require_before_photo BOOLEAN NOT NULL DEFAULT true;
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS no_photos_needed BOOLEAN NOT NULL DEFAULT false;
+
     ALTER TABLE invoices ADD COLUMN IF NOT EXISTS invoice_number INTEGER;
     UPDATE invoices SET invoice_number = numbered.n
       FROM (

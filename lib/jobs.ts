@@ -111,25 +111,73 @@ export async function countMedia(itemId: string, phase: MediaPhase) {
 }
 
 /**
- * Recomputes a room's status from its media: done once it has at least one
- * before photo and one after photo. Videos are welcome but optional — a
- * room is never blocked on a video. Keeps the legacy photo columns in step.
+ * Recomputes a room's status from its media, against the owning job's photo
+ * policy: before-and-after (default), after-only (before optional), or no
+ * photos needed at all. Videos are welcome but optional either way — a room
+ * is never blocked on a video. Keeps the legacy photo columns in step.
+ *
+ * A no-photos-needed job doesn't drive status from media at all (there is
+ * none to expect) — completion there goes through markItemDone instead, so
+ * this leaves the item's status untouched.
  */
 export async function syncItem(itemId: string) {
   const item = (await db.select().from(jobChecklistItems).where(eq(jobChecklistItems.id, itemId)).limit(1))[0];
   if (!item) return null;
+  const job = (await db.select().from(jobs).where(eq(jobs.id, item.jobId)).limit(1))[0];
   const media = (await liveMediaFor(itemId)).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
   const before = media.find((m) => m.phase === 'BEFORE' && m.kind === 'PHOTO')?.url ?? null;
   const after = media.find((m) => m.phase === 'AFTER' && m.kind === 'PHOTO')?.url ?? null;
 
   const patch: Partial<ChecklistItemRow> = { beforePhotoPath: before, afterPhotoPath: after };
-  if (item.status !== 'SKIPPED') {
-    const done = !!before && !!after;
+  if (item.status !== 'SKIPPED' && !job?.noPhotosNeeded) {
+    const done = job?.requireBeforePhoto === false ? !!after : !!before && !!after;
     patch.status = done ? 'COMPLETE' : 'PENDING';
     patch.completedAt = done ? item.completedAt ?? new Date() : null;
   }
   await db.update(jobChecklistItems).set(patch).where(eq(jobChecklistItems.id, itemId));
   return { ...item, ...patch } as ChecklistItemRow;
+}
+
+/** Mark (or unmark) a room done by hand, for jobs where no photos are needed at all. */
+export async function setItemDone(jobId: string, itemId: string, viewer: Viewer | null, done: boolean) {
+  const { job, item } = await requireOpenItem(jobId, itemId, viewer);
+  if (!job.noPhotosNeeded) throw new JobError('This job requires before-and-after photos for each room.', 409);
+  if (item.status === 'SKIPPED') throw new JobError('Undo the skip first.', 409);
+  const patch = { status: (done ? 'COMPLETE' : 'PENDING') as ChecklistItemRow['status'], completedAt: done ? new Date() : null };
+  await db.update(jobChecklistItems).set(patch).where(eq(jobChecklistItems.id, itemId));
+  return { ...item, ...patch };
+}
+
+/**
+ * Admin-only: set a job's photo policy. "No pictures needed" implies the
+ * before photo is moot, so it always clears requireBeforePhoto too.
+ * Every non-skipped room is re-synced immediately so a policy change is
+ * reflected in room status right away, not just for the next upload.
+ */
+export async function setPhotoPolicy(
+  jobId: string,
+  viewer: Viewer | null,
+  patch: { requireBeforePhoto?: boolean; noPhotosNeeded?: boolean },
+) {
+  if (!viewer || viewer.role !== 'ADMIN') throw new JobError('Admins only', 403);
+  const job = (await db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1))[0];
+  if (!job) throw new JobError('Job not found', 404);
+  if (job.status === 'COMPLETE') throw new JobError('This job is already finished.', 409);
+
+  const noPhotosNeeded = patch.noPhotosNeeded ?? job.noPhotosNeeded;
+  const next = {
+    noPhotosNeeded,
+    requireBeforePhoto: noPhotosNeeded ? false : patch.requireBeforePhoto ?? job.requireBeforePhoto,
+  };
+  await db.update(jobs).set(next).where(eq(jobs.id, jobId));
+
+  const items = await db.select().from(jobChecklistItems).where(eq(jobChecklistItems.jobId, jobId));
+  for (const item of items) {
+    if (item.status !== 'SKIPPED') await syncItem(item.id);
+  }
+  const updatedItems = await db.select().from(jobChecklistItems).where(eq(jobChecklistItems.jobId, jobId));
+  updatedItems.sort((a, b) => a.sortOrder - b.sortOrder);
+  return { job: { ...job, ...next }, items: updatedItems };
 }
 
 function videoExpiry(kind: MediaKind) {

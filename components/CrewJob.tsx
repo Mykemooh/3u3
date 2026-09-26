@@ -24,8 +24,10 @@ export type CrewItem = {
 
 type JobStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETE';
 
+type PhotoPolicy = { requireBeforePhoto: boolean; noPhotosNeeded: boolean };
+
 type Props = {
-  job: { id: string; status: JobStatus; startedLabel: string | null; completedLabel: string | null };
+  job: { id: string; status: JobStatus; startedLabel: string | null; completedLabel: string | null } & PhotoPolicy;
   client: { name: string; phone: string | null };
   serviceLabel: string;
   whenLabel: string;
@@ -49,6 +51,11 @@ export default function CrewJob(props: Props) {
   const [busy, setBusy] = useState<'start' | 'finish' | null>(null);
   const [error, setError] = useState('');
   const [finished, setFinished] = useState<{ invoiceId: string | null } | null>(null);
+  const [policy, setPolicy] = useState<PhotoPolicy>({
+    requireBeforePhoto: props.job.requireBeforePhoto,
+    noPhotosNeeded: props.job.noPhotosNeeded,
+  });
+  const [policyBusy, setPolicyBusy] = useState(false);
 
   const done = items.filter((i) => i.status !== 'PENDING').length;
   const allDone = done === items.length && items.length > 0;
@@ -123,6 +130,30 @@ export default function CrewJob(props: Props) {
     applyItem(data.item);
   }
 
+  async function updatePolicy(patch: Partial<PhotoPolicy>) {
+    setPolicyBusy(true);
+    setError('');
+    const res = await fetch(`/api/admin/jobs/${props.job.id}/photo-policy`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+    const data = await res.json().catch(() => ({}));
+    setPolicyBusy(false);
+    if (!res.ok) return setError(data.error || 'Could not update photo settings.');
+    setPolicy({ requireBeforePhoto: data.job.requireBeforePhoto, noPhotosNeeded: data.job.noPhotosNeeded });
+    setItems(data.items.map((i: any) => ({ id: i.id, roomName: i.roomName, taskDetail: i.taskDetail, status: i.status, skipReason: i.skipReason })));
+  }
+
+  async function markDone(itemId: string, done: boolean) {
+    const form = new FormData();
+    form.append('kind', done ? 'done' : 'undone');
+    const res = await fetch(`/api/crew/jobs/${props.job.id}/items/${itemId}`, { method: 'POST', body: form });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return setError(data.error || 'Could not update the room.');
+    applyItem(data.item);
+  }
+
   async function skip(itemId: string, reason: string | null) {
     const form = new FormData();
     form.append('kind', reason ? 'skip' : 'unskip');
@@ -194,6 +225,30 @@ export default function CrewJob(props: Props) {
         <JourneyRail steps={steps} />
       </section>
 
+      {props.isAdmin && status !== 'COMPLETE' && (
+        <section className="card space-y-3">
+          <h2 className="text-sm font-bold text-ink">Photo requirements for this job</h2>
+          <label className="flex items-center gap-2 text-sm text-slate">
+            <input
+              type="checkbox"
+              checked={policy.requireBeforePhoto}
+              disabled={policy.noPhotosNeeded || policyBusy}
+              onChange={(e) => updatePolicy({ requireBeforePhoto: e.target.checked })}
+            />
+            Require a before photo for each room
+          </label>
+          <label className="flex items-center gap-2 text-sm text-slate">
+            <input
+              type="checkbox"
+              checked={policy.noPhotosNeeded}
+              disabled={policyBusy}
+              onChange={(e) => updatePolicy({ noPhotosNeeded: e.target.checked })}
+            />
+            No pictures needed for this job
+          </label>
+        </section>
+      )}
+
       {(finished || status === 'COMPLETE') && (
         <section className="card border-green/30 bg-emerald-50">
           <h2 className="text-lg font-bold text-green">Job complete</h2>
@@ -220,7 +275,19 @@ export default function CrewJob(props: Props) {
 
       {status === 'PENDING' && (
         <p className="rounded-xl bg-cream px-4 py-3 text-sm text-bronze">
-          Tap <strong>Start job</strong> when the crew is on site. Then take a before photo of each room first, and an after photo when it's done.
+          {policy.noPhotosNeeded ? (
+            <>
+              Tap <strong>Start job</strong> when the crew is on site. No pictures are needed for this job — just mark each room done as you finish it.
+            </>
+          ) : policy.requireBeforePhoto ? (
+            <>
+              Tap <strong>Start job</strong> when the crew is on site. Then take a before photo of each room first, and an after photo when it's done.
+            </>
+          ) : (
+            <>
+              Tap <strong>Start job</strong> when the crew is on site. Then take an after photo of each room when it's done — a before photo is optional.
+            </>
+          )}
         </p>
       )}
 
@@ -241,9 +308,12 @@ export default function CrewJob(props: Props) {
             open={open}
             perPhase={props.perPhase}
             videoSeconds={props.videoSeconds}
+            requireBeforePhoto={policy.requireBeforePhoto}
+            noPhotosNeeded={policy.noPhotosNeeded}
             onAdd={(phase, kind, files) => add(item.id, phase, kind, files)}
             onRemove={remove}
             onSkip={(reason) => skip(item.id, reason)}
+            onMarkDone={(done) => markDone(item.id, done)}
           />
         ))}
       </div>
@@ -298,9 +368,12 @@ function RoomCard({
   open,
   perPhase,
   videoSeconds,
+  requireBeforePhoto,
+  noPhotosNeeded,
   onAdd,
   onRemove,
   onSkip,
+  onMarkDone,
 }: {
   index: number;
   item: CrewItem;
@@ -309,9 +382,12 @@ function RoomCard({
   open: boolean;
   perPhase: number;
   videoSeconds: number;
+  requireBeforePhoto: boolean;
+  noPhotosNeeded: boolean;
   onAdd: (phase: Phase, kind: Kind, files: FileList | null) => void;
   onRemove: (m: CrewMedia) => void;
   onSkip: (reason: string | null) => void;
+  onMarkDone: (done: boolean) => void;
 }) {
   const [showSkip, setShowSkip] = useState(false);
   const [reason, setReason] = useState('');
@@ -355,6 +431,22 @@ function RoomCard({
             </button>
           )}
         </div>
+      ) : noPhotosNeeded ? (
+        <div className="flex items-center justify-between gap-3 rounded-xl bg-surface px-4 py-3">
+          <span className="text-sm text-slate">
+            {item.status === 'COMPLETE' ? 'Marked done — no pictures needed.' : 'No pictures needed here. Mark it done when finished.'}
+          </span>
+          {open &&
+            (item.status === 'COMPLETE' ? (
+              <button onClick={() => onMarkDone(false)} className="shrink-0 text-sm font-semibold underline">
+                Undo
+              </button>
+            ) : (
+              <button onClick={() => onMarkDone(true)} className="btn-dark btn-sm shrink-0">
+                Mark done
+              </button>
+            ))}
+        </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {(['BEFORE', 'AFTER'] as Phase[]).map((phase) => (
@@ -366,6 +458,7 @@ function RoomCard({
               open={open}
               perPhase={perPhase}
               videoSeconds={videoSeconds}
+              required={phase === 'AFTER' || requireBeforePhoto}
               onAdd={(kind, files) => onAdd(phase, kind, files)}
               onRemove={onRemove}
             />
@@ -406,6 +499,7 @@ function PhaseColumn({
   open,
   perPhase,
   videoSeconds,
+  required,
   onAdd,
   onRemove,
 }: {
@@ -415,6 +509,7 @@ function PhaseColumn({
   open: boolean;
   perPhase: number;
   videoSeconds: number;
+  required: boolean;
   onAdd: (kind: Kind, files: FileList | null) => void;
   onRemove: (m: CrewMedia) => void;
 }) {
@@ -428,7 +523,9 @@ function PhaseColumn({
     <div>
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-sm font-bold">{label}</h3>
-        <span className={`text-xs font-semibold ${hasPhoto ? 'text-green' : 'text-muted'}`}>{hasPhoto ? 'Photo added' : 'Photo needed'}</span>
+        <span className={`text-xs font-semibold ${hasPhoto ? 'text-green' : 'text-muted'}`}>
+          {hasPhoto ? 'Photo added' : required ? 'Photo needed' : 'Optional'}
+        </span>
       </div>
 
       <div className="grid grid-cols-3 gap-2">
