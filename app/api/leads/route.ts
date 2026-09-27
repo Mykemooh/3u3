@@ -5,8 +5,10 @@ import { users, addresses, serviceTypes } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { getTenant, getOwnerEmail } from '@/lib/data';
 import { createQuoteVisitBooking, logNotification, DoubleBookingError } from '@/lib/bookings';
-import { sendEmail, quoteVisitCustomerEmail, newLeadOwnerEmail } from '@/lib/email';
+import { sendEmail, quoteVisitCustomerEmail, newLeadOwnerEmail, passwordSetupEmail } from '@/lib/email';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
+import { issuePasswordSetupToken } from '@/lib/passwordSetup';
+import { appUrl } from '@/lib/url';
 
 const schema = z.object({
   name: z.string().min(1),
@@ -42,6 +44,7 @@ export async function POST(req: Request) {
   }
 
   let user = (await db.select().from(users).where(eq(users.phone, phone)).limit(1))[0];
+  const isNewClient = !user;
   if (!user) {
     const id = crypto.randomUUID();
     await db.insert(users).values({ id, tenantId: tenant.id, role: 'CUSTOMER', name, phone, email });
@@ -86,6 +89,20 @@ export async function POST(req: Request) {
     if (customerEmail) {
       const { subject, html } = quoteVisitCustomerEmail({ name, serviceName: service.name, dateLabel, timeLabel });
       customerEmailSent = await sendEmail({ to: customerEmail, subject, html });
+    }
+
+    // New client → a password-setup link, so they can sign in and see this
+    // visit (and later their photos/invoice) without the office having to
+    // hand out a password. Setting the password is itself what enables
+    // sign-in (see setPasswordFromToken) — nothing else has to happen first.
+    if (isNewClient && customerEmail) {
+      try {
+        const token = await issuePasswordSetupToken(user.id);
+        const { subject, html } = passwordSetupEmail({ name, url: appUrl(`/set-password?token=${token}`) });
+        await sendEmail({ to: customerEmail, subject, html });
+      } catch (err) {
+        console.error('[leads] password setup email failed for', user.id, err);
+      }
     }
 
     // Owner instant notification (PRD 6.6) — always attempted, independent

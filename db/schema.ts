@@ -36,9 +36,15 @@ export const users = pgTable('users', {
   email: text('email'),
   passwordHash: text('password_hash'),
   stripeCustomerId: text('stripe_customer_id'),
+  // Set whenever a new client is created (lead capture or admin-added) so
+  // they can be emailed a "create your password" link — see lib/passwordSetup.ts.
+  // Cleared the moment it's used, so a link only ever works once.
+  passwordSetupToken: text('password_setup_token'),
+  passwordSetupExpiresAt: timestamp('password_setup_expires_at', { withTimezone: true }),
   ...timestamps,
 }, (t) => ({
   phoneUnique: uniqueIndex('users_phone_unique').on(t.phone),
+  passwordSetupTokenUnique: uniqueIndex('users_password_setup_token_unique').on(t.passwordSetupToken),
   emailUnique: uniqueIndex('users_email_unique').on(t.email),
 }));
 

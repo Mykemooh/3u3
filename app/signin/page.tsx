@@ -170,6 +170,9 @@ function SignInInner() {
             Get a free quote
           </Link>
         </p>
+        <p className="mt-2 text-center text-xs text-muted">
+          A new account will be created for you after your quote request.
+        </p>
       </div>
     </main>
   );

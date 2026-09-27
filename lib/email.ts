@@ -373,3 +373,21 @@ export function newBookingOwnerEmail(input: {
     ),
   };
 }
+
+/**
+ * Sent the moment a new client record is created — lead capture or an
+ * admin-added client — so they never have to ask the office for a
+ * password. The link is good for 14 days (lib/passwordSetup.ts).
+ */
+export function passwordSetupEmail(input: { name: string; url: string }) {
+  return {
+    subject: 'Set up your 3U3 Cleaning account',
+    html: branded(
+      `<h2 style="margin:0 0 12px;font-size:20px;">Welcome, ${esc(input.name.split(' ')[0])}</h2>
+       <p>Create a password so you can sign in anytime to see your booking, before-and-after photos, and invoices.</p>
+       ${button(input.url, 'Create your password')}
+       <p style="color:#6B727E;font-size:13px;">This link is good for 14 days. If you didn't expect this email, you can ignore it.</p>`,
+      'Set a password to access your account.',
+    ),
+  };
+}

@@ -5,6 +5,9 @@ import { authOptions } from '@/lib/auth';
 import { db } from '@/db/client';
 import { users, addresses } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { issuePasswordSetupToken } from '@/lib/passwordSetup';
+import { sendEmail, passwordSetupEmail } from '@/lib/email';
+import { appUrl } from '@/lib/url';
 
 const schema = z.object({
   name: z.string().min(1),
@@ -38,6 +41,18 @@ export async function POST(req: Request) {
 
   if (addressLine1) {
     await db.insert(addresses).values({ id: crypto.randomUUID(), userId: clientId, line1: addressLine1 });
+  }
+
+  // Same password-setup invite a lead gets — this client just skipped the
+  // lead-capture form because the office set them up directly.
+  if (email) {
+    try {
+      const token = await issuePasswordSetupToken(clientId);
+      const { subject, html } = passwordSetupEmail({ name, url: appUrl(`/set-password?token=${token}`) });
+      await sendEmail({ to: email, subject, html });
+    } catch (err) {
+      console.error('[admin/clients] password setup email failed for', clientId, err);
+    }
   }
 
   return NextResponse.json({ ok: true, clientId });

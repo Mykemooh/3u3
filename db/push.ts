@@ -27,6 +27,8 @@ async function main() {
       email TEXT,
       password_hash TEXT,
       stripe_customer_id TEXT,
+      password_setup_token TEXT,
+      password_setup_expires_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
     CREATE UNIQUE INDEX IF NOT EXISTS users_phone_unique ON users(phone);
@@ -212,6 +214,9 @@ async function main() {
     -- never reach an already-deployed database no matter how many times
     -- this script is re-run.
     ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS password_setup_token TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS password_setup_expires_at TIMESTAMPTZ;
+    CREATE UNIQUE INDEX IF NOT EXISTS users_password_setup_token_unique ON users(password_setup_token);
 
     -- Job media: one row per before/after photo or video, per room.
     CREATE TABLE IF NOT EXISTS job_media (
