@@ -62,7 +62,7 @@ export default function CrewJob(props: Props) {
   const allDone = done === items.length && items.length > 0;
   const open = status === 'IN_PROGRESS';
   const notStarted = status === 'PENDING' || status === 'EN_ROUTE';
-  const location = useLocationReporter(props.job.id, status === 'EN_ROUTE');
+  const { status: location, detail: locationDetail } = useLocationReporter(props.job.id, status === 'EN_ROUTE');
 
   const steps = useMemo(
     () => [
@@ -306,7 +306,12 @@ export default function CrewJob(props: Props) {
               reload this page. They've still been told you're on the way.
             </>
           ) : location === 'unavailable' ? (
-            <>Your phone can't find its location right now, so the client's map isn't updating. They've still been told you're on the way.</>
+            <>
+              <strong>Can't get your location right now</strong>, so the client's map isn't updating — we'll keep trying. They've still been told
+              you're on the way. On a phone, check Location is on. On a Mac, turn on your browser in System Settings → Privacy &amp; Security →
+              Location Services.
+              {locationDetail && <span className="mt-1 block text-xs opacity-80">Browser said: {locationDetail}</span>}
+            </>
           ) : (
             <>
               <strong>The client has been told you're on the way</strong> and can follow you on a map. Keep this page open with the screen on while you
