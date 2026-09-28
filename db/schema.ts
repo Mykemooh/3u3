@@ -59,12 +59,6 @@ export const addresses = pgTable('addresses', {
   state: text('state').notNull().default('TX'),
   zip: text('zip'),
   isPrimary: boolean('is_primary').notNull().default(true),
-  // Geocoded once, the first time a crew drives here (lib/tracking.ts), so
-  // the live map's destination pin costs one Mapbox geocoding call per
-  // address, not one per trip. Anything that later edits an address's text
-  // must null these so it's re-geocoded.
-  lat: doublePrecision('lat'),
-  lng: doublePrecision('lng'),
   ...timestamps,
 });
 
@@ -192,6 +186,10 @@ export const jobs = pgTable('jobs', {
   // never a history, and all of it is cleared the moment they arrive.
   // routeGeojson / routeDurationSeconds are the last Mapbox Directions
   // result, cached here so the client's map polls the database, not Mapbox.
+  // destLat/destLng: the client's address geocoded for this trip only —
+  // Mapbox's free geocoding allows temporary use, not permanent storage.
+  destLat: doublePrecision('dest_lat'),
+  destLng: doublePrecision('dest_lng'),
   crewLat: doublePrecision('crew_lat'),
   crewLng: doublePrecision('crew_lng'),
   crewLocationAt: timestamp('crew_location_at', { withTimezone: true }),

@@ -82,6 +82,8 @@ export async function requireWorkable(jobId: string, viewer: Viewer | null) {
 // The crew's live position and route exist only for the drive over (see
 // lib/tracking.ts); they're wiped the moment the crew arrives.
 const CLEAR_TRACKING = {
+  destLat: null,
+  destLng: null,
   crewLat: null,
   crewLng: null,
   crewLocationAt: null,

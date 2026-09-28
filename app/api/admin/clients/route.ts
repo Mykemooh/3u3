@@ -8,12 +8,14 @@ import { eq } from 'drizzle-orm';
 import { issuePasswordSetupToken } from '@/lib/passwordSetup';
 import { sendEmail, passwordSetupEmail } from '@/lib/email';
 import { appUrl } from '@/lib/url';
+import { pickedAddressSchema, addressFields } from '@/lib/addresses';
 
 const schema = z.object({
   name: z.string().min(1),
   phone: z.string().min(7),
   email: z.string().email().optional(),
   addressLine1: z.string().min(1).optional(),
+  address: pickedAddressSchema.optional(),
 });
 
 // Direct client creation for the CRM (as opposed to a client arriving via
@@ -29,7 +31,7 @@ export async function POST(req: Request) {
   const body = await req.json();
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: 'Please fill in every required field.' }, { status: 400 });
-  const { name, phone, email, addressLine1 } = parsed.data;
+  const { name, phone, email, addressLine1, address: picked } = parsed.data;
 
   const existing = (await db.select().from(users).where(eq(users.phone, phone)).limit(1))[0];
   if (existing) {
@@ -40,7 +42,7 @@ export async function POST(req: Request) {
   await db.insert(users).values({ id: clientId, tenantId, role: 'CUSTOMER', name, phone, email });
 
   if (addressLine1) {
-    await db.insert(addresses).values({ id: crypto.randomUUID(), userId: clientId, line1: addressLine1 });
+    await db.insert(addresses).values({ id: crypto.randomUUID(), userId: clientId, ...addressFields(picked, addressLine1) });
   }
 
   // Same password-setup invite a lead gets — this client just skipped the

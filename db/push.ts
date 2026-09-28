@@ -282,8 +282,15 @@ async function main() {
     ALTER TABLE jobs ADD COLUMN IF NOT EXISTS route_geojson TEXT;
     ALTER TABLE jobs ADD COLUMN IF NOT EXISTS route_duration_seconds INTEGER;
     ALTER TABLE jobs ADD COLUMN IF NOT EXISTS route_updated_at TIMESTAMPTZ;
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS dest_lat DOUBLE PRECISION;
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS dest_lng DOUBLE PRECISION;
+    -- addresses.lat/lng briefly cached geocoding results permanently, which
+    -- Mapbox's free (temporary) geocoding doesn't allow. No longer read or
+    -- written; kept (emptied) rather than dropped so a deployment still
+    -- running the old code during rollout doesn't break.
     ALTER TABLE addresses ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION;
     ALTER TABLE addresses ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION;
+    UPDATE addresses SET lat = NULL, lng = NULL WHERE lat IS NOT NULL OR lng IS NOT NULL;
 
     ALTER TABLE invoices ADD COLUMN IF NOT EXISTS invoice_number INTEGER;
     UPDATE invoices SET invoice_number = numbered.n

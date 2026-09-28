@@ -9,6 +9,7 @@ import { sendEmail, quoteVisitCustomerEmail, newLeadOwnerEmail, passwordSetupEma
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 import { issuePasswordSetupToken } from '@/lib/passwordSetup';
 import { appUrl } from '@/lib/url';
+import { pickedAddressSchema, addressFields } from '@/lib/addresses';
 
 const schema = z.object({
   name: z.string().min(1),
@@ -17,6 +18,7 @@ const schema = z.object({
   // notification all travel by email. A lead without one is a dead end.
   email: z.string().email(),
   addressLine1: z.string().min(1),
+  address: pickedAddressSchema.optional(),
   serviceTypeId: z.string().min(1),
   slotStart: z.string(),
   slotEnd: z.string(),
@@ -36,7 +38,7 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'Please fill in every field.' }, { status: 400 });
   }
-  const { name, phone, email, addressLine1, serviceTypeId, slotStart, slotEnd } = parsed.data;
+  const { name, phone, email, addressLine1, address: picked, serviceTypeId, slotStart, slotEnd } = parsed.data;
 
   const service = (await db.select().from(serviceTypes).where(eq(serviceTypes.id, serviceTypeId)).limit(1))[0];
   if (!service || service.tenantId !== tenant.id) {
@@ -56,7 +58,7 @@ export async function POST(req: Request) {
   let address = (await db.select().from(addresses).where(eq(addresses.userId, user.id)).limit(1))[0];
   if (!address) {
     const id = crypto.randomUUID();
-    await db.insert(addresses).values({ id, userId: user.id, line1: addressLine1 });
+    await db.insert(addresses).values({ id, userId: user.id, ...addressFields(picked, addressLine1) });
     address = (await db.select().from(addresses).where(eq(addresses.id, id)).limit(1))[0]!;
   }
 

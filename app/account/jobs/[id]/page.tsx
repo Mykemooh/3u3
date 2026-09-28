@@ -29,7 +29,7 @@ export default async function JobGallery({ params }: { params: { id: string } })
   // Clients see the photos once the job is finished; staff see them live.
   const showMedia = job.status === 'COMPLETE' || viewer.role !== 'CUSTOMER';
   const serviceName = service ? SERVICE_LABELS[service.key] ?? service.name : 'Cleaning';
-  const tracking = job.status === 'EN_ROUTE' ? await getTracking(job, booking.addressId) : null;
+  const tracking = job.status === 'EN_ROUTE' ? getTracking(job) : null;
 
   return (
     <div className="space-y-6">

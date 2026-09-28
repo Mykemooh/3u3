@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import LogoBadge from '@/components/LogoBadge';
+import AddressInput, { type PickedAddress } from '@/components/AddressInput';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 
 type Slot = { start: string; end: string; available: boolean };
@@ -23,6 +24,10 @@ export default function NewCustomerPage() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [addressLine1, setAddressLine1] = useState('');
+  const [address, setAddress] = useState<PickedAddress | null>(null);
+  // Brand-new builds can be missing from the map data — let those through as typed.
+  const [useTyped, setUseTyped] = useState(false);
+  const [addressError, setAddressError] = useState(false);
   const [days, setDays] = useState<Day[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selected, setSelected] = useState<Slot | null>(null);
@@ -60,6 +65,7 @@ export default function NewCustomerPage() {
           phone,
           email: email.trim(),
           addressLine1,
+          address: address ?? undefined,
           serviceTypeId,
           slotStart: selected.start,
           slotEnd: selected.end,
@@ -138,6 +144,10 @@ export default function NewCustomerPage() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
+              if (process.env.NEXT_PUBLIC_MAPBOX_TOKEN && !address && !useTyped) {
+                setAddressError(true);
+                return;
+              }
               setStep('schedule');
             }}
             className="space-y-4"
@@ -173,14 +183,36 @@ export default function NewCustomerPage() {
               </p>
             </div>
             <div>
-              <label className="label">Home address</label>
-              <input
-                className="input"
+              <label className="label" htmlFor="address">
+                Home address
+              </label>
+              <AddressInput
+                id="address"
                 value={addressLine1}
-                onChange={(e) => setAddressLine1(e.target.value)}
-                placeholder="123 Main St, Katy, TX"
+                onChange={(v) => {
+                  setAddressLine1(v);
+                  setAddressError(false);
+                }}
+                picked={address}
+                onPick={setAddress}
+                placeholder="Start typing your street address"
                 required
               />
+              {addressError && (
+                <p className="mt-1 text-sm text-red-600">
+                  Please pick your address from the suggestions.{' '}
+                  <button
+                    type="button"
+                    className="font-semibold underline"
+                    onClick={() => {
+                      setUseTyped(true);
+                      setAddressError(false);
+                    }}
+                  >
+                    It's not listed — use what I typed
+                  </button>
+                </p>
+              )}
             </div>
             <button type="submit" className="btn-primary w-full">
               Continue to pick a visit time

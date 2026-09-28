@@ -34,7 +34,7 @@ export default async function AccountHome() {
   const needsPayment = rows.filter((r) => r.invoice?.status === 'SENT');
   const focus = active ?? upcoming[0] ?? past[0];
   const first = (user.name ?? 'there').split(' ')[0];
-  const tracking = focus?.job?.status === 'EN_ROUTE' ? await getTracking(focus.job, focus.booking.addressId) : null;
+  const tracking = focus?.job?.status === 'EN_ROUTE' ? getTracking(focus.job) : null;
 
   return (
     <div className="space-y-8">

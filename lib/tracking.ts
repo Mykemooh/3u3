@@ -15,10 +15,12 @@ import { formatClock } from '@/lib/time';
  *
  * Mapbox usage is kept well inside the free tier (100k directions and 100k
  * geocoding requests a month) by doing every Mapbox call here, on the
- * server, and caching the result: an address is geocoded once, ever, and
- * the route is re-fetched at most once a minute per trip no matter how
- * many people are watching the map. The client's polls only read the
- * database. The one call the browser makes itself is the map load.
+ * server, and caching the result for the trip: the client's address is
+ * geocoded once per trip (kept on the job, and wiped on arrival — Mapbox's
+ * free geocoding allows temporary use only), and the route is re-fetched
+ * at most once a minute no matter how many people are watching the map.
+ * The client's polls only read the database. The one call the browser
+ * makes itself is the map load.
  */
 
 /** Seconds between Directions calls for one trip. */
@@ -52,12 +54,17 @@ export function isValidLngLat(v: unknown): v is LngLat {
   );
 }
 
-/** The client's address as a point, geocoding (and caching) it on first use. */
-async function destinationFor(addressId: string | null): Promise<LngLat | null> {
+type TripJob = Pick<typeof jobs.$inferSelect, 'id' | 'destLat' | 'destLng' | 'routeUpdatedAt'>;
+
+/**
+ * The client's address as a point for this trip: geocoded on first use and
+ * kept on the job until the crew arrives (lib/jobs.ts clears it).
+ */
+async function destinationFor(job: TripJob, addressId: string | null): Promise<LngLat | null> {
+  if (job.destLat != null && job.destLng != null) return { lat: job.destLat, lng: job.destLng };
   if (!addressId) return null;
   const address = (await db.select().from(addresses).where(eq(addresses.id, addressId)).limit(1))[0];
   if (!address) return null;
-  if (address.lat != null && address.lng != null) return { lat: address.lat, lng: address.lng };
 
   const token = serverToken();
   if (!token) return null;
@@ -78,7 +85,7 @@ async function destinationFor(addressId: string | null): Promise<LngLat | null> 
       console.warn(`[tracking] no address match for "${q}" — the live map will show the crew without a route or ETA.`);
       return null;
     }
-    await db.update(addresses).set({ lat, lng }).where(eq(addresses.id, address.id));
+    await db.update(jobs).set({ destLat: lat, destLng: lng }).where(eq(jobs.id, job.id));
     return { lat, lng };
   } catch (err) {
     console.error('[tracking] geocoding failed:', err);
@@ -111,12 +118,12 @@ async function fetchRoute(from: LngLat, to: LngLat) {
  * Store the crew's position, and refresh the cached route when it's stale.
  * Returns the ETA if one is known.
  */
-async function saveLocation(jobId: string, bookingAddressId: string | null, at: LngLat, routeUpdatedAt: Date | null, force = false) {
+async function saveLocation(job: TripJob, bookingAddressId: string | null, at: LngLat, force = false) {
   const now = new Date();
   const patch: Partial<typeof jobs.$inferInsert> = { crewLat: at.lat, crewLng: at.lng, crewLocationAt: now };
-  const stale = !routeUpdatedAt || now.getTime() - routeUpdatedAt.getTime() >= ROUTE_REFRESH_SECONDS * 1000;
+  const stale = !job.routeUpdatedAt || now.getTime() - job.routeUpdatedAt.getTime() >= ROUTE_REFRESH_SECONDS * 1000;
   if (force || stale) {
-    const destination = await destinationFor(bookingAddressId);
+    const destination = await destinationFor(job, bookingAddressId);
     const route = destination ? await fetchRoute(at, destination) : null;
     if (route) {
       patch.routeGeojson = route.geojson;
@@ -124,7 +131,7 @@ async function saveLocation(jobId: string, bookingAddressId: string | null, at: 
       patch.routeUpdatedAt = now;
     }
   }
-  await db.update(jobs).set(patch).where(eq(jobs.id, jobId));
+  await db.update(jobs).set(patch).where(eq(jobs.id, job.id));
   return patch;
 }
 
@@ -146,7 +153,7 @@ export async function startDriving(jobId: string, viewer: Viewer | null, at: Lng
   let etaSeconds: number | null = null;
   if (at) {
     const data = await loadJob(jobId);
-    const saved = await saveLocation(jobId, data?.booking.addressId ?? null, at, null, true);
+    const saved = await saveLocation(job, data?.booking.addressId ?? null, at, true);
     etaSeconds = saved.routeDurationSeconds ?? null;
   }
 
@@ -165,7 +172,7 @@ export async function recordLocation(jobId: string, viewer: Viewer | null, at: L
   // "I've arrived". Tell it to stop rather than storing a position.
   if (job.status !== 'EN_ROUTE') return { tracking: false as const };
   const data = await loadJob(jobId);
-  const saved = await saveLocation(jobId, data?.booking.addressId ?? null, at, job.routeUpdatedAt);
+  const saved = await saveLocation(job, data?.booking.addressId ?? null, at);
   return { tracking: true as const, etaSeconds: saved.routeDurationSeconds ?? job.routeDurationSeconds ?? null };
 }
 
@@ -181,10 +188,14 @@ export type TrackingState =
       etaAt: string | null;
     };
 
-/** What the client's map polls. Callers must already have checked canViewJob. */
-export async function getTracking(job: typeof jobs.$inferSelect, addressId: string | null): Promise<TrackingState> {
+/**
+ * What the client's map polls. Callers must already have checked
+ * canViewJob. Database only: the destination is geocoded by the crew's
+ * location reports (at most once a minute), never by a poll.
+ */
+export function getTracking(job: typeof jobs.$inferSelect): TrackingState {
   if (job.status !== 'EN_ROUTE') return { status: job.status };
-  const destination = await destinationFor(addressId);
+  const destination = job.destLat != null && job.destLng != null ? { lat: job.destLat, lng: job.destLng } : null;
   let route: Extract<TrackingState, { status: 'EN_ROUTE' }>['route'] = null;
   try {
     route = job.routeGeojson ? JSON.parse(job.routeGeojson) : null;

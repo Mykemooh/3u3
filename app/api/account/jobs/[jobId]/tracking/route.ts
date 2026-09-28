@@ -15,7 +15,7 @@ export async function GET(_req: Request, { params }: { params: { jobId: string }
   if (!data || !(await canViewJob(viewer, data.job, data.booking))) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
-  return NextResponse.json(await getTracking(data.job, data.booking.addressId), {
+  return NextResponse.json(getTracking(data.job), {
     headers: { 'Cache-Control': 'no-store' },
   });
 }
