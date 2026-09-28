@@ -54,7 +54,7 @@ export function weekDates(startISO: string): string[] {
 export type ScheduleEntry = {
   bookingId: string;
   jobId?: string;
-  jobStatus?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETE';
+  jobStatus?: 'PENDING' | 'EN_ROUTE' | 'IN_PROGRESS' | 'COMPLETE';
   bookingStatus: 'REQUESTED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
   clientId: string;
   clientName: string;

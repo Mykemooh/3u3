@@ -312,6 +312,21 @@ export function jobCompleteCustomerEmail(input: {
   };
 }
 
+export function crewEnRouteCustomerEmail(input: { name: string; etaLabel: string | null; trackUrl: string }) {
+  return {
+    subject: input.etaLabel ? `Your crew is on the way — arriving around ${input.etaLabel}` : 'Your crew is on the way',
+    html: branded(
+      `<h2 style="margin:0 0 12px;font-size:22px;">On our way, ${esc(input.name.split(' ')[0])}!</h2>
+       <p>Your 3U3 crew has just set off for your home${
+         input.etaLabel ? ` and should arrive around <strong>${esc(input.etaLabel)}</strong>` : ''
+       }. You can follow them on the map until they pull up.</p>
+       ${button(input.trackUrl, 'Track your crew')}
+       <p style="color:#454C57;">Need to tell them something before they arrive? Just reply to this email.</p>`,
+      'Your crew is on the way.',
+    ),
+  };
+}
+
 export function jobCompleteOwnerEmail(input: {
   clientName: string;
   serviceName: string;

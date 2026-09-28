@@ -120,7 +120,7 @@ async function main() {
       id TEXT PRIMARY KEY,
       booking_id TEXT NOT NULL REFERENCES bookings(id),
       crew_id TEXT NOT NULL REFERENCES crews(id),
-      status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','IN_PROGRESS','COMPLETE')),
+      status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','EN_ROUTE','IN_PROGRESS','COMPLETE')),
       started_at TIMESTAMPTZ,
       completed_at TIMESTAMPTZ,
       require_before_photo BOOLEAN NOT NULL DEFAULT true,
@@ -257,6 +257,32 @@ async function main() {
     -- photos (default), skip the before photo, or skip photos entirely.
     ALTER TABLE jobs ADD COLUMN IF NOT EXISTS require_before_photo BOOLEAN NOT NULL DEFAULT true;
     ALTER TABLE jobs ADD COLUMN IF NOT EXISTS no_photos_needed BOOLEAN NOT NULL DEFAULT false;
+
+    -- Cleaner en route + live tracking map. EN_ROUTE sits between PENDING
+    -- and IN_PROGRESS, so the inline CHECK on jobs.status (Postgres names it
+    -- jobs_status_check) is swapped for one that allows it — only when the
+    -- current definition doesn't already, so re-running is a no-op.
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'jobs'::regclass AND conname = 'jobs_status_check'
+          AND pg_get_constraintdef(oid) LIKE '%EN_ROUTE%'
+      ) THEN
+        ALTER TABLE jobs DROP CONSTRAINT IF EXISTS jobs_status_check;
+        ALTER TABLE jobs ADD CONSTRAINT jobs_status_check
+          CHECK (status IN ('PENDING','EN_ROUTE','IN_PROGRESS','COMPLETE'));
+      END IF;
+    END $$;
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS en_route_at TIMESTAMPTZ;
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS crew_lat DOUBLE PRECISION;
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS crew_lng DOUBLE PRECISION;
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS crew_location_at TIMESTAMPTZ;
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS route_geojson TEXT;
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS route_duration_seconds INTEGER;
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS route_updated_at TIMESTAMPTZ;
+    ALTER TABLE addresses ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION;
+    ALTER TABLE addresses ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION;
 
     ALTER TABLE invoices ADD COLUMN IF NOT EXISTS invoice_number INTEGER;
     UPDATE invoices SET invoice_number = numbered.n

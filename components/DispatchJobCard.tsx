@@ -6,6 +6,7 @@ import Link from 'next/link';
 
 const JOB_STATUS_STYLE: Record<string, string> = {
   PENDING: 'bg-surface text-muted',
+  EN_ROUTE: 'bg-blue-100 text-blue-700',
   IN_PROGRESS: 'bg-amber-100 text-amber-700',
   COMPLETE: 'bg-emerald-100 text-emerald-700',
 };

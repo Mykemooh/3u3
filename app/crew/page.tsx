@@ -77,7 +77,8 @@ export default async function CrewHome() {
 
   const rows = await loadRows(crewIds);
   const today = businessTodayISO();
-  const inProgress = rows.filter((r) => r.job.status === 'IN_PROGRESS');
+  // A crew that's driving over counts as in progress: it's the job they're on.
+  const inProgress = rows.filter((r) => r.job.status === 'IN_PROGRESS' || r.job.status === 'EN_ROUTE');
   const todays = rows.filter((r) => r.booking.slotStart.startsWith(today) && r.job.status === 'PENDING');
   const upcoming = rows.filter((r) => r.booking.slotStart.slice(0, 10) > today && r.job.status === 'PENDING');
   const overdue = rows.filter((r) => r.booking.slotStart.slice(0, 10) < today && r.job.status === 'PENDING');
@@ -110,10 +111,11 @@ export default async function CrewHome() {
 function NextJobCard({ row }: { row: Row }) {
   const { job, booking, client, service, address, total, done } = row;
   const started = job.status === 'IN_PROGRESS';
+  const driving = job.status === 'EN_ROUTE';
   return (
     <Link href={`/crew/jobs/${job.id}`} className="block overflow-hidden rounded-2xl bg-ink text-white shadow-card-lg transition hover:-translate-y-0.5">
       <div className="p-6">
-        <p className="text-xs font-bold uppercase tracking-[0.12em] text-gold">{started ? 'Keep going' : 'Up next'}</p>
+        <p className="text-xs font-bold uppercase tracking-[0.12em] text-gold">{started ? 'Keep going' : driving ? 'On the way' : 'Up next'}</p>
         <p className="mt-2 text-2xl font-bold text-white">{client?.name}</p>
         <p className="mt-1 text-white/70">
           {service ? SERVICE_LABELS[service.key] ?? service.name : 'Cleaning'} · {formatSlotLabel(booking.slotStart, booking.slotEnd)}
@@ -129,7 +131,7 @@ function NextJobCard({ row }: { row: Row }) {
         </div>
       </div>
       <div className="flow-line" aria-hidden="true" />
-      <div className="bg-gold px-6 py-3 text-center font-semibold text-white">{started ? 'Open job' : 'Open job and start'}</div>
+      <div className="bg-gold px-6 py-3 text-center font-semibold text-white">{started ? 'Open job' : driving ? "Open job — tap I've arrived" : 'Open job and start'}</div>
     </Link>
   );
 }
@@ -151,10 +153,10 @@ function Section({ title, rows, showDate, muted, tone }: { title: string; rows: 
             </div>
             <span
               className={`pill shrink-0 ${
-                job.status === 'COMPLETE' ? 'bg-emerald-100 text-green' : job.status === 'IN_PROGRESS' ? 'bg-gold/20 text-bronze' : 'bg-surface text-slate'
+                job.status === 'COMPLETE' ? 'bg-emerald-100 text-green' : job.status === 'IN_PROGRESS' || job.status === 'EN_ROUTE' ? 'bg-gold/20 text-bronze' : 'bg-surface text-slate'
               }`}
             >
-              {job.status === 'COMPLETE' ? 'Done' : job.status === 'IN_PROGRESS' ? `${done}/${total}` : 'Not started'}
+              {job.status === 'COMPLETE' ? 'Done' : job.status === 'IN_PROGRESS' ? `${done}/${total}` : job.status === 'EN_ROUTE' ? 'Driving' : 'Not started'}
             </span>
           </Link>
         ))}

@@ -142,10 +142,15 @@ export async function getPipeline(tenantId: string) {
     );
     if (liveCleans.length) {
       const next = liveCleans.slice().sort((a, b) => a.slotStart.localeCompare(b.slotStart))[0];
-      const inProgress = jobByBooking[next.id]?.status === 'IN_PROGRESS';
+      const jobStatus = jobByBooking[next.id]?.status;
       cards.SCHEDULED.push({
         ...base,
-        detail: inProgress ? `In progress · ${whenLabel(next.slotStart)}` : whenLabel(next.slotStart),
+        detail:
+          jobStatus === 'IN_PROGRESS'
+            ? `In progress · ${whenLabel(next.slotStart)}`
+            : jobStatus === 'EN_ROUTE'
+            ? `Crew on the way · ${whenLabel(next.slotStart)}`
+            : whenLabel(next.slotStart),
         amountCents: money(next.priceCents),
         href: '/admin/schedule',
         sortKey: next.slotStart,

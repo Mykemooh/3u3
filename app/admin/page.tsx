@@ -30,7 +30,7 @@ export default async function AdminOverview() {
   const upcomingJobs = cleaning.filter((b) => b.slotEnd >= now && b.status !== 'COMPLETED');
 
   const jobRows = cleaning.length ? await db.select().from(jobs).where(inArray(jobs.bookingId, cleaning.map((b) => b.id))) : [];
-  const inProgress = jobRows.filter((j) => j.status === 'IN_PROGRESS');
+  const inProgress = jobRows.filter((j) => j.status === 'IN_PROGRESS' || j.status === 'EN_ROUTE');
   const drafts = invoiceRows.filter((i) => i.status === 'DRAFT');
   const unpaid = invoiceRows.filter((i) => i.status === 'SENT');
   const clientName = new Map(clients.map((c) => [c.id, c.name]));
@@ -71,7 +71,7 @@ export default async function AdminOverview() {
               return (
                 <li key={j.id} className="flex items-center justify-between gap-3 py-3 text-sm">
                   <span>
-                    <span className="pill mr-2 bg-gold/20 text-bronze">Cleaning now</span>
+                    <span className="pill mr-2 bg-gold/20 text-bronze">{j.status === 'EN_ROUTE' ? 'On the way' : 'Cleaning now'}</span>
                     {b ? clientName.get(b.clientId) : 'Job'}
                   </span>
                   <Link href={`/crew/jobs/${j.id}`} className="font-semibold text-bronze hover:underline">

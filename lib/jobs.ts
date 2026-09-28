@@ -71,7 +71,7 @@ export async function canViewJob(viewer: Viewer | null, job: { crewId: string },
   return canWorkJob(viewer, job);
 }
 
-async function requireWorkable(jobId: string, viewer: Viewer | null) {
+export async function requireWorkable(jobId: string, viewer: Viewer | null) {
   const job = (await db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1))[0];
   if (!job) throw new JobError('Job not found', 404);
   if (!viewer) throw new JobError('Sign in required', 401);
@@ -79,20 +79,35 @@ async function requireWorkable(jobId: string, viewer: Viewer | null) {
   return job;
 }
 
-/** Mark the crew as on site and working. Idempotent. */
+// The crew's live position and route exist only for the drive over (see
+// lib/tracking.ts); they're wiped the moment the crew arrives.
+const CLEAR_TRACKING = {
+  crewLat: null,
+  crewLng: null,
+  crewLocationAt: null,
+  routeGeojson: null,
+  routeDurationSeconds: null,
+  routeUpdatedAt: null,
+};
+
+/**
+ * Mark the crew as on site and working — from PENDING, or from EN_ROUTE
+ * (the crew's "I've arrived" tap), which also ends live tracking.
+ * Idempotent.
+ */
 export async function startJob(jobId: string, viewer: Viewer | null) {
   const job = await requireWorkable(jobId, viewer);
   if (job.status === 'COMPLETE') throw new JobError('This job is already finished', 409);
   if (job.status === 'IN_PROGRESS') return job;
   const startedAt = new Date();
-  await db.update(jobs).set({ status: 'IN_PROGRESS', startedAt }).where(eq(jobs.id, jobId));
-  return { ...job, status: 'IN_PROGRESS' as const, startedAt };
+  await db.update(jobs).set({ status: 'IN_PROGRESS', startedAt, ...CLEAR_TRACKING }).where(eq(jobs.id, jobId));
+  return { ...job, ...CLEAR_TRACKING, status: 'IN_PROGRESS' as const, startedAt };
 }
 
 /** A room the crew can document right now: job started, not yet finished. */
 export async function requireOpenItem(jobId: string, itemId: string, viewer: Viewer | null) {
   const job = await requireWorkable(jobId, viewer);
-  if (job.status === 'PENDING') throw new JobError('Tap "Start job" before adding photos.', 409);
+  if (job.status === 'PENDING' || job.status === 'EN_ROUTE') throw new JobError('Tap "Start job" before adding photos.', 409);
   if (job.status === 'COMPLETE') throw new JobError('This job is finished, so its photos are locked.', 409);
   const item = (await db.select().from(jobChecklistItems).where(eq(jobChecklistItems.id, itemId)).limit(1))[0];
   if (!item || item.jobId !== jobId) throw new JobError('Room not found on this job', 404);
@@ -249,7 +264,7 @@ export async function setSkip(jobId: string, itemId: string, viewer: Viewer | nu
 export async function completeJob(jobId: string, viewer: Viewer | null) {
   const job = await requireWorkable(jobId, viewer);
   if (job.status === 'COMPLETE') return { alreadyComplete: true as const, invoiceId: null };
-  if (job.status === 'PENDING') throw new JobError('Start the job first.', 409);
+  if (job.status === 'PENDING' || job.status === 'EN_ROUTE') throw new JobError('Start the job first.', 409);
 
   const items = await db.select().from(jobChecklistItems).where(eq(jobChecklistItems.jobId, jobId));
   const open = items.filter((i) => i.status === 'PENDING');

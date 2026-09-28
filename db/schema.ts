@@ -1,4 +1,4 @@
-import { pgTable, text, integer, real, boolean, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, real, doublePrecision, boolean, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 
 const id = () => text('id').primaryKey().$defaultFn(() => crypto.randomUUID());
 const timestamps = {
@@ -56,6 +56,12 @@ export const addresses = pgTable('addresses', {
   state: text('state').notNull().default('TX'),
   zip: text('zip'),
   isPrimary: boolean('is_primary').notNull().default(true),
+  // Geocoded once, the first time a crew drives here (lib/tracking.ts), so
+  // the live map's destination pin costs one Mapbox geocoding call per
+  // address, not one per trip. Anything that later edits an address's text
+  // must null these so it's re-geocoded.
+  lat: doublePrecision('lat'),
+  lng: doublePrecision('lng'),
   ...timestamps,
 });
 
@@ -166,7 +172,11 @@ export const jobs = pgTable('jobs', {
   id: id(),
   bookingId: text('booking_id').notNull().references(() => bookings.id),
   crewId: text('crew_id').notNull().references(() => crews.id),
-  status: text('status', { enum: ['PENDING', 'IN_PROGRESS', 'COMPLETE'] }).notNull().default('PENDING'),
+  // PENDING → EN_ROUTE (crew tapped "Start driving") → IN_PROGRESS (on
+  // site, "Start job") → COMPLETE. EN_ROUTE is optional: a crew can go
+  // straight from PENDING to IN_PROGRESS.
+  status: text('status', { enum: ['PENDING', 'EN_ROUTE', 'IN_PROGRESS', 'COMPLETE'] }).notNull().default('PENDING'),
+  enRouteAt: timestamp('en_route_at', { withTimezone: true }),
   startedAt: timestamp('started_at', { withTimezone: true }),
   completedAt: timestamp('completed_at', { withTimezone: true }),
   // Per-job photo policy, admin-editable (CrewJob settings panel): lets a
@@ -175,6 +185,16 @@ export const jobs = pgTable('jobs', {
   // original behavior — before and after both required.
   requireBeforePhoto: boolean('require_before_photo').notNull().default(true),
   noPhotosNeeded: boolean('no_photos_needed').notNull().default(false),
+  // Live tracking while EN_ROUTE — only the crew's latest position is kept,
+  // never a history, and all of it is cleared the moment they arrive.
+  // routeGeojson / routeDurationSeconds are the last Mapbox Directions
+  // result, cached here so the client's map polls the database, not Mapbox.
+  crewLat: doublePrecision('crew_lat'),
+  crewLng: doublePrecision('crew_lng'),
+  crewLocationAt: timestamp('crew_location_at', { withTimezone: true }),
+  routeGeojson: text('route_geojson'),
+  routeDurationSeconds: integer('route_duration_seconds'),
+  routeUpdatedAt: timestamp('route_updated_at', { withTimezone: true }),
   ...timestamps,
 });
 

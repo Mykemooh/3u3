@@ -12,6 +12,8 @@ import { invoices } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import JourneyRail from '@/components/app/JourneyRail';
 import BeforeAfter from '@/components/app/BeforeAfter';
+import LiveTrackingMap from '@/components/app/LiveTrackingMap';
+import { getTracking, publicMapboxToken } from '@/lib/tracking';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +29,7 @@ export default async function JobGallery({ params }: { params: { id: string } })
   // Clients see the photos once the job is finished; staff see them live.
   const showMedia = job.status === 'COMPLETE' || viewer.role !== 'CUSTOMER';
   const serviceName = service ? SERVICE_LABELS[service.key] ?? service.name : 'Cleaning';
+  const tracking = job.status === 'EN_ROUTE' ? await getTracking(job, booking.addressId) : null;
 
   return (
     <div className="space-y-6">
@@ -52,9 +55,13 @@ export default async function JobGallery({ params }: { params: { id: string } })
         )}
       </header>
 
+      {tracking?.status === 'EN_ROUTE' && <LiveTrackingMap jobId={job.id} token={publicMapboxToken()} initial={tracking} />}
+
       {!showMedia ? (
         <p className="card text-slate">
-          {job.status === 'IN_PROGRESS'
+          {job.status === 'EN_ROUTE'
+            ? "Your crew is on the way. Photos of every room will appear here once they've finished."
+            : job.status === 'IN_PROGRESS'
             ? "The crew is working through your home now. Photos of every room will appear here the moment they finish."
             : 'Photos of every room will appear here once your cleaning is done.'}
         </p>
