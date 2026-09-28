@@ -22,5 +22,5 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
 
-  return NextResponse.json({ ok: true, identifier: result.identifier, name: result.name });
+  return NextResponse.json({ ok: true, identifier: result.identifier, name: result.name, role: result.role });
 }

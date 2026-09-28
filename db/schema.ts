@@ -41,6 +41,9 @@ export const users = pgTable('users', {
   // Cleared the moment it's used, so a link only ever works once.
   passwordSetupToken: text('password_setup_token'),
   passwordSetupExpiresAt: timestamp('password_setup_expires_at', { withTimezone: true }),
+  // Last time a "forgot password" link was sent (lib/passwordReset.ts), so
+  // the form can't be used to flood someone's inbox or phone.
+  passwordResetSentAt: timestamp('password_reset_sent_at', { withTimezone: true }),
   ...timestamps,
 }, (t) => ({
   phoneUnique: uniqueIndex('users_phone_unique').on(t.phone),

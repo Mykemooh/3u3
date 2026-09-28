@@ -155,6 +155,11 @@ function SignInInner() {
               onChange={(e) => setPassword(e.target.value)}
               required
             />
+            <p className="mt-1.5 text-right text-xs">
+              <Link href="/forgot" className="font-semibold text-bronze hover:underline">
+                Forgot your username or password?
+              </Link>
+            </p>
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}

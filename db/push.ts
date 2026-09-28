@@ -216,6 +216,7 @@ async function main() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS password_setup_token TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS password_setup_expires_at TIMESTAMPTZ;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_sent_at TIMESTAMPTZ;
     CREATE UNIQUE INDEX IF NOT EXISTS users_password_setup_token_unique ON users(password_setup_token);
 
     -- Job media: one row per before/after photo or video, per room.

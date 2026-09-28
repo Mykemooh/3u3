@@ -4,7 +4,7 @@ import { db } from '@/db/client';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
-const TOKEN_TTL_DAYS = 14;
+const TOKEN_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
 /**
  * Every new client (lead capture or admin-added) gets one of these so they
@@ -12,9 +12,9 @@ const TOKEN_TTL_DAYS = 14;
  * Stored on the user row directly since it's a one-at-a-time, per-account
  * thing, not a log of past invites.
  */
-export async function issuePasswordSetupToken(userId: string) {
+export async function issuePasswordSetupToken(userId: string, ttlMs = TOKEN_TTL_MS) {
   const token = crypto.randomBytes(24).toString('hex');
-  const expiresAt = new Date(Date.now() + TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000);
+  const expiresAt = new Date(Date.now() + ttlMs);
   await db
     .update(users)
     .set({ passwordSetupToken: token, passwordSetupExpiresAt: expiresAt })
@@ -31,10 +31,10 @@ export async function issuePasswordSetupToken(userId: string) {
 export async function setPasswordFromToken(token: string, password: string) {
   const user = (await db.select().from(users).where(eq(users.passwordSetupToken, token)).limit(1))[0];
   if (!user) {
-    return { ok: false as const, error: 'This link is invalid. Ask us to send you a new one.' };
+    return { ok: false as const, error: 'This link is invalid or has already been used.' };
   }
   if (!user.passwordSetupExpiresAt || user.passwordSetupExpiresAt.getTime() < Date.now()) {
-    return { ok: false as const, error: 'This link has expired. Ask us to send you a new one.' };
+    return { ok: false as const, error: 'This link has expired.' };
   }
 
   const passwordHash = bcrypt.hashSync(password, 10);
@@ -43,5 +43,5 @@ export async function setPasswordFromToken(token: string, password: string) {
     .set({ passwordHash, passwordSetupToken: null, passwordSetupExpiresAt: null })
     .where(eq(users.id, user.id));
 
-  return { ok: true as const, identifier: user.phone ?? user.email ?? '', name: user.name };
+  return { ok: true as const, identifier: user.phone ?? user.email ?? '', name: user.name, role: user.role };
 }

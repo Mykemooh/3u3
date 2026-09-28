@@ -394,6 +394,22 @@ export function newBookingOwnerEmail(input: {
  * admin-added client — so they never have to ask the office for a
  * password. The link is good for 14 days (lib/passwordSetup.ts).
  */
+export function passwordResetEmail(input: { name: string; url: string; signInWith: string[] }) {
+  return {
+    subject: 'Reset your 3U3 Cleaning password',
+    html: branded(
+      `<h2 style="margin:0 0 12px;font-size:20px;">Hi ${esc(input.name.split(' ')[0])},</h2>
+       <p>We got a request to help you sign in. You can sign in with ${input.signInWith
+         .map((v) => `<strong>${esc(v)}</strong>`)
+         .join(' or ')}.</p>
+       <p>To choose a new password, use the button below.</p>
+       ${button(input.url, 'Choose a new password')}
+       <p style="color:#6B727E;font-size:13px;">This link works once, for 1 hour. If you didn't ask for this, ignore this email — your password hasn't changed.</p>`,
+      'Your sign-in details and a link to reset your password.',
+    ),
+  };
+}
+
 export function passwordSetupEmail(input: { name: string; url: string }) {
   return {
     subject: 'Set up your 3U3 Cleaning account',
