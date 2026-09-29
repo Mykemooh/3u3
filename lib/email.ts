@@ -312,6 +312,28 @@ export function jobCompleteCustomerEmail(input: {
   };
 }
 
+export function bookingRescheduledCustomerEmail(input: {
+  name: string;
+  serviceName: string;
+  dateLabel: string;
+  timeLabel: string;
+  previousLabel: string;
+  accountUrl: string;
+}) {
+  return {
+    subject: `Your cleaning has moved to ${input.dateLabel}`,
+    html: branded(
+      `<h2 style="margin:0 0 12px;font-size:20px;">A change to your cleaning</h2>
+       <p>Hi ${esc(input.name.split(' ')[0])}, your ${esc(input.serviceName.toLowerCase())} has a new time:</p>
+       <p style="font-size:18px;font-weight:bold;margin:16px 0;">${esc(input.dateLabel)} &middot; ${esc(input.timeLabel)}</p>
+       <p style="color:#6B727E;">Previously: ${esc(input.previousLabel)}</p>
+       ${button(input.accountUrl, 'View your booking')}
+       <p style="color:#454C57;">If the new time doesn't work for you, just reply to this email and we'll sort it out.</p>`,
+      `Your cleaning is now ${input.dateLabel}, ${input.timeLabel}.`,
+    ),
+  };
+}
+
 export function crewEnRouteCustomerEmail(input: { name: string; etaLabel: string | null; trackUrl: string }) {
   return {
     subject: input.etaLabel ? `Your crew is on the way — arriving around ${input.etaLabel}` : 'Your crew is on the way',

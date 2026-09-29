@@ -1,13 +1,11 @@
 import Link from 'next/link';
 import { getTenant } from '@/lib/data';
 import { getWeekSchedule, startOfWeek, shiftWeek } from '@/lib/dispatch';
+import { getEmployees, staffForJobs } from '@/lib/team';
 import { businessTodayISO } from '@/lib/time';
-import DispatchJobCard from '@/components/DispatchJobCard';
+import ScheduleBoard from '@/components/team/ScheduleBoard';
 
-function dayLabel(dateISO: string) {
-  const [y, m, d] = dateISO.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' });
-}
+export const dynamic = 'force-dynamic';
 
 function weekLabel(dates: string[]) {
   const fmt = (iso: string) => {
@@ -17,27 +15,30 @@ function weekLabel(dates: string[]) {
   return `${fmt(dates[0])} – ${fmt(dates[6])}`;
 }
 
-function isToday(dateISO: string) {
-  return dateISO === businessTodayISO();
-}
-
-// The dispatch board: crews down the side, the week across the top. Built
-// by hand rather than pulling in a calendar library — the layout is a
-// 7-column grid, and a dependency would add weight without adding
-// anything this view actually needs.
+// The dispatch board: teams down the side, the week across the top. Job
+// cards drag between teams and days, and open to edit their time and who's
+// on them (components/team/ScheduleBoard.tsx). Built by hand on dnd-kit
+// rather than a calendar library — the layout is a 7-column grid.
 export default async function AdminSchedule({ searchParams }: { searchParams: { week?: string } }) {
   const tenant = await getTenant();
   if (!tenant) return null;
 
   const start = startOfWeek(searchParams.week);
-  const { dates, crews, byCrew, unassigned, quoteVisits } = await getWeekSchedule(tenant.id, start);
-  const crewOptions = crews.map((c) => ({ id: c.id, name: c.name }));
-
-  const totalJobs = crews.reduce(
-    (sum, crew) => sum + dates.reduce((s, d) => s + byCrew[crew.id][d].length, 0),
-    0,
+  const [{ dates, crews, byCrew, unassigned, quoteVisits }, employees] = await Promise.all([
+    getWeekSchedule(tenant.id, start),
+    getEmployees(tenant.id),
+  ]);
+  const entries = [
+    ...crews.flatMap((c) => dates.flatMap((d) => byCrew[c.id][d])),
+    ...dates.flatMap((d) => unassigned[d]),
+    ...dates.flatMap((d) => quoteVisits[d]),
+  ];
+  const staff = await staffForJobs(
+    entries.filter((e) => e.jobId && e.crewId).map((e) => ({ id: e.jobId!, crewId: e.crewId! })),
   );
-  const unassignedCount = dates.reduce((s, d) => s + unassigned[d].length, 0);
+
+  const totalJobs = entries.filter((e) => !e.isQuoteVisit && e.crewId).length;
+  const unassignedCount = entries.filter((e) => !e.isQuoteVisit && !e.crewId).length;
 
   return (
     <div>
@@ -46,15 +47,15 @@ export default async function AdminSchedule({ searchParams }: { searchParams: { 
           <h1 className="text-2xl font-bold text-ink">Schedule</h1>
           <p className="text-slate">
             {totalJobs} {totalJobs === 1 ? 'job' : 'jobs'} this week
-            {unassignedCount > 0 && ` · ${unassignedCount} needing a crew`}
+            {unassignedCount > 0 && ` · ${unassignedCount} needing a team`}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link href={`/admin/schedule?week=${shiftWeek(start, -1)}`} className="btn-secondary !px-4 !py-2 text-sm">
+          <Link href={`/admin/schedule?week=${shiftWeek(start, -1)}`} className="btn-secondary !px-4 !py-2 text-sm" aria-label="Previous week">
             ←
           </Link>
           <span className="min-w-[150px] text-center text-sm font-semibold text-ink">{weekLabel(dates)}</span>
-          <Link href={`/admin/schedule?week=${shiftWeek(start, 1)}`} className="btn-secondary !px-4 !py-2 text-sm">
+          <Link href={`/admin/schedule?week=${shiftWeek(start, 1)}`} className="btn-secondary !px-4 !py-2 text-sm" aria-label="Next week">
             →
           </Link>
           <Link href="/admin/schedule" className="ml-1 text-sm text-muted hover:text-ink">
@@ -63,109 +64,18 @@ export default async function AdminSchedule({ searchParams }: { searchParams: { 
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <div className="min-w-[900px]">
-          <div className="grid grid-cols-[120px_repeat(7,1fr)] gap-2">
-            <div />
-            {dates.map((date) => (
-              <div
-                key={date}
-                className={`rounded-lg px-2 py-1.5 text-center text-sm font-semibold ${
-                  isToday(date) ? 'bg-gold/20 text-bronze' : 'text-slate'
-                }`}
-              >
-                {dayLabel(date)}
-              </div>
-            ))}
-
-            {crews.map((crew) => (
-              <div key={crew.id} className="contents">
-                <div className="flex items-center pr-2 text-sm font-semibold text-ink">{crew.name}</div>
-                {dates.map((date) => (
-                  <div
-                    key={date}
-                    className={`min-h-[90px] space-y-2 rounded-xl border border-line p-1.5 ${
-                      isToday(date) ? 'bg-gold/5' : 'bg-surface'
-                    }`}
-                  >
-                    {byCrew[crew.id][date].map((entry) => (
-                      <DispatchJobCard
-                        key={entry.bookingId}
-                        bookingId={entry.bookingId}
-                        clientId={entry.clientId}
-                        clientName={entry.clientName}
-                        serviceName={entry.serviceName}
-                        slotStart={entry.slotStart}
-                        slotEnd={entry.slotEnd}
-                        addressLine={entry.addressLine}
-                        jobStatus={entry.jobStatus}
-                        crewId={entry.crewId}
-                        crews={crewOptions}
-                      />
-                    ))}
-                  </div>
-                ))}
-              </div>
-            ))}
-
-            {unassignedCount > 0 && (
-              <div className="contents">
-                <div className="flex items-center pr-2 text-sm font-semibold text-amber-700">Needs a crew</div>
-                {dates.map((date) => (
-                  <div
-                    key={date}
-                    className="min-h-[70px] space-y-2 rounded-xl border border-amber-200 bg-amber-50/60 p-1.5"
-                  >
-                    {unassigned[date].map((entry) => (
-                      <DispatchJobCard
-                        key={entry.bookingId}
-                        bookingId={entry.bookingId}
-                        clientId={entry.clientId}
-                        clientName={entry.clientName}
-                        serviceName={entry.serviceName}
-                        slotStart={entry.slotStart}
-                        slotEnd={entry.slotEnd}
-                        addressLine={entry.addressLine}
-                        jobStatus={entry.jobStatus}
-                        crewId={entry.crewId}
-                        crews={crewOptions}
-                      />
-                    ))}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="contents">
-              <div className="flex items-center pr-2 text-sm font-semibold text-muted">Quote visits</div>
-              {dates.map((date) => (
-                <div
-                  key={date}
-                  className={`min-h-[70px] space-y-2 rounded-xl border border-dashed border-line p-1.5 ${
-                    isToday(date) ? 'bg-gold/5' : ''
-                  }`}
-                >
-                  {quoteVisits[date].map((entry) => (
-                    <Link
-                      key={entry.bookingId}
-                      href={`/admin/leads`}
-                      className="block rounded-xl border border-line bg-white p-2 text-xs hover:border-gold"
-                    >
-                      <span className="font-semibold text-ink">{entry.slotStart.split('T')[1].slice(0, 5)}</span>
-                      <p className="font-medium text-ink">{entry.clientName}</p>
-                      {entry.addressLine && <p className="truncate text-muted">{entry.addressLine}</p>}
-                    </Link>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
+      <ScheduleBoard
+        dates={dates}
+        today={businessTodayISO()}
+        teams={crews.map((c) => ({ id: c.id, name: c.name }))}
+        cards={entries.map((e) => ({ ...e, staff: e.jobId ? staff[e.jobId] ?? [] : [] }))}
+        people={employees.map((e) => ({ id: e.id, name: e.name, staffRole: e.staffRole, crewId: e.crewId }))}
+      />
 
       <p className="mt-6 text-sm text-muted">
-        Quote visits are your own calendar, not crew capacity — that's why they sit on their own row. Moving a job
-        to a crew that's already busy at that time is refused, the same as when a customer books.
+        Quote visits are your own calendar, not team capacity — that's why they sit on their own row. Moving a job onto a
+        team that's already busy at that time is refused, the same as when a customer books. Jobs that have started can't
+        move.
       </p>
     </div>
   );

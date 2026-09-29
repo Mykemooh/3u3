@@ -1,7 +1,7 @@
 import { db } from '@/db/client';
 import { jobs, addresses } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { JobError, loadJob, requireWorkable, type Viewer } from '@/lib/jobs';
+import { JobError, loadJob, requireLead, type Viewer } from '@/lib/jobs';
 import { logNotification } from '@/lib/bookings';
 import { sendEmail, crewEnRouteCustomerEmail } from '@/lib/email';
 import { appUrl } from '@/lib/url';
@@ -142,7 +142,7 @@ async function saveLocation(job: TripJob, bookingAddressId: string | null, at: L
  * the notification can carry an ETA from the start.
  */
 export async function startDriving(jobId: string, viewer: Viewer | null, at: LngLat | null) {
-  const job = await requireWorkable(jobId, viewer);
+  const job = await requireLead(jobId, viewer);
   if (job.status === 'COMPLETE') throw new JobError('This job is already finished', 409);
   if (job.status === 'IN_PROGRESS') throw new JobError('This job has already started', 409);
   if (job.status === 'EN_ROUTE') return { status: job.status, enRouteAt: job.enRouteAt };
@@ -167,7 +167,8 @@ export async function startDriving(jobId: string, viewer: Viewer | null, at: Lng
 
 /** A position report from the crew's phone while en route. */
 export async function recordLocation(jobId: string, viewer: Viewer | null, at: LngLat) {
-  const job = await requireWorkable(jobId, viewer);
+  // Only the lead's phone reports, so the client sees one dot, not one per cleaner.
+  const job = await requireLead(jobId, viewer);
   // Not an error: the phone may send one last report after the crew taps
   // "I've arrived". Tell it to stop rather than storing a position.
   if (job.status !== 'EN_ROUTE') return { tracking: false as const };

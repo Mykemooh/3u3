@@ -1,7 +1,8 @@
 import { db } from '@/db/client';
 import { jobs, jobChecklistItems, jobMedia, bookings, users, serviceTypes, addresses } from '@/db/schema';
 import { and, eq, isNull } from 'drizzle-orm';
-import { getCrewForUser, getOwnerEmail } from '@/lib/data';
+import { getOwnerEmail } from '@/lib/data';
+import { isOnJob, canLeadJob } from '@/lib/team';
 import { createDraftInvoiceForBooking } from '@/lib/invoices';
 import { logNotification } from '@/lib/bookings';
 import { sendEmail, jobCompleteCustomerEmail, jobCompleteOwnerEmail } from '@/lib/email';
@@ -55,17 +56,23 @@ export async function loadJob(jobId: string) {
   return { job, booking, client, service, address, items, media };
 }
 
-/** Crew on this job's crew, or an admin. */
-export async function canWorkJob(viewer: Viewer | null, job: { crewId: string }) {
+/** A cleaner on this job (its team, or swapped onto it), or an admin. */
+export async function canWorkJob(viewer: Viewer | null, job: { id: string; crewId: string }) {
   if (!viewer) return false;
   if (viewer.role === 'ADMIN') return true;
   if (viewer.role !== 'CLEANER') return false;
-  const crew = await getCrewForUser(viewer.id);
-  return !!crew && crew.id === job.crewId;
+  return isOnJob(viewer.id, job);
+}
+
+/** Whether this viewer runs the job's trip and finish: an admin, or its Team Lead (lib/team.ts). */
+export async function canLead(viewer: Viewer | null, job: { id: string; crewId: string }) {
+  if (!viewer) return false;
+  if (viewer.role === 'ADMIN') return true;
+  return viewer.role === 'CLEANER' && canLeadJob(viewer.id, job);
 }
 
 /** Anyone who may look at the job: its crew, an admin, or the client it's for. */
-export async function canViewJob(viewer: Viewer | null, job: { crewId: string }, booking: { clientId: string }) {
+export async function canViewJob(viewer: Viewer | null, job: { id: string; crewId: string }, booking: { clientId: string }) {
   if (!viewer) return false;
   if (viewer.role === 'CUSTOMER') return booking.clientId === viewer.id;
   return canWorkJob(viewer, job);
@@ -75,7 +82,14 @@ export async function requireWorkable(jobId: string, viewer: Viewer | null) {
   const job = (await db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1))[0];
   if (!job) throw new JobError('Job not found', 404);
   if (!viewer) throw new JobError('Sign in required', 401);
-  if (!(await canWorkJob(viewer, job))) throw new JobError('This job is assigned to another crew', 403);
+  if (!(await canWorkJob(viewer, job))) throw new JobError("You're not on this job", 403);
+  return job;
+}
+
+/** requireWorkable, plus: only the Team Lead (or an admin) — for the trip and the finish. */
+export async function requireLead(jobId: string, viewer: Viewer | null) {
+  const job = await requireWorkable(jobId, viewer);
+  if (!(await canLead(viewer, job))) throw new JobError('Only the Team Lead on this job can do that.', 403);
   return job;
 }
 
@@ -98,7 +112,7 @@ const CLEAR_TRACKING = {
  * Idempotent.
  */
 export async function startJob(jobId: string, viewer: Viewer | null) {
-  const job = await requireWorkable(jobId, viewer);
+  const job = await requireLead(jobId, viewer);
   if (job.status === 'COMPLETE') throw new JobError('This job is already finished', 409);
   if (job.status === 'IN_PROGRESS') return job;
   const startedAt = new Date();
@@ -264,7 +278,7 @@ export async function setSkip(jobId: string, itemId: string, viewer: Viewer | nu
  * block completion — a failed email is logged, not fatal.
  */
 export async function completeJob(jobId: string, viewer: Viewer | null) {
-  const job = await requireWorkable(jobId, viewer);
+  const job = await requireLead(jobId, viewer);
   if (job.status === 'COMPLETE') return { alreadyComplete: true as const, invoiceId: null };
   if (job.status === 'PENDING' || job.status === 'EN_ROUTE') throw new JobError('Start the job first.', 409);
 

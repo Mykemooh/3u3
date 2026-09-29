@@ -38,6 +38,8 @@ type Props = {
   perPhase: number;
   videoSeconds: number;
   isAdmin: boolean;
+  /** Team Lead (or admin): starts the trip, marks arrival, finishes. */
+  canLead: boolean;
 };
 
 type Upload = { key: string; itemId: string; phase: Phase; kind: Kind; progress: number };
@@ -62,7 +64,8 @@ export default function CrewJob(props: Props) {
   const allDone = done === items.length && items.length > 0;
   const open = status === 'IN_PROGRESS';
   const notStarted = status === 'PENDING' || status === 'EN_ROUTE';
-  const { status: location, detail: locationDetail } = useLocationReporter(props.job.id, status === 'EN_ROUTE');
+  // Only the lead's phone shares its location — one dot on the client's map.
+  const { status: location, detail: locationDetail } = useLocationReporter(props.job.id, status === 'EN_ROUTE' && props.canLead);
 
   const steps = useMemo(
     () => [
@@ -298,7 +301,19 @@ export default function CrewJob(props: Props) {
         </section>
       )}
 
-      {status === 'EN_ROUTE' && (
+      {!props.canLead && (status === 'PENDING' || status === 'EN_ROUTE') && (
+        <p className="rounded-xl bg-cream px-4 py-3 text-sm text-bronze">
+          {status === 'EN_ROUTE' ? (
+            <>Your Team Lead is driving over and sharing the trip with the client.</>
+          ) : (
+            <>
+              Your <strong>Team Lead</strong> starts the trip and the job. Once they have, you can add photos here.
+            </>
+          )}
+        </p>
+      )}
+
+      {status === 'EN_ROUTE' && props.canLead && (
         <p className="rounded-xl bg-cream px-4 py-3 text-sm text-bronze" aria-live="polite">
           {location === 'denied' ? (
             <>
@@ -321,7 +336,7 @@ export default function CrewJob(props: Props) {
         </p>
       )}
 
-      {status === 'PENDING' && (
+      {status === 'PENDING' && props.canLead && (
         <p className="rounded-xl bg-cream px-4 py-3 text-sm text-bronze">
           Tap <strong>Start driving</strong> when you leave — the client gets a heads-up and can follow you on a map.{' '}
           {policy.noPhotosNeeded ? (
@@ -367,7 +382,7 @@ export default function CrewJob(props: Props) {
         ))}
       </div>
 
-      {status !== 'COMPLETE' && (
+      {status !== 'COMPLETE' && (props.canLead || status === 'IN_PROGRESS') && (
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 backdrop-blur" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
           <div className="mx-auto max-w-xl px-5 py-3 md:max-w-3xl">
             {status === 'PENDING' ? (
@@ -400,13 +415,19 @@ export default function CrewJob(props: Props) {
                 <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-line">
                   <div className="journey-fill h-full rounded-full bg-gold" style={{ width: `${items.length ? (done / items.length) * 100 : 0}%` }} />
                 </div>
-                <button onClick={finish} disabled={!allDone || busy === 'finish' || uploads.length > 0} className="btn-dark w-full">
-                  {busy === 'finish'
-                    ? 'Finishing…'
-                    : allDone
-                    ? 'Finish job and notify client'
-                    : `${items.length - done} room${items.length - done === 1 ? '' : 's'} to go`}
-                </button>
+                {props.canLead ? (
+                  <button onClick={finish} disabled={!allDone || busy === 'finish' || uploads.length > 0} className="btn-dark w-full">
+                    {busy === 'finish'
+                      ? 'Finishing…'
+                      : allDone
+                      ? 'Finish job and notify client'
+                      : `${items.length - done} room${items.length - done === 1 ? '' : 's'} to go`}
+                  </button>
+                ) : (
+                  <p className="text-center text-sm font-semibold text-slate">
+                    {allDone ? 'All rooms done — your Team Lead will finish the job.' : `${items.length - done} room${items.length - done === 1 ? '' : 's'} to go`}
+                  </p>
+                )}
               </>
             )}
           </div>

@@ -31,6 +31,10 @@ export const users = pgTable('users', {
   id: id(),
   tenantId: text('tenant_id').notNull().references(() => tenants.id),
   role: text('role', { enum: ['CUSTOMER', 'CLEANER', 'ADMIN'] }).notNull(),
+  // Job title for CLEANER users. A Team Lead is the one who starts the
+  // trip and finishes the job (lib/team.ts canLeadJob); the others open
+  // jobs and document rooms. Null for customers and admins.
+  staffRole: text('staff_role', { enum: ['TEAM_LEAD', 'CLEANER', 'JR_CLEANER'] }),
   name: text('name').notNull(),
   phone: text('phone'),
   email: text('email'),
@@ -101,6 +105,9 @@ export const crews = pgTable('crews', {
   workEndMinutes: integer('work_end_minutes').notNull().default(17 * 60), // 5:00 PM
   homesPerDay: integer('homes_per_day').notNull().default(3),
   commuteBufferMinutes: integer('commute_buffer_minutes').notNull().default(45),
+  // Whether customers can book this team online. Teams created from the
+  // Team page start switched off, so an empty team never opens slots.
+  acceptsBookings: boolean('accepts_bookings').notNull().default(true),
   ...timestamps,
 });
 
@@ -198,6 +205,22 @@ export const jobs = pgTable('jobs', {
   routeUpdatedAt: timestamp('route_updated_at', { withTimezone: true }),
   ...timestamps,
 });
+
+// ---------------------------------------------------------------------------
+// Per-job staffing swaps. A job is staffed by its team's members by
+// default; ADD puts someone from elsewhere on this one job, REMOVE takes a
+// team member off it. No rows = the team as-is. Cleared when the job moves
+// to a different team (lib/dispatch.ts).
+// ---------------------------------------------------------------------------
+export const jobStaff = pgTable('job_staff', {
+  id: id(),
+  jobId: text('job_id').notNull().references(() => jobs.id),
+  userId: text('user_id').notNull().references(() => users.id),
+  action: text('action', { enum: ['ADD', 'REMOVE'] }).notNull(),
+  ...timestamps,
+}, (t) => ({
+  jobUserUnique: uniqueIndex('job_staff_job_user_unique').on(t.jobId, t.userId),
+}));
 
 export const jobChecklistItems = pgTable('job_checklist_items', {
   id: id(),

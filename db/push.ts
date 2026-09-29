@@ -292,6 +292,20 @@ async function main() {
     ALTER TABLE addresses ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION;
     UPDATE addresses SET lat = NULL, lng = NULL WHERE lat IS NOT NULL OR lng IS NOT NULL;
 
+    -- Teams: roles, online-booking switch, per-job staffing swaps.
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS staff_role TEXT
+      CHECK (staff_role IN ('TEAM_LEAD','CLEANER','JR_CLEANER'));
+    UPDATE users SET staff_role = 'CLEANER' WHERE role = 'CLEANER' AND staff_role IS NULL;
+    ALTER TABLE crews ADD COLUMN IF NOT EXISTS accepts_bookings BOOLEAN NOT NULL DEFAULT true;
+    CREATE TABLE IF NOT EXISTS job_staff (
+      id TEXT PRIMARY KEY,
+      job_id TEXT NOT NULL REFERENCES jobs(id),
+      user_id TEXT NOT NULL REFERENCES users(id),
+      action TEXT NOT NULL CHECK (action IN ('ADD','REMOVE')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS job_staff_job_user_unique ON job_staff(job_id, user_id);
+
     ALTER TABLE invoices ADD COLUMN IF NOT EXISTS invoice_number INTEGER;
     UPDATE invoices SET invoice_number = numbered.n
       FROM (

@@ -138,7 +138,7 @@ async function main() {
 
   // Cleaner user, linked to the crew
   const cleaner = await upsertUser({
-    id: crypto.randomUUID(), tenantId: tenant.id, role: 'CLEANER', name: 'Jordan (Crew Lead)',
+    id: crypto.randomUUID(), tenantId: tenant.id, role: 'CLEANER', staffRole: 'TEAM_LEAD', name: 'Jordan (Crew Lead)',
     email: 'jordan@3u3cleaning.com', phone: '+12815550101', passwordHash: bcrypt.hashSync('clean123', 10),
   });
   const existingMemberships = await db.select().from(crewMembers).where(eq(crewMembers.crewId, crew.id));

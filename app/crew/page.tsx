@@ -7,6 +7,7 @@ import { bookings, users, serviceTypes, jobs, jobChecklistItems, addresses, crew
 import { eq, inArray } from 'drizzle-orm';
 import { getCrewForUser, getTenant, SERVICE_LABELS } from '@/lib/data';
 import { homeForRole } from '@/lib/nav';
+import { jobIdsForEmployee } from '@/lib/team';
 import { businessTodayISO } from '@/lib/time';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 import AppShell, { CREW_TABS } from '@/components/app/AppShell';
@@ -16,9 +17,7 @@ export const dynamic = 'force-dynamic';
 
 type Row = Awaited<ReturnType<typeof loadRows>>[number];
 
-async function loadRows(crewIds: string[]) {
-  if (crewIds.length === 0) return [];
-  const myJobs = await db.select().from(jobs).where(inArray(jobs.crewId, crewIds));
+async function loadRows(myJobs: (typeof jobs.$inferSelect)[]) {
   if (myJobs.length === 0) return [];
   const bookingRows = await db.select().from(bookings).where(inArray(bookings.id, myJobs.map((j) => j.bookingId)));
   const clientRows = bookingRows.length
@@ -58,24 +57,26 @@ export default async function CrewHome() {
   // open, so the page decides. Admins may look; customers may not.
   if (role !== 'CLEANER' && role !== 'ADMIN') redirect(`${homeForRole(role)}?denied=1`);
 
-  let crewIds: string[] = [];
+  let myJobs: (typeof jobs.$inferSelect)[] = [];
   if (role === 'CLEANER') {
-    const crew = await getCrewForUser(userId);
-    if (!crew) {
+    // Their team's jobs they weren't taken off, plus any they were added to.
+    const ids = await jobIdsForEmployee(userId);
+    if (ids.length === 0 && !(await getCrewForUser(userId))) {
       return (
         <AppShell name={session.user.name} tabs={CREW_TABS} homeHref="/crew">
-          <div className="card text-slate">You're not on a crew yet. Ask the office to add you, then sign in again.</div>
+          <div className="card text-slate">You're not on a team yet. Ask the office to add you, then sign in again.</div>
         </AppShell>
       );
     }
-    crewIds = [crew.id];
+    myJobs = ids.length ? await db.select().from(jobs).where(inArray(jobs.id, ids)) : [];
   } else {
-    // Admins see every crew's jobs here — this is their "jobs" view too.
+    // Admins see every team's jobs here — this is their "jobs" view too.
     const tenant = await getTenant();
-    crewIds = tenant ? (await db.select().from(crews).where(eq(crews.tenantId, tenant.id))).map((c) => c.id) : [];
+    const crewIds = tenant ? (await db.select().from(crews).where(eq(crews.tenantId, tenant.id))).map((c) => c.id) : [];
+    myJobs = crewIds.length ? await db.select().from(jobs).where(inArray(jobs.crewId, crewIds)) : [];
   }
 
-  const rows = await loadRows(crewIds);
+  const rows = await loadRows(myJobs);
   const today = businessTodayISO();
   // A crew that's driving over counts as in progress: it's the job they're on.
   const inProgress = rows.filter((r) => r.job.status === 'IN_PROGRESS' || r.job.status === 'EN_ROUTE');
