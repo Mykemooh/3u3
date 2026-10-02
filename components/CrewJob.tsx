@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import JourneyRail from '@/components/app/JourneyRail';
 import { uploadMedia, type Kind, type Phase } from '@/lib/clientUpload';
+import { useLocationReporter, currentPosition } from '@/lib/useLocationReporter';
 
 export type CrewMedia = {
   id: string;
@@ -22,7 +23,7 @@ export type CrewItem = {
   skipReason: string | null;
 };
 
-type JobStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETE';
+type JobStatus = 'PENDING' | 'EN_ROUTE' | 'IN_PROGRESS' | 'COMPLETE';
 
 type PhotoPolicy = { requireBeforePhoto: boolean; noPhotosNeeded: boolean };
 
@@ -37,6 +38,8 @@ type Props = {
   perPhase: number;
   videoSeconds: number;
   isAdmin: boolean;
+  /** Team Lead (or admin): starts the trip, marks arrival, finishes. */
+  canLead: boolean;
 };
 
 type Upload = { key: string; itemId: string; phase: Phase; kind: Kind; progress: number };
@@ -48,9 +51,11 @@ export default function CrewJob(props: Props) {
   const [items, setItems] = useState(props.items);
   const [media, setMedia] = useState(props.media);
   const [uploads, setUploads] = useState<Upload[]>([]);
-  const [busy, setBusy] = useState<'start' | 'finish' | null>(null);
+  const [busy, setBusy] = useState<'drive' | 'start' | 'finish' | null>(null);
   const [error, setError] = useState('');
   const [finished, setFinished] = useState<{ invoiceId: string | null } | null>(null);
+  const [showDirections, setShowDirections] = useState(false);
+  const [addressCopied, setAddressCopied] = useState(false);
   const [policy, setPolicy] = useState<PhotoPolicy>({
     requireBeforePhoto: props.job.requireBeforePhoto,
     noPhotosNeeded: props.job.noPhotosNeeded,
@@ -60,13 +65,20 @@ export default function CrewJob(props: Props) {
   const done = items.filter((i) => i.status !== 'PENDING').length;
   const allDone = done === items.length && items.length > 0;
   const open = status === 'IN_PROGRESS';
+  const notStarted = status === 'PENDING' || status === 'EN_ROUTE';
+  // Only the lead's phone shares its location — one dot on the client's map.
+  const { status: location, detail: locationDetail } = useLocationReporter(props.job.id, status === 'EN_ROUTE' && props.canLead);
 
   const steps = useMemo(
     () => [
-      { label: 'Start', state: status === 'PENDING' ? ('current' as const) : ('done' as const), detail: startedLabel ?? undefined },
+      {
+        label: 'Start',
+        state: notStarted ? ('current' as const) : ('done' as const),
+        detail: status === 'EN_ROUTE' ? 'Driving' : startedLabel ?? undefined,
+      },
       {
         label: 'Rooms',
-        state: status === 'PENDING' ? ('todo' as const) : status === 'COMPLETE' || allDone ? ('done' as const) : ('current' as const),
+        state: notStarted ? ('todo' as const) : status === 'COMPLETE' || allDone ? ('done' as const) : ('current' as const),
         detail: `${done}/${items.length}`,
       },
       {
@@ -75,12 +87,30 @@ export default function CrewJob(props: Props) {
         detail: props.job.completedLabel ?? undefined,
       },
     ],
-    [status, startedLabel, done, items.length, allDone, open, props.job.completedLabel],
+    [status, notStarted, startedLabel, done, items.length, allDone, open, props.job.completedLabel],
   );
 
   function applyItem(updated: CrewItem | null | undefined) {
     if (!updated) return;
     setItems((prev) => prev.map((i) => (i.id === updated.id ? { ...i, status: updated.status, skipReason: updated.skipReason } : i)));
+  }
+
+  // Leaving for the job: EN_ROUTE, and the client is emailed that the crew
+  // is on the way. The phone's position goes with it (if it gives one in a
+  // few seconds) so that email can carry an ETA.
+  async function startDriving() {
+    setBusy('drive');
+    setError('');
+    const at = await currentPosition();
+    const res = await fetch(`/api/crew/jobs/${props.job.id}/en-route`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(at ?? {}),
+    });
+    const data = await res.json().catch(() => ({}));
+    setBusy(null);
+    if (!res.ok) return setError(data.error || 'Could not start driving.');
+    setStatus('EN_ROUTE');
   }
 
   async function start() {
@@ -177,9 +207,25 @@ export default function CrewJob(props: Props) {
     router.refresh();
   }
 
-  const mapsUrl = props.addressLabel
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(props.addressLabel)}`
-    : null;
+  const address = props.addressLabel;
+  const directionLinks = address
+    ? [
+        { label: 'Google Maps', href: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}` },
+        { label: 'Apple Maps', href: `https://maps.apple.com/?q=${encodeURIComponent(address)}` },
+        { label: 'Waze', href: `https://waze.com/ul?q=${encodeURIComponent(address)}&navigate=yes` },
+      ]
+    : [];
+
+  async function copyAddress() {
+    if (!address) return;
+    try {
+      await navigator.clipboard.writeText(address);
+      setAddressCopied(true);
+      setTimeout(() => setAddressCopied(false), 1500);
+    } catch {
+      // Clipboard access can be denied; the sheet still shows the address to copy by hand.
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -196,11 +242,11 @@ export default function CrewJob(props: Props) {
           {props.addressLabel && <p className="text-slate">{props.addressLabel}</p>}
         </div>
         <div className="grid grid-cols-3 gap-2">
-          {mapsUrl ? (
-            <a href={mapsUrl} target="_blank" rel="noreferrer" className="quick-action">
+          {address ? (
+            <button type="button" onClick={() => setShowDirections(true)} className="quick-action">
               <Icon d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21Zm0-9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" />
               Directions
-            </a>
+            </button>
           ) : (
             <span className="quick-action opacity-40">No address</span>
           )}
@@ -273,19 +319,55 @@ export default function CrewJob(props: Props) {
         </section>
       )}
 
-      {status === 'PENDING' && (
+      {!props.canLead && (status === 'PENDING' || status === 'EN_ROUTE') && (
         <p className="rounded-xl bg-cream px-4 py-3 text-sm text-bronze">
-          {policy.noPhotosNeeded ? (
+          {status === 'EN_ROUTE' ? (
+            <>Your Team Lead is driving over and sharing the trip with the client.</>
+          ) : (
             <>
-              Tap <strong>Start job</strong> when the crew is on site. No pictures are needed for this job — just mark each room done as you finish it.
+              Your <strong>Team Lead</strong> starts the trip and the job. Once they have, you can add photos here.
             </>
-          ) : policy.requireBeforePhoto ? (
+          )}
+        </p>
+      )}
+
+      {status === 'EN_ROUTE' && props.canLead && (
+        <p className="rounded-xl bg-cream px-4 py-3 text-sm text-bronze" aria-live="polite">
+          {location === 'denied' ? (
             <>
-              Tap <strong>Start job</strong> when the crew is on site. Then take a before photo of each room first, and an after photo when it's done.
+              <strong>Location is blocked</strong> for this site, so the client can't see you on the map. Allow location in your browser settings, then
+              reload this page. They've still been told you're on the way.
+            </>
+          ) : location === 'unavailable' ? (
+            <>
+              <strong>Can't get your location right now</strong>, so the client's map isn't updating — we'll keep trying. They've still been told
+              you're on the way. On a phone, check Location is on. On a Mac, turn on your browser in System Settings → Privacy &amp; Security →
+              Location Services.
+              {locationDetail && <span className="mt-1 block text-xs opacity-80">Browser said: {locationDetail}</span>}
             </>
           ) : (
             <>
-              Tap <strong>Start job</strong> when the crew is on site. Then take an after photo of each room when it's done — a before photo is optional.
+              <strong>The client has been told you're on the way</strong> and can follow you on a map. Keep this page open with the screen on while you
+              drive. Tap <strong>I've arrived</strong> when you pull up.
+            </>
+          )}
+        </p>
+      )}
+
+      {status === 'PENDING' && props.canLead && (
+        <p className="rounded-xl bg-cream px-4 py-3 text-sm text-bronze">
+          Tap <strong>Start driving</strong> when you leave — the client gets a heads-up and can follow you on a map.{' '}
+          {policy.noPhotosNeeded ? (
+            <>
+              No pictures are needed for this job — just mark each room done as you finish it.
+            </>
+          ) : policy.requireBeforePhoto ? (
+            <>
+              On site, take a before photo of each room first, and an after photo when it's done.
+            </>
+          ) : (
+            <>
+              On site, take an after photo of each room when it's done — a before photo is optional.
             </>
           )}
         </p>
@@ -318,13 +400,28 @@ export default function CrewJob(props: Props) {
         ))}
       </div>
 
-      {status !== 'COMPLETE' && (
+      {status !== 'COMPLETE' && (props.canLead || status === 'IN_PROGRESS') && (
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 backdrop-blur" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
           <div className="mx-auto max-w-xl px-5 py-3 md:max-w-3xl">
             {status === 'PENDING' ? (
-              <button onClick={start} disabled={busy === 'start'} className="btn-primary w-full">
-                {busy === 'start' ? 'Starting…' : 'Start job'}
-              </button>
+              <div className="flex gap-2">
+                <button onClick={startDriving} disabled={busy !== null} className="btn-primary flex-1">
+                  {busy === 'drive' ? 'Letting the client know…' : 'Start driving'}
+                </button>
+                <button onClick={start} disabled={busy !== null} className="btn-secondary">
+                  {busy === 'start' ? 'Starting…' : 'Already here'}
+                </button>
+              </div>
+            ) : status === 'EN_ROUTE' ? (
+              <>
+                <p className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate">
+                  <span className={`h-2 w-2 rounded-full ${location === 'sharing' ? 'bg-green' : 'bg-amber-500'}`} aria-hidden="true" />
+                  {location === 'sharing' ? 'Sharing your location with the client' : location === 'locating' ? 'Finding your location…' : 'Location not shared'}
+                </p>
+                <button onClick={start} disabled={busy === 'start'} className="btn-primary w-full">
+                  {busy === 'start' ? 'Starting…' : "I've arrived — start job"}
+                </button>
+              </>
             ) : (
               <>
                 <div className="mb-2 flex items-center justify-between text-xs font-semibold text-slate">
@@ -336,15 +433,59 @@ export default function CrewJob(props: Props) {
                 <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-line">
                   <div className="journey-fill h-full rounded-full bg-gold" style={{ width: `${items.length ? (done / items.length) * 100 : 0}%` }} />
                 </div>
-                <button onClick={finish} disabled={!allDone || busy === 'finish' || uploads.length > 0} className="btn-dark w-full">
-                  {busy === 'finish'
-                    ? 'Finishing…'
-                    : allDone
-                    ? 'Finish job and notify client'
-                    : `${items.length - done} room${items.length - done === 1 ? '' : 's'} to go`}
-                </button>
+                {props.canLead ? (
+                  <button onClick={finish} disabled={!allDone || busy === 'finish' || uploads.length > 0} className="btn-dark w-full">
+                    {busy === 'finish'
+                      ? 'Finishing…'
+                      : allDone
+                      ? 'Finish job and notify client'
+                      : `${items.length - done} room${items.length - done === 1 ? '' : 's'} to go`}
+                  </button>
+                ) : (
+                  <p className="text-center text-sm font-semibold text-slate">
+                    {allDone ? 'All rooms done — your Team Lead will finish the job.' : `${items.length - done} room${items.length - done === 1 ? '' : 's'} to go`}
+                  </p>
+                )}
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {showDirections && address && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => setShowDirections(false)}>
+          <div
+            className="w-full max-w-xl rounded-t-2xl border-t border-line bg-white p-5"
+            style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="eyebrow">Get directions</p>
+            <p className="mt-1 mb-4 text-sm text-slate">{address}</p>
+            <div className="space-y-2">
+              {directionLinks.map((link) => (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => setShowDirections(false)}
+                  className="flex items-center justify-between rounded-xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:border-gold hover:bg-cream/60"
+                >
+                  {link.label}
+                  <span aria-hidden="true" className="text-muted">↗</span>
+                </a>
+              ))}
+              <button
+                type="button"
+                onClick={copyAddress}
+                className="flex w-full items-center justify-between rounded-xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:border-gold hover:bg-cream/60"
+              >
+                {addressCopied ? 'Address copied' : 'Copy address'}
+              </button>
+            </div>
+            <button type="button" onClick={() => setShowDirections(false)} className="btn-secondary mt-4 w-full">
+              Cancel
+            </button>
           </div>
         </div>
       )}

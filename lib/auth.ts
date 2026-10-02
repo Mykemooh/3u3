@@ -27,6 +27,9 @@ export const authOptions: AuthOptions = {
         if (!user || !user.passwordHash) return null;
         const valid = bcrypt.compareSync(credentials.password, user.passwordHash);
         if (!valid) return null;
+        // A client the admin has closed can't sign in — their history stays
+        // on file, but they can no longer book or manage their account.
+        if (!user.isActive) return null;
 
         return {
           id: user.id,

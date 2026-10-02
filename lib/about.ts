@@ -7,9 +7,17 @@
  */
 
 export const ABOUT_INTRO: string[] = [
-  "3U3 started the way most family businesses do — around a kitchen table, after the boys were finally asleep, with a notebook and a good deal more nerve than certainty.",
-  "We're parents of three young boys, raising them in Katy, just west of Houston. So we know exactly what a house looks like at six o'clock on a Tuesday: backpacks by the door, a sink that didn't get done, laundry that's been almost folded since Sunday. We're not here to clean showhomes. We clean homes like ours — lived in, loved in, and honestly a little behind.",
+  'We know life can get a little chaotic.',
+  "We moved from Canada to Texas looking for a new chapter — and somewhere along the way, found our purpose in the middle of raising three young boys.",
+  'If you\'ve ever looked around your home and thought, "When did it get this bad?" — we get it.',
+  "Whether your chaos comes from kids, work, pets, moving, hosting friends, or simply having too much going on, life doesn't always leave time for cleaning.",
+  "That's where 3U3 comes in.",
+  "Born from our own beautiful chaos, we're here to take one more thing off your plate — so you can spend your time on what matters to you.",
+  "Because a clean home isn't just about having a clean home — it's about having your time back.",
 ];
+
+/** Signature line under the story on /about. */
+export const ABOUT_SIGNATURE = 'Betty & Mike — Founders';
 
 export type Pillar = {
   /** The F itself. */

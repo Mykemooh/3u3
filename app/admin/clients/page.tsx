@@ -39,6 +39,7 @@ export default async function AdminClients() {
               <th className="px-4 py-3 font-medium">Address</th>
               <th className="px-4 py-3 font-medium">Rates on file</th>
               <th className="px-4 py-3 font-medium">Bookings</th>
+              <th className="px-4 py-3 font-medium">Status</th>
             </tr>
           </thead>
           <tbody>
@@ -64,12 +65,17 @@ export default async function AdminClients() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-slate">{bookingCount}</td>
+                  <td className="px-4 py-3">
+                    <span className={`pill ${c.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                      {c.isActive ? 'Active' : 'Closed'}
+                    </span>
+                  </td>
                 </tr>
               );
             })}
             {clients.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-muted">
+                <td colSpan={6} className="px-4 py-8 text-center text-muted">
                   No clients yet — add one, or wait for a lead to come in.
                 </td>
               </tr>

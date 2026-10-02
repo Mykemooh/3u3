@@ -1,5 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // The address picker (components/AddressInput.tsx) calls Mapbox from the
+  // browser, so it needs the public token client-side. Mirroring it here
+  // means MAPBOX_ACCESS_TOKEN stays the only variable to set.
+  env: {
+    NEXT_PUBLIC_MAPBOX_TOKEN: process.env.MAPBOX_ACCESS_TOKEN || '',
+  },
   experimental: {
     serverComponentsExternalPackages: ['pg'],
   },

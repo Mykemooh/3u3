@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import AddressInput, { type PickedAddress } from '@/components/AddressInput';
 
 export default function NewClientForm() {
   const router = useRouter();
@@ -10,6 +11,7 @@ export default function NewClientForm() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [addressLine1, setAddressLine1] = useState('');
+  const [address, setAddress] = useState<PickedAddress | null>(null);
   const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
   const [error, setError] = useState('');
 
@@ -20,7 +22,7 @@ export default function NewClientForm() {
     const res = await fetch('/api/admin/clients', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, phone, email: email || undefined, addressLine1: addressLine1 || undefined }),
+      body: JSON.stringify({ name, phone, email: email || undefined, addressLine1: addressLine1 || undefined, address: address ?? undefined }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -56,7 +58,7 @@ export default function NewClientForm() {
       </div>
       <div>
         <label className="label">Home address (optional)</label>
-        <input className="input" value={addressLine1} onChange={(e) => setAddressLine1(e.target.value)} />
+        <AddressInput value={addressLine1} onChange={setAddressLine1} picked={address} onPick={setAddress} />
       </div>
       {error && <p className="sm:col-span-2 text-sm text-red-600">{error}</p>}
       <div className="flex gap-3 sm:col-span-2">

@@ -1,11 +1,34 @@
 import { db } from '@/db/client';
-import { bookings, jobs, jobChecklistItems, checklistTemplates, checklistTemplateItems, notificationLog } from '@/db/schema';
+import {
+  bookings, jobs, jobChecklistItems, checklistTemplates, checklistTemplateItems,
+  notificationLog, serviceTypes,
+} from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { businessNowISO } from '@/lib/time';
 
 export class DoubleBookingError extends Error {
   constructor() {
     super('That time slot was just booked by someone else. Please pick another.');
     this.name = 'DoubleBookingError';
+  }
+}
+
+export class BookingNotFoundError extends Error {
+  constructor() {
+    super('Booking not found.');
+    this.name = 'BookingNotFoundError';
+  }
+}
+
+// The self-service cutoff: a client can change their own cadence,
+// reschedule, or cancel up to this many hours before the cleaning begins.
+// Admins are never subject to this.
+export const SELF_SERVICE_CUTOFF_HOURS = 24;
+
+export class BookingLockedError extends Error {
+  constructor() {
+    super(`Changes must be made at least ${SELF_SERVICE_CUTOFF_HOURS} hours before your cleaning begins — please call us to make changes.`);
+    this.name = 'BookingLockedError';
   }
 }
 
@@ -17,6 +40,19 @@ function toMinutes(iso: string) {
   const [, time] = iso.split('T');
   const [h, m] = time.split(':').map(Number);
   return h * 60 + m;
+}
+
+/** Hours between business-local "now" and a naive slotStart string — both
+ * businessNowISO() and slotStart are the same naive wall-clock shape, so a
+ * plain Date diff is safe here (see lib/time.ts for why that matters). */
+export function hoursUntilSlot(slotStart: string): number {
+  const slotMs = new Date(slotStart).getTime();
+  const nowMs = new Date(businessNowISO()).getTime();
+  return (slotMs - nowMs) / (1000 * 60 * 60);
+}
+
+export function canModifyBooking(slotStart: string): boolean {
+  return hoursUntilSlot(slotStart) >= SELF_SERVICE_CUTOFF_HOURS;
 }
 
 /**
@@ -161,4 +197,99 @@ export async function logNotification(input: {
     status: 'SENT',
     relatedBookingId: input.relatedBookingId,
   });
+}
+
+/** Loads a booking and checks it belongs to this client, isn't a quote
+ * visit, and is still in an editable state — shared by the self-service
+ * mutations below. */
+async function loadEditableClientBooking(bookingId: string, clientId: string) {
+  const rows = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+  const booking = rows[0];
+  // Don't distinguish "doesn't exist" from "not yours" — same error either way.
+  if (!booking || booking.clientId !== clientId) throw new BookingNotFoundError();
+  if (booking.isQuoteVisit) throw new BookingNotFoundError();
+  if (booking.status === 'CANCELLED' || booking.status === 'COMPLETED') {
+    throw new Error('This booking can no longer be changed.');
+  }
+  if (!canModifyBooking(booking.slotStart)) throw new BookingLockedError();
+  return booking;
+}
+
+/**
+ * Customer self-service reschedule. Picks a free team for the new slot the
+ * same way the original booking flow does (lib/capacity.ts → teamsFreeFor,
+ * same retry-next-team pattern as POST /api/bookings), so it respects
+ * multi-team capacity rather than assuming the booking's current team is
+ * still free or still the only option.
+ */
+export async function rescheduleBookingByClient(input: {
+  bookingId: string;
+  clientId: string;
+  slotStart: string;
+  slotEnd: string;
+}) {
+  const booking = await loadEditableClientBooking(input.bookingId, input.clientId);
+  if (!booking.serviceTypeId) throw new Error('This booking has no service set.');
+
+  const service = (await db.select().from(serviceTypes).where(eq(serviceTypes.id, booking.serviceTypeId)).limit(1))[0];
+  if (!service) throw new Error('Service not found.');
+
+  const { teamsFreeFor } = await import('@/lib/capacity');
+  const teams = await teamsFreeFor(booking.tenantId, service.defaultDurationMinutes, input.slotStart, input.slotEnd);
+
+  for (const team of teams) {
+    try {
+      return await db.transaction(async (tx) => {
+        const dateOnly = input.slotStart.split('T')[0];
+        const newStart = toMinutes(input.slotStart);
+        const newEnd = toMinutes(input.slotEnd);
+        const sameTeamBookings = await tx.select().from(bookings).where(eq(bookings.crewId, team.id));
+        const conflict = sameTeamBookings.some(
+          (b) =>
+            b.id !== booking.id &&
+            b.status !== 'CANCELLED' &&
+            b.slotStart.startsWith(dateOnly) &&
+            overlaps(newStart, newEnd, toMinutes(b.slotStart), toMinutes(b.slotEnd)),
+        );
+        if (conflict) throw new DoubleBookingError();
+
+        await tx
+          .update(bookings)
+          .set({ crewId: team.id, slotStart: input.slotStart, slotEnd: input.slotEnd })
+          .where(eq(bookings.id, booking.id));
+
+        return { ...booking, crewId: team.id, slotStart: input.slotStart, slotEnd: input.slotEnd };
+      });
+    } catch (err) {
+      if (!(err instanceof DoubleBookingError)) throw err;
+      // That team was just taken — try the next one free for this slot.
+    }
+  }
+  throw new DoubleBookingError();
+}
+
+/** Customer self-service cadence change — only for services the admin has
+ * flagged recurringEligible, same rule as booking creation. */
+export async function updateBookingCadenceByClient(input: {
+  bookingId: string;
+  clientId: string;
+  cadence: 'ONE_TIME' | 'BIWEEKLY' | 'MONTHLY';
+}) {
+  const booking = await loadEditableClientBooking(input.bookingId, input.clientId);
+
+  if (input.cadence !== 'ONE_TIME' && booking.serviceTypeId) {
+    const svc = (await db.select().from(serviceTypes).where(eq(serviceTypes.id, booking.serviceTypeId)).limit(1))[0];
+    if (svc && !svc.recurringEligible) {
+      throw new Error(`${svc.name} does not support recurring booking.`);
+    }
+  }
+
+  await db.update(bookings).set({ cadence: input.cadence }).where(eq(bookings.id, booking.id));
+  return { ...booking, cadence: input.cadence };
+}
+
+export async function cancelBookingByClient(input: { bookingId: string; clientId: string }) {
+  const booking = await loadEditableClientBooking(input.bookingId, input.clientId);
+  await db.update(bookings).set({ status: 'CANCELLED' }).where(eq(bookings.id, booking.id));
+  return booking;
 }

@@ -1,4 +1,4 @@
-import { pgTable, text, integer, real, boolean, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, real, doublePrecision, boolean, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 
 const id = () => text('id').primaryKey().$defaultFn(() => crypto.randomUUID());
 const timestamps = {
@@ -14,10 +14,10 @@ export const tenants = pgTable('tenants', {
   id: id(),
   name: text('name').notNull(),
   tagline: text('tagline'),
-  primaryColor: text('primary_color').notNull().default('#D2961E'),
-  inkColor: text('ink_color').notNull().default('#1A1A1A'),
-  bronzeColor: text('bronze_color').notNull().default('#8A6D1D'),
-  creamColor: text('cream_color').notNull().default('#FAEEDA'),
+  primaryColor: text('primary_color').notNull().default('#2563EB'),
+  inkColor: text('ink_color').notNull().default('#0B1F3B'),
+  bronzeColor: text('bronze_color').notNull().default('#1D4ED8'),
+  creamColor: text('cream_color').notNull().default('#EFF6FF'),
   serviceAreaRadiusMiles: integer('service_area_radius_miles').notNull().default(25),
   ...timestamps,
 });
@@ -31,14 +31,30 @@ export const users = pgTable('users', {
   id: id(),
   tenantId: text('tenant_id').notNull().references(() => tenants.id),
   role: text('role', { enum: ['CUSTOMER', 'CLEANER', 'ADMIN'] }).notNull(),
+  // Job title for CLEANER users. A Team Lead is the one who starts the
+  // trip and finishes the job (lib/team.ts canLeadJob); the others open
+  // jobs and document rooms. Null for customers and admins.
+  staffRole: text('staff_role', { enum: ['TEAM_LEAD', 'CLEANER', 'JR_CLEANER'] }),
   name: text('name').notNull(),
   phone: text('phone'),
   email: text('email'),
   passwordHash: text('password_hash'),
   stripeCustomerId: text('stripe_customer_id'),
+  // Set whenever a new client is created (lead capture or admin-added) so
+  // they can be emailed a "create your password" link — see lib/passwordSetup.ts.
+  // Cleared the moment it's used, so a link only ever works once.
+  passwordSetupToken: text('password_setup_token'),
+  passwordSetupExpiresAt: timestamp('password_setup_expires_at', { withTimezone: true }),
+  // Last time a "forgot password" link was sent (lib/passwordReset.ts), so
+  // the form can't be used to flood someone's inbox or phone.
+  passwordResetSentAt: timestamp('password_reset_sent_at', { withTimezone: true }),
+  // Admin "close client" toggle (closed clients can't sign in or book, but
+  // their history is kept, not deleted).
+  isActive: boolean('is_active').notNull().default(true),
   ...timestamps,
 }, (t) => ({
   phoneUnique: uniqueIndex('users_phone_unique').on(t.phone),
+  passwordSetupTokenUnique: uniqueIndex('users_password_setup_token_unique').on(t.passwordSetupToken),
   emailUnique: uniqueIndex('users_email_unique').on(t.email),
 }));
 
@@ -50,6 +66,7 @@ export const addresses = pgTable('addresses', {
   state: text('state').notNull().default('TX'),
   zip: text('zip'),
   isPrimary: boolean('is_primary').notNull().default(true),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdate(() => new Date()),
   ...timestamps,
 });
 
@@ -92,6 +109,9 @@ export const crews = pgTable('crews', {
   workEndMinutes: integer('work_end_minutes').notNull().default(17 * 60), // 5:00 PM
   homesPerDay: integer('homes_per_day').notNull().default(3),
   commuteBufferMinutes: integer('commute_buffer_minutes').notNull().default(45),
+  // Whether customers can book this team online. Teams created from the
+  // Team page start switched off, so an empty team never opens slots.
+  acceptsBookings: boolean('accepts_bookings').notNull().default(true),
   ...timestamps,
 });
 
@@ -146,6 +166,7 @@ export const bookings = pgTable('bookings', {
   status: text('status', { enum: ['REQUESTED', 'CONFIRMED', 'COMPLETED', 'CANCELLED'] }).notNull().default('CONFIRMED'),
   priceCents: integer('price_cents'),
   isQuoteVisit: boolean('is_quote_visit').notNull().default(false),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdate(() => new Date()),
   ...timestamps,
 }, (t) => ({
   // No double-booking: a crew cannot hold two active bookings starting at
@@ -160,7 +181,11 @@ export const jobs = pgTable('jobs', {
   id: id(),
   bookingId: text('booking_id').notNull().references(() => bookings.id),
   crewId: text('crew_id').notNull().references(() => crews.id),
-  status: text('status', { enum: ['PENDING', 'IN_PROGRESS', 'COMPLETE'] }).notNull().default('PENDING'),
+  // PENDING → EN_ROUTE (crew tapped "Start driving") → IN_PROGRESS (on
+  // site, "Start job") → COMPLETE. EN_ROUTE is optional: a crew can go
+  // straight from PENDING to IN_PROGRESS.
+  status: text('status', { enum: ['PENDING', 'EN_ROUTE', 'IN_PROGRESS', 'COMPLETE'] }).notNull().default('PENDING'),
+  enRouteAt: timestamp('en_route_at', { withTimezone: true }),
   startedAt: timestamp('started_at', { withTimezone: true }),
   completedAt: timestamp('completed_at', { withTimezone: true }),
   // Per-job photo policy, admin-editable (CrewJob settings panel): lets a
@@ -169,8 +194,38 @@ export const jobs = pgTable('jobs', {
   // original behavior — before and after both required.
   requireBeforePhoto: boolean('require_before_photo').notNull().default(true),
   noPhotosNeeded: boolean('no_photos_needed').notNull().default(false),
+  // Live tracking while EN_ROUTE — only the crew's latest position is kept,
+  // never a history, and all of it is cleared the moment they arrive.
+  // routeGeojson / routeDurationSeconds are the last Mapbox Directions
+  // result, cached here so the client's map polls the database, not Mapbox.
+  // destLat/destLng: the client's address geocoded for this trip only —
+  // Mapbox's free geocoding allows temporary use, not permanent storage.
+  destLat: doublePrecision('dest_lat'),
+  destLng: doublePrecision('dest_lng'),
+  crewLat: doublePrecision('crew_lat'),
+  crewLng: doublePrecision('crew_lng'),
+  crewLocationAt: timestamp('crew_location_at', { withTimezone: true }),
+  routeGeojson: text('route_geojson'),
+  routeDurationSeconds: integer('route_duration_seconds'),
+  routeUpdatedAt: timestamp('route_updated_at', { withTimezone: true }),
   ...timestamps,
 });
+
+// ---------------------------------------------------------------------------
+// Per-job staffing swaps. A job is staffed by its team's members by
+// default; ADD puts someone from elsewhere on this one job, REMOVE takes a
+// team member off it. No rows = the team as-is. Cleared when the job moves
+// to a different team (lib/dispatch.ts).
+// ---------------------------------------------------------------------------
+export const jobStaff = pgTable('job_staff', {
+  id: id(),
+  jobId: text('job_id').notNull().references(() => jobs.id),
+  userId: text('user_id').notNull().references(() => users.id),
+  action: text('action', { enum: ['ADD', 'REMOVE'] }).notNull(),
+  ...timestamps,
+}, (t) => ({
+  jobUserUnique: uniqueIndex('job_staff_job_user_unique').on(t.jobId, t.userId),
+}));
 
 export const jobChecklistItems = pgTable('job_checklist_items', {
   id: id(),
@@ -312,5 +367,9 @@ export const notificationLog = pgTable('notification_log', {
   costCents: real('cost_cents').notNull().default(0),
   status: text('status', { enum: ['SENT', 'FAILED', 'RETRIED'] }).notNull().default('SENT'),
   relatedBookingId: text('related_booking_id').references(() => bookings.id),
+  // Drives the admin "Alerts" feed (a client changed their own address,
+  // frequency, time or cancelled) — separate from the SENT/FAILED/RETRIED
+  // delivery status above.
+  isRead: boolean('is_read').notNull().default(false),
   ...timestamps,
 });

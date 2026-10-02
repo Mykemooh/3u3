@@ -58,14 +58,18 @@ export async function getAccountBookings(clientId: string) {
 /** Booked → Cleaning → Done → Invoiced → Paid, from real records only. */
 export function cleaningJourney(row: Pick<AccountBooking, 'job' | 'invoice'>): JourneyStep[] {
   const { job, invoice } = row;
-  const started = job?.status === 'IN_PROGRESS' || job?.status === 'COMPLETE';
+  const started = job?.status === 'EN_ROUTE' || job?.status === 'IN_PROGRESS' || job?.status === 'COMPLETE';
   const complete = job?.status === 'COMPLETE';
   const sent = invoice?.status === 'SENT' || invoice?.status === 'PAID';
   const paid = invoice?.status === 'PAID';
   const state = (isDone: boolean, isCurrent: boolean) => (isDone ? 'done' : isCurrent ? 'current' : 'todo') as JourneyStep['state'];
   return [
     { label: 'Booked', state: 'done' },
-    { label: 'Cleaning', state: state(complete, started), detail: job?.startedAt ? formatClock(job.startedAt) : undefined },
+    {
+      label: 'Cleaning',
+      state: state(complete, started),
+      detail: job?.status === 'EN_ROUTE' ? 'On the way' : job?.startedAt ? formatClock(job.startedAt) : undefined,
+    },
     { label: 'Done', state: state(complete, false), detail: job?.completedAt ? formatClock(job.completedAt) : undefined },
     { label: 'Invoice', state: state(sent, complete && !sent) },
     { label: 'Paid', state: state(paid, sent && !paid) },

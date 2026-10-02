@@ -1,9 +1,7 @@
 import Logo from '@/components/Logo';
 
+// The wordmark now reads fine directly on white — no dark pill needed to
+// carry it, unlike the old dark-background-only raster asset.
 export default function LogoBadge({ size = 'sm' }: { size?: 'sm' | 'md' | 'lg' }) {
-  return (
-    <div className="inline-flex items-center justify-center rounded-2xl bg-ink px-5 py-3 shadow-sm">
-      <Logo size={size} />
-    </div>
-  );
+  return <Logo size={size} />;
 }

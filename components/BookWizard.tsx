@@ -124,7 +124,7 @@ export default function BookWizard({
               <button
                 key={s.id}
                 onClick={() => pickService(s)}
-                className="flex flex-col items-start gap-2 rounded-xl border-2 border-line px-4 py-4 text-left transition hover:border-gold"
+                className="card-interactive flex flex-col items-start gap-2 text-left"
               >
                 <span className="font-semibold">{s.name}</span>
                 <span className="pill bg-gold/15 text-bronze">{s.rateLabel}</span>

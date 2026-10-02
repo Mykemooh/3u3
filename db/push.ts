@@ -10,10 +10,10 @@ async function main() {
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       tagline TEXT,
-      primary_color TEXT NOT NULL DEFAULT '#D2961E',
-      ink_color TEXT NOT NULL DEFAULT '#1A1A1A',
-      bronze_color TEXT NOT NULL DEFAULT '#8A6D1D',
-      cream_color TEXT NOT NULL DEFAULT '#FAEEDA',
+      primary_color TEXT NOT NULL DEFAULT '#2563EB',
+      ink_color TEXT NOT NULL DEFAULT '#0B1F3B',
+      bronze_color TEXT NOT NULL DEFAULT '#1D4ED8',
+      cream_color TEXT NOT NULL DEFAULT '#EFF6FF',
       service_area_radius_miles INTEGER NOT NULL DEFAULT 25,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
@@ -27,6 +27,8 @@ async function main() {
       email TEXT,
       password_hash TEXT,
       stripe_customer_id TEXT,
+      password_setup_token TEXT,
+      password_setup_expires_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
     CREATE UNIQUE INDEX IF NOT EXISTS users_phone_unique ON users(phone);
@@ -118,7 +120,7 @@ async function main() {
       id TEXT PRIMARY KEY,
       booking_id TEXT NOT NULL REFERENCES bookings(id),
       crew_id TEXT NOT NULL REFERENCES crews(id),
-      status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','IN_PROGRESS','COMPLETE')),
+      status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','EN_ROUTE','IN_PROGRESS','COMPLETE')),
       started_at TIMESTAMPTZ,
       completed_at TIMESTAMPTZ,
       require_before_photo BOOLEAN NOT NULL DEFAULT true,
@@ -212,6 +214,10 @@ async function main() {
     -- never reach an already-deployed database no matter how many times
     -- this script is re-run.
     ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS password_setup_token TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS password_setup_expires_at TIMESTAMPTZ;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_sent_at TIMESTAMPTZ;
+    CREATE UNIQUE INDEX IF NOT EXISTS users_password_setup_token_unique ON users(password_setup_token);
 
     -- Job media: one row per before/after photo or video, per room.
     CREATE TABLE IF NOT EXISTS job_media (
@@ -253,6 +259,53 @@ async function main() {
     ALTER TABLE jobs ADD COLUMN IF NOT EXISTS require_before_photo BOOLEAN NOT NULL DEFAULT true;
     ALTER TABLE jobs ADD COLUMN IF NOT EXISTS no_photos_needed BOOLEAN NOT NULL DEFAULT false;
 
+    -- Cleaner en route + live tracking map. EN_ROUTE sits between PENDING
+    -- and IN_PROGRESS, so the inline CHECK on jobs.status (Postgres names it
+    -- jobs_status_check) is swapped for one that allows it — only when the
+    -- current definition doesn't already, so re-running is a no-op.
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'jobs'::regclass AND conname = 'jobs_status_check'
+          AND pg_get_constraintdef(oid) LIKE '%EN_ROUTE%'
+      ) THEN
+        ALTER TABLE jobs DROP CONSTRAINT IF EXISTS jobs_status_check;
+        ALTER TABLE jobs ADD CONSTRAINT jobs_status_check
+          CHECK (status IN ('PENDING','EN_ROUTE','IN_PROGRESS','COMPLETE'));
+      END IF;
+    END $$;
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS en_route_at TIMESTAMPTZ;
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS crew_lat DOUBLE PRECISION;
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS crew_lng DOUBLE PRECISION;
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS crew_location_at TIMESTAMPTZ;
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS route_geojson TEXT;
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS route_duration_seconds INTEGER;
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS route_updated_at TIMESTAMPTZ;
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS dest_lat DOUBLE PRECISION;
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS dest_lng DOUBLE PRECISION;
+    -- addresses.lat/lng briefly cached geocoding results permanently, which
+    -- Mapbox's free (temporary) geocoding doesn't allow. No longer read or
+    -- written; kept (emptied) rather than dropped so a deployment still
+    -- running the old code during rollout doesn't break.
+    ALTER TABLE addresses ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION;
+    ALTER TABLE addresses ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION;
+    UPDATE addresses SET lat = NULL, lng = NULL WHERE lat IS NOT NULL OR lng IS NOT NULL;
+
+    -- Teams: roles, online-booking switch, per-job staffing swaps.
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS staff_role TEXT
+      CHECK (staff_role IN ('TEAM_LEAD','CLEANER','JR_CLEANER'));
+    UPDATE users SET staff_role = 'CLEANER' WHERE role = 'CLEANER' AND staff_role IS NULL;
+    ALTER TABLE crews ADD COLUMN IF NOT EXISTS accepts_bookings BOOLEAN NOT NULL DEFAULT true;
+    CREATE TABLE IF NOT EXISTS job_staff (
+      id TEXT PRIMARY KEY,
+      job_id TEXT NOT NULL REFERENCES jobs(id),
+      user_id TEXT NOT NULL REFERENCES users(id),
+      action TEXT NOT NULL CHECK (action IN ('ADD','REMOVE')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS job_staff_job_user_unique ON job_staff(job_id, user_id);
+
     ALTER TABLE invoices ADD COLUMN IF NOT EXISTS invoice_number INTEGER;
     UPDATE invoices SET invoice_number = numbered.n
       FROM (
@@ -262,6 +315,13 @@ async function main() {
       ) AS numbered
       WHERE invoices.id = numbered.id;
     CREATE UNIQUE INDEX IF NOT EXISTS invoices_number_unique ON invoices(tenant_id, invoice_number);
+
+    -- Client management: admin close/reopen, self-service address edits,
+    -- and the admin "Alerts" feed for client-initiated changes.
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
+    ALTER TABLE addresses ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
+    ALTER TABLE bookings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
+    ALTER TABLE notification_log ADD COLUMN IF NOT EXISTS is_read BOOLEAN NOT NULL DEFAULT false;
   `);
 
   console.log('Schema pushed to Postgres.');

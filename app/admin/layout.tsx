@@ -19,10 +19,10 @@ const NAV = [
   { href: '/admin/estimates', label: 'Estimates' },
   { href: '/admin/clients', label: 'Clients' },
   { href: '/admin/schedule', label: 'Schedule' },
+  { href: '/admin/team', label: 'Team' },
   { href: '/admin/bookings', label: 'Bookings' },
   { href: '/crew', label: 'Jobs & photos' },
   { href: '/admin/invoices', label: 'Invoices' },
-  { href: '/admin/crew', label: 'Crew & Schedule' },
   { href: '/admin/services', label: 'Services' },
   { href: '/admin/rates', label: 'Rates' },
   { href: '/admin/notifications', label: 'Notifications' },
@@ -45,7 +45,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <header className="bg-ink text-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-3">
-            <Logo size="sm" className="h-10 w-auto" />
+            <Logo variant="light" size="sm" />
             <span className="text-xs font-semibold uppercase tracking-widest text-white/50">Admin</span>
           </div>
           <div className="flex items-center gap-4 text-sm">

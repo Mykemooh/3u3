@@ -1,0 +1,103 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+
+export default function AddressForm({
+  endpoint,
+  initial,
+  onSaved,
+}: {
+  endpoint: string;
+  initial: { line1: string; city: string; state: string; zip?: string | null };
+  onSaved?: () => void;
+}) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [line1, setLine1] = useState(initial.line1 ?? '');
+  const [city, setCity] = useState(initial.city ?? '');
+  const [state, setState] = useState(initial.state ?? '');
+  const [zip, setZip] = useState(initial.zip ?? '');
+  const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
+  const [error, setError] = useState('');
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setStatus('saving');
+    setError('');
+    const res = await fetch(endpoint, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ line1, city, state, zip }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      setStatus('idle');
+      setEditing(false);
+      router.refresh();
+      onSaved?.();
+    } else {
+      setStatus('error');
+      setError(data.error || "Couldn't save — please try again.");
+    }
+  }
+
+  if (!editing) {
+    return (
+      <div className="flex items-start justify-between gap-4">
+        <div className="text-sm text-slate">
+          {initial.line1 ? (
+            <>
+              <p className="font-medium text-ink">{initial.line1}</p>
+              <p>
+                {initial.city}, {initial.state} {initial.zip}
+              </p>
+            </>
+          ) : (
+            <p className="text-muted">No address on file yet.</p>
+          )}
+        </div>
+        <button onClick={() => setEditing(true)} className="btn-secondary !px-4 !py-2 text-sm">
+          {initial.line1 ? 'Edit' : 'Add address'}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-3">
+      <div>
+        <label className="label">Street address</label>
+        <input className="input" value={line1} onChange={(e) => setLine1(e.target.value)} required />
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <div className="col-span-1">
+          <label className="label">City</label>
+          <input className="input" value={city} onChange={(e) => setCity(e.target.value)} required />
+        </div>
+        <div>
+          <label className="label">State</label>
+          <input className="input" value={state} onChange={(e) => setState(e.target.value)} maxLength={2} required />
+        </div>
+        <div>
+          <label className="label">ZIP</label>
+          <input className="input" value={zip} onChange={(e) => setZip(e.target.value)} />
+        </div>
+      </div>
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      <div className="flex gap-2">
+        <button type="submit" disabled={status === 'saving'} className="btn-primary !px-4 !py-2 text-sm">
+          {status === 'saving' ? 'Saving…' : 'Save address'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setEditing(false)}
+          className="btn-secondary !px-4 !py-2 text-sm"
+          disabled={status === 'saving'}
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}

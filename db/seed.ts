@@ -67,10 +67,10 @@ async function main() {
       id: tenantId,
       name: '3U3 Cleaning',
       tagline: 'Family Owned by Parents of Three boys, Built in Texas',
-      primaryColor: '#D2961E',
-      inkColor: '#1A1A1A',
-      bronzeColor: '#8A6D1D',
-      creamColor: '#FAEEDA',
+      primaryColor: '#2563EB',
+      inkColor: '#0B1F3B',
+      bronzeColor: '#1D4ED8',
+      creamColor: '#EFF6FF',
       serviceAreaRadiusMiles: 25,
     });
     tenant = (await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1))[0]!;
@@ -138,7 +138,7 @@ async function main() {
 
   // Cleaner user, linked to the crew
   const cleaner = await upsertUser({
-    id: crypto.randomUUID(), tenantId: tenant.id, role: 'CLEANER', name: 'Jordan (Crew Lead)',
+    id: crypto.randomUUID(), tenantId: tenant.id, role: 'CLEANER', staffRole: 'TEAM_LEAD', name: 'Jordan (Crew Lead)',
     email: 'jordan@3u3cleaning.com', phone: '+12815550101', passwordHash: bcrypt.hashSync('clean123', 10),
   });
   const existingMemberships = await db.select().from(crewMembers).where(eq(crewMembers.crewId, crew.id));

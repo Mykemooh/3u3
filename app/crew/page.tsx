@@ -7,6 +7,7 @@ import { bookings, users, serviceTypes, jobs, jobChecklistItems, addresses, crew
 import { eq, inArray } from 'drizzle-orm';
 import { getCrewForUser, getTenant, SERVICE_LABELS } from '@/lib/data';
 import { homeForRole } from '@/lib/nav';
+import { jobIdsForEmployee } from '@/lib/team';
 import { businessTodayISO } from '@/lib/time';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 import AppShell, { CREW_TABS } from '@/components/app/AppShell';
@@ -16,9 +17,7 @@ export const dynamic = 'force-dynamic';
 
 type Row = Awaited<ReturnType<typeof loadRows>>[number];
 
-async function loadRows(crewIds: string[]) {
-  if (crewIds.length === 0) return [];
-  const myJobs = await db.select().from(jobs).where(inArray(jobs.crewId, crewIds));
+async function loadRows(myJobs: (typeof jobs.$inferSelect)[]) {
   if (myJobs.length === 0) return [];
   const bookingRows = await db.select().from(bookings).where(inArray(bookings.id, myJobs.map((j) => j.bookingId)));
   const clientRows = bookingRows.length
@@ -58,26 +57,29 @@ export default async function CrewHome() {
   // open, so the page decides. Admins may look; customers may not.
   if (role !== 'CLEANER' && role !== 'ADMIN') redirect(`${homeForRole(role)}?denied=1`);
 
-  let crewIds: string[] = [];
+  let myJobs: (typeof jobs.$inferSelect)[] = [];
   if (role === 'CLEANER') {
-    const crew = await getCrewForUser(userId);
-    if (!crew) {
+    // Their team's jobs they weren't taken off, plus any they were added to.
+    const ids = await jobIdsForEmployee(userId);
+    if (ids.length === 0 && !(await getCrewForUser(userId))) {
       return (
         <AppShell name={session.user.name} tabs={CREW_TABS} homeHref="/crew">
-          <div className="card text-slate">You're not on a crew yet. Ask the office to add you, then sign in again.</div>
+          <div className="card text-slate">You're not on a team yet. Ask the office to add you, then sign in again.</div>
         </AppShell>
       );
     }
-    crewIds = [crew.id];
+    myJobs = ids.length ? await db.select().from(jobs).where(inArray(jobs.id, ids)) : [];
   } else {
-    // Admins see every crew's jobs here — this is their "jobs" view too.
+    // Admins see every team's jobs here — this is their "jobs" view too.
     const tenant = await getTenant();
-    crewIds = tenant ? (await db.select().from(crews).where(eq(crews.tenantId, tenant.id))).map((c) => c.id) : [];
+    const crewIds = tenant ? (await db.select().from(crews).where(eq(crews.tenantId, tenant.id))).map((c) => c.id) : [];
+    myJobs = crewIds.length ? await db.select().from(jobs).where(inArray(jobs.crewId, crewIds)) : [];
   }
 
-  const rows = await loadRows(crewIds);
+  const rows = await loadRows(myJobs);
   const today = businessTodayISO();
-  const inProgress = rows.filter((r) => r.job.status === 'IN_PROGRESS');
+  // A crew that's driving over counts as in progress: it's the job they're on.
+  const inProgress = rows.filter((r) => r.job.status === 'IN_PROGRESS' || r.job.status === 'EN_ROUTE');
   const todays = rows.filter((r) => r.booking.slotStart.startsWith(today) && r.job.status === 'PENDING');
   const upcoming = rows.filter((r) => r.booking.slotStart.slice(0, 10) > today && r.job.status === 'PENDING');
   const overdue = rows.filter((r) => r.booking.slotStart.slice(0, 10) < today && r.job.status === 'PENDING');
@@ -110,10 +112,11 @@ export default async function CrewHome() {
 function NextJobCard({ row }: { row: Row }) {
   const { job, booking, client, service, address, total, done } = row;
   const started = job.status === 'IN_PROGRESS';
+  const driving = job.status === 'EN_ROUTE';
   return (
     <Link href={`/crew/jobs/${job.id}`} className="block overflow-hidden rounded-2xl bg-ink text-white shadow-card-lg transition hover:-translate-y-0.5">
       <div className="p-6">
-        <p className="text-xs font-bold uppercase tracking-[0.12em] text-gold">{started ? 'Keep going' : 'Up next'}</p>
+        <p className="text-xs font-bold uppercase tracking-[0.12em] text-gold">{started ? 'Keep going' : driving ? 'On the way' : 'Up next'}</p>
         <p className="mt-2 text-2xl font-bold text-white">{client?.name}</p>
         <p className="mt-1 text-white/70">
           {service ? SERVICE_LABELS[service.key] ?? service.name : 'Cleaning'} · {formatSlotLabel(booking.slotStart, booking.slotEnd)}
@@ -129,7 +132,7 @@ function NextJobCard({ row }: { row: Row }) {
         </div>
       </div>
       <div className="flow-line" aria-hidden="true" />
-      <div className="bg-gold px-6 py-3 text-center font-semibold text-ink">{started ? 'Open job' : 'Open job and start'}</div>
+      <div className="bg-gold px-6 py-3 text-center font-semibold text-white">{started ? 'Open job' : driving ? "Open job — tap I've arrived" : 'Open job and start'}</div>
     </Link>
   );
 }
@@ -151,10 +154,10 @@ function Section({ title, rows, showDate, muted, tone }: { title: string; rows: 
             </div>
             <span
               className={`pill shrink-0 ${
-                job.status === 'COMPLETE' ? 'bg-emerald-100 text-green' : job.status === 'IN_PROGRESS' ? 'bg-gold/20 text-bronze' : 'bg-surface text-slate'
+                job.status === 'COMPLETE' ? 'bg-emerald-100 text-green' : job.status === 'IN_PROGRESS' || job.status === 'EN_ROUTE' ? 'bg-gold/20 text-bronze' : 'bg-surface text-slate'
               }`}
             >
-              {job.status === 'COMPLETE' ? 'Done' : job.status === 'IN_PROGRESS' ? `${done}/${total}` : 'Not started'}
+              {job.status === 'COMPLETE' ? 'Done' : job.status === 'IN_PROGRESS' ? `${done}/${total}` : job.status === 'EN_ROUTE' ? 'Driving' : 'Not started'}
             </span>
           </Link>
         ))}

@@ -28,7 +28,7 @@ export default function JourneyRail({ steps, compact = false }: { steps: Journey
             aria-current={s.state === 'current' ? 'step' : undefined}
             className={`flex h-6 w-6 items-center justify-center rounded-full border-2 text-[11px] font-bold ${
               s.state === 'done'
-                ? 'border-gold bg-gold text-ink'
+                ? 'border-gold bg-gold text-white'
                 : s.state === 'current'
                 ? 'journey-pulse border-gold bg-white text-bronze'
                 : 'border-line bg-white text-muted'

@@ -3,7 +3,7 @@ import { redirect, notFound } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
 import { homeForRole } from '@/lib/nav';
 import { SERVICE_LABELS } from '@/lib/data';
-import { loadJob, canWorkJob, viewerFrom } from '@/lib/jobs';
+import { loadJob, canWorkJob, canLead, viewerFrom } from '@/lib/jobs';
 import { formatSlot, formatClock } from '@/lib/time';
 import { formatSlotLabel } from '@/lib/scheduling';
 import { MEDIA_LIMITS } from '@/lib/storage';
@@ -23,6 +23,7 @@ export default async function CrewJobPage({ params }: { params: { id: string } }
   if (!(await canWorkJob(viewer, data.job))) redirect(`${homeForRole(viewer.role)}?denied=1`);
 
   const { job, booking, client, service, address, items, media } = data;
+  const isLead = await canLead(viewer, job);
   const whenLabel = `${formatSlot(booking.slotStart).split(' · ')[0]} · ${formatSlotLabel(booking.slotStart, booking.slotEnd)}`;
 
   return (
@@ -45,6 +46,7 @@ export default async function CrewJobPage({ params }: { params: { id: string } }
         perPhase={MEDIA_LIMITS.perPhase}
         videoSeconds={MEDIA_LIMITS.videoSeconds}
         isAdmin={viewer.role === 'ADMIN'}
+        canLead={isLead}
       />
     </AppShell>
   );

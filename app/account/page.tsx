@@ -8,6 +8,8 @@ import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 import { businessNowISO } from '@/lib/time';
 import { invoiceLabel } from '@/lib/invoices';
 import JourneyRail from '@/components/app/JourneyRail';
+import LiveTrackingMap from '@/components/app/LiveTrackingMap';
+import { getTracking, publicMapboxToken, type TrackingState } from '@/lib/tracking';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,20 +25,27 @@ export default async function AccountHome() {
   const [rows, rates] = await Promise.all([getAccountBookings(user.id), getClientRatesFor(user.id)]);
   const now = businessNowISO();
 
-  // The "live" cleaning: one in progress, else the next one booked, else the
-  // most recent that still has something to act on (photos, invoice).
-  const active = rows.find((r) => r.job?.status === 'IN_PROGRESS');
+  // The "live" cleaning: one the crew is driving to or working on, else the
+  // next one booked, else the most recent that still has something to act
+  // on (photos, invoice).
+  const active = rows.find((r) => r.job?.status === 'EN_ROUTE' || r.job?.status === 'IN_PROGRESS');
   const upcoming = rows.filter((r) => r.booking.slotEnd >= now && r.job?.status !== 'COMPLETE');
   const past = rows.filter((r) => r.job?.status === 'COMPLETE').reverse();
   const needsPayment = rows.filter((r) => r.invoice?.status === 'SENT');
   const focus = active ?? upcoming[0] ?? past[0];
   const first = (user.name ?? 'there').split(' ')[0];
+  const tracking = focus?.job?.status === 'EN_ROUTE' ? getTracking(focus.job) : null;
 
   return (
     <div className="space-y-8">
-      <div>
-        <p className="eyebrow">Your home, cared for</p>
-        <h1 className="mt-1 text-3xl font-extrabold">Hi {first}</h1>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="eyebrow">Your home, cared for</p>
+          <h1 className="mt-1 text-3xl font-extrabold">Hi {first}</h1>
+        </div>
+        <Link href="/account/settings" className="mt-1 text-sm font-semibold text-bronze hover:underline">
+          Account settings →
+        </Link>
       </div>
 
       {needsPayment.length > 0 && (
@@ -54,7 +63,11 @@ export default async function AccountHome() {
       )}
 
       {focus ? (
-        <FocusCard row={focus} isPast={focus.job?.status === 'COMPLETE' && focus === past[0] && !active && upcoming.length === 0} />
+        <FocusCard
+          row={focus}
+          isPast={focus.job?.status === 'COMPLETE' && focus === past[0] && !active && upcoming.length === 0}
+          tracking={tracking}
+        />
       ) : (
         <div className="card text-center">
           <h2 className="text-xl font-bold">Ready when you are</h2>
@@ -129,11 +142,13 @@ function Thumb({ url }: { url: string | null }) {
   );
 }
 
-function FocusCard({ row, isPast }: { row: AccountBooking; isPast: boolean }) {
+function FocusCard({ row, isPast, tracking }: { row: AccountBooking; isPast: boolean; tracking: TrackingState | null }) {
   const { booking, job, invoice } = row;
   const status = job?.status;
   const heading =
-    status === 'IN_PROGRESS'
+    status === 'EN_ROUTE'
+      ? 'Your crew is on the way'
+      : status === 'IN_PROGRESS'
       ? 'Your crew is cleaning now'
       : status === 'COMPLETE'
       ? isPast
@@ -154,6 +169,11 @@ function FocusCard({ row, isPast }: { row: AccountBooking; isPast: boolean }) {
         <div className="mt-6">
           <JourneyRail steps={cleaningJourney(row)} />
         </div>
+        {job && tracking?.status === 'EN_ROUTE' && (
+          <div className="mt-6">
+            <LiveTrackingMap jobId={job.id} token={publicMapboxToken()} initial={tracking} />
+          </div>
+        )}
       </div>
       {status === 'COMPLETE' && job && (
         <Link href={`/account/jobs/${job.id}`} className="flex items-center gap-4 border-t border-line bg-surface p-4 transition hover:bg-cream/60">

@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { createBooking, DoubleBookingError, logNotification } from '@/lib/bookings';
-import { getAddressesFor, getPrimaryCrew, getServiceType, getClientRatesFor, getTenant, getUserById, getOwnerEmail, formatMoney } from '@/lib/data';
+import { teamsFreeFor } from '@/lib/capacity';
+import { getAddressesFor, getServiceType, getClientRatesFor, getTenant, getUserById, getOwnerEmail, formatMoney } from '@/lib/data';
 import { sendEmail, bookingConfirmedCustomerEmail, newBookingOwnerEmail } from '@/lib/email';
 import { formatSlotLabel, formatDateLabel } from '@/lib/scheduling';
 import { appUrl } from '@/lib/url';
@@ -34,8 +35,7 @@ export async function POST(req: Request) {
   const { serviceTypeId, slotStart, slotEnd, cadence } = parsed.data;
 
   const service = await getServiceType(serviceTypeId);
-  const crew = await getPrimaryCrew(tenant.id);
-  if (!service || !crew) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (!service) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   if (cadence !== 'ONE_TIME' && !service.recurringEligible) {
     return NextResponse.json({ error: `${service.name} does not support recurring booking.` }, { status: 400 });
@@ -45,18 +45,31 @@ export async function POST(req: Request) {
   const addresses = await getAddressesFor(clientId);
 
   try {
-    const bookingId = await createBooking({
-      tenantId: tenant.id,
-      clientId,
-      serviceTypeId,
-      crewId: crew.id,
-      addressId: addresses[0]?.id,
-      slotStart,
-      slotEnd,
-      cadence,
-      priceCents: rate?.rateCents,
-      isQuoteVisit: false,
-    });
+    // First free team takes it. If another booking grabs that team a moment
+    // earlier, createBooking's transactional check refuses and the next
+    // free team is tried; only when every team is taken does it fail.
+    const teams = await teamsFreeFor(tenant.id, service.defaultDurationMinutes, slotStart, slotEnd);
+    let bookingId: string | null = null;
+    for (const team of teams) {
+      try {
+        bookingId = await createBooking({
+          tenantId: tenant.id,
+          clientId,
+          serviceTypeId,
+          crewId: team.id,
+          addressId: addresses[0]?.id,
+          slotStart,
+          slotEnd,
+          cadence,
+          priceCents: rate?.rateCents,
+          isQuoteVisit: false,
+        });
+        break;
+      } catch (err) {
+        if (!(err instanceof DoubleBookingError)) throw err;
+      }
+    }
+    if (!bookingId) throw new DoubleBookingError();
 
     // Previously this only logged a confirmation and never sent one. Now
     // the client gets a real email and the owner gets an alert. Neither can

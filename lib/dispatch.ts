@@ -1,6 +1,6 @@
 import { db } from '@/db/client';
 import { businessTodayISO } from '@/lib/time';
-import { bookings, jobs, users, serviceTypes, crews, addresses } from '@/db/schema';
+import { bookings, jobs, jobStaff, users, serviceTypes, crews, addresses } from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 
 export class DispatchError extends Error {}
@@ -54,7 +54,7 @@ export function weekDates(startISO: string): string[] {
 export type ScheduleEntry = {
   bookingId: string;
   jobId?: string;
-  jobStatus?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETE';
+  jobStatus?: 'PENDING' | 'EN_ROUTE' | 'IN_PROGRESS' | 'COMPLETE';
   bookingStatus: 'REQUESTED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
   clientId: string;
   clientName: string;
@@ -159,40 +159,78 @@ export async function getWeekSchedule(tenantId: string, startISO: string) {
 }
 
 /**
- * Move a cleaning job to a different crew. Runs the same no-double-booking
- * check as creating a booking (PRD section 8) — reassigning is exactly as
- * capable of double-booking a crew as booking is, so it gets the same
- * transactional guard rather than trusting the UI. The job row moves too,
- * or the cleaner app would keep showing it to the old crew.
+ * Move a cleaning job: to another team, another day, another time, or any
+ * mix. Runs the same no-double-booking check as creating a booking (PRD
+ * section 8) against the destination team, since a move can double-book
+ * just as easily. Only jobs that haven't started can move. Changing team
+ * clears the job's per-job staff swaps (they were relative to the old
+ * team) and moves the job row too, or the crew app would keep showing it
+ * to the old team.
+ *
+ * Returns what changed so the caller can tell the client.
  */
-export async function reassignBookingCrew(bookingId: string, crewId: string) {
+export async function rescheduleBooking(
+  bookingId: string,
+  patch: { crewId?: string; date?: string; startTime?: string; endTime?: string },
+) {
   return db.transaction(async (tx) => {
     const booking = (await tx.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1))[0];
     if (!booking) throw new DispatchError('Booking not found');
-    if (booking.isQuoteVisit) throw new DispatchError('Quote visits are on your own calendar, not a crew’s');
+    if (booking.isQuoteVisit) throw new DispatchError('Quote visits are on your own calendar, not a team’s');
     if (booking.status === 'CANCELLED' || booking.status === 'COMPLETED') {
       throw new DispatchError(`This booking is already ${booking.status.toLowerCase()}`);
     }
-    if (booking.crewId === crewId) return;
+    const job = (await tx.select().from(jobs).where(eq(jobs.bookingId, bookingId)).limit(1))[0];
+    if (job && job.status !== 'PENDING') throw new DispatchError('This job has already started, so it can’t be moved');
 
+    const crewId = patch.crewId ?? booking.crewId;
+    if (!crewId) throw new DispatchError('Pick a team for this job');
     const crew = (await tx.select().from(crews).where(eq(crews.id, crewId)).limit(1))[0];
-    if (!crew || crew.tenantId !== booking.tenantId) throw new DispatchError('Crew not found');
+    if (!crew || crew.tenantId !== booking.tenantId) throw new DispatchError('Team not found');
 
-    const date = booking.slotStart.split('T')[0];
-    const newStart = toMinutes(booking.slotStart);
-    const newEnd = toMinutes(booking.slotEnd);
+    const date = patch.date ?? booking.slotStart.split('T')[0];
+    const startTime = patch.startTime ?? booking.slotStart.split('T')[1].slice(0, 5);
+    const endTime = patch.endTime ?? booking.slotEnd.split('T')[1].slice(0, 5);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(startTime) || !/^\d{2}:\d{2}$/.test(endTime)) {
+      throw new DispatchError('Invalid date or time');
+    }
+    const slotStart = `${date}T${startTime}:00`;
+    const slotEnd = `${date}T${endTime}:00`;
+    const newStart = toMinutes(slotStart);
+    const newEnd = toMinutes(slotEnd);
+    if (newEnd <= newStart) throw new DispatchError('The end time must be after the start time');
 
-    const targetCrewBookings = await tx.select().from(bookings).where(eq(bookings.crewId, crewId));
-    const clash = targetCrewBookings.some(
+    const unchanged = crewId === booking.crewId && slotStart === booking.slotStart && slotEnd === booking.slotEnd;
+    if (unchanged) return { moved: false as const, booking };
+
+    const clash = (await tx.select().from(bookings).where(eq(bookings.crewId, crewId))).find(
       (b) =>
         b.id !== bookingId &&
         b.status !== 'CANCELLED' &&
         b.slotStart.startsWith(date) &&
         overlaps(newStart, newEnd, toMinutes(b.slotStart), toMinutes(b.slotEnd)),
     );
-    if (clash) throw new DispatchError(`${crew.name} is already booked at that time`);
+    if (clash) throw new DispatchError(`${crew.name} is already booked ${clash.slotStart.slice(11, 16)}–${clash.slotEnd.slice(11, 16)} that day`);
 
-    await tx.update(bookings).set({ crewId }).where(eq(bookings.id, bookingId));
-    await tx.update(jobs).set({ crewId }).where(eq(jobs.bookingId, bookingId));
+    try {
+      await tx.update(bookings).set({ crewId, slotStart, slotEnd }).where(eq(bookings.id, bookingId));
+    } catch (err: any) {
+      // bookings_crew_slot_unique also counts cancelled bookings.
+      if (err?.cause?.code === '23505' || err?.code === '23505') {
+        throw new DispatchError(`${crew.name} has a cancelled booking held at exactly that start time — start a few minutes later`);
+      }
+      throw err;
+    }
+    if (job) {
+      await tx.update(jobs).set({ crewId }).where(eq(jobs.id, job.id));
+      if (crewId !== booking.crewId) await tx.delete(jobStaff).where(eq(jobStaff.jobId, job.id));
+    }
+    return {
+      moved: true as const,
+      booking,
+      timeChanged: slotStart !== booking.slotStart || slotEnd !== booking.slotEnd,
+      slotStart,
+      slotEnd,
+    };
   });
 }

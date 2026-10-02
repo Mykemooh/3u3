@@ -38,7 +38,7 @@ export default function AppShell({
       <header className="sticky top-0 z-40 bg-ink text-white">
         <div className={`mx-auto flex items-center justify-between gap-4 px-5 py-2.5 ${wide ? 'max-w-4xl' : 'max-w-xl md:max-w-3xl'}`}>
           <Link href={homeHref} aria-label="Home" className="shrink-0">
-            <Logo size="sm" className="h-10 w-auto" />
+            <Logo variant="light" size="sm" />
           </Link>
           {showTabs && <HeaderTabs tabs={tabs} />}
           <div className="flex items-center gap-3 text-sm">

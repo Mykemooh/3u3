@@ -1,0 +1,89 @@
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { getTenant, getOwnerEmail, getUserById } from '@/lib/data';
+import {
+  rescheduleBookingByClient,
+  updateBookingCadenceByClient,
+  cancelBookingByClient,
+  logNotification,
+  DoubleBookingError,
+  BookingNotFoundError,
+  BookingLockedError,
+} from '@/lib/bookings';
+import { sendEmail, clientAccountChangeOwnerEmail } from '@/lib/email';
+import { appUrl } from '@/lib/url';
+
+const schema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('reschedule'), slotStart: z.string(), slotEnd: z.string() }),
+  z.object({ action: z.literal('cadence'), cadence: z.enum(['ONE_TIME', 'BIWEEKLY', 'MONTHLY']) }),
+  z.object({ action: z.literal('cancel') }),
+]);
+
+// Customer self-service booking changes — reschedule, change cadence, or
+// cancel — all gated by the 24-hour cutoff enforced in lib/bookings.ts.
+// Admins are not subject to this cutoff; see app/api/admin/bookings/[id].
+export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user || (session.user as any).role !== 'CUSTOMER') {
+    return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
+  }
+  const clientId = (session.user as any).id as string;
+
+  const body = await req.json();
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+
+  const tenant = await getTenant();
+  if (!tenant) return NextResponse.json({ error: 'Not set up' }, { status: 500 });
+
+  try {
+    let summary = '';
+
+    if (parsed.data.action === 'reschedule') {
+      await rescheduleBookingByClient({
+        bookingId: params.id,
+        clientId,
+        slotStart: parsed.data.slotStart,
+        slotEnd: parsed.data.slotEnd,
+      });
+      summary = `Moved their cleaning to ${parsed.data.slotStart.replace('T', ' ')}.`;
+    } else if (parsed.data.action === 'cadence') {
+      await updateBookingCadenceByClient({ bookingId: params.id, clientId, cadence: parsed.data.cadence });
+      summary = `Changed their cleaning frequency to ${parsed.data.cadence.replace('_', ' ').toLowerCase()}.`;
+    } else {
+      await cancelBookingByClient({ bookingId: params.id, clientId });
+      summary = 'Cancelled an upcoming cleaning.';
+    }
+
+    const client = await getUserById(clientId);
+    await logNotification({
+      tenantId: tenant.id,
+      channel: 'EMAIL',
+      recipient: client?.name ?? 'A client',
+      triggerEvent: `CUSTOMER_BOOKING_CHANGE (${parsed.data.action}): ${summary}`,
+      relatedBookingId: params.id,
+    });
+
+    const ownerEmail = await getOwnerEmail(tenant.id);
+    if (ownerEmail && client) {
+      const { subject, html } = clientAccountChangeOwnerEmail({
+        clientName: client.name,
+        clientPhone: client.phone ?? undefined,
+        summary,
+        manageUrl: appUrl(`/admin/clients/${client.id}`),
+      });
+      await sendEmail({ to: ownerEmail, subject, html });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    if (err instanceof BookingLockedError) return NextResponse.json({ error: err.message }, { status: 403 });
+    if (err instanceof BookingNotFoundError) return NextResponse.json({ error: err.message }, { status: 404 });
+    if (err instanceof DoubleBookingError) return NextResponse.json({ error: err.message }, { status: 409 });
+    if (err instanceof Error) return NextResponse.json({ error: err.message }, { status: 400 });
+    console.error(err);
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 });
+  }
+}

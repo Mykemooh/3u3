@@ -3,6 +3,7 @@ import { db } from '@/db/client';
 import { users, serviceTypes } from '@/db/schema';
 import { getTenant, getAllBookings, formatMoney, SERVICE_LABELS } from '@/lib/data';
 import BookingStatusActions from '@/components/BookingStatusActions';
+import BookingCadencePriceEditor from '@/components/BookingCadencePriceEditor';
 
 const STATUS_STYLE: Record<string, string> = {
   REQUESTED: 'bg-amber-100 text-amber-700',
@@ -62,8 +63,13 @@ export default async function AdminBookings() {
                   <td className="px-4 py-3">
                     <span className={`pill ${STATUS_STYLE[b.status]}`}>{b.status}</span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 space-y-1">
                     <BookingStatusActions bookingId={b.id} status={b.status} />
+                    <BookingCadencePriceEditor
+                      bookingId={b.id}
+                      cadence={b.cadence}
+                      priceDollars={b.priceCents != null ? b.priceCents / 100 : null}
+                    />
                   </td>
                 </tr>
               );

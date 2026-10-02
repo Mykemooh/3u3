@@ -1,12 +1,16 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { db } from '@/db/client';
-import { addresses, clientRates, bookings as bookingsTable } from '@/db/schema';
+import { clientRates, bookings as bookingsTable } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { getTenant, getUserById, getServiceTypes, formatMoney, SERVICE_LABELS } from '@/lib/data';
+import { getTenant, getUserById, getServiceTypes, getAddressesFor, formatMoney, SERVICE_LABELS } from '@/lib/data';
 import { getEstimatesForClient } from '@/lib/estimates';
 import ClientRateForm from '@/components/ClientRateForm';
 import StartEstimateButton from '@/components/StartEstimateButton';
+import ClientInfoForm from '@/components/ClientInfoForm';
+import CloseClientButton from '@/components/CloseClientButton';
+import AddressForm from '@/components/AddressForm';
+import BookingCadencePriceEditor from '@/components/BookingCadencePriceEditor';
 
 const ESTIMATE_STYLE: Record<string, string> = {
   DRAFT: 'bg-surface text-slate',
@@ -29,7 +33,9 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
   const client = await getUserById(params.id);
   if (!client || client.role !== 'CUSTOMER') notFound();
 
-  const clientAddresses = await db.select().from(addresses).where(eq(addresses.userId, client.id));
+  const clientAddresses = await getAddressesFor(client.id);
+  const primaryAddress = clientAddresses.find((a) => a.isPrimary) ?? clientAddresses[0];
+  const otherAddresses = clientAddresses.filter((a) => a.id !== primaryAddress?.id);
   const rates = await db.select().from(clientRates).where(eq(clientRates.userId, client.id));
   const services = await getServiceTypes(tenant.id);
   const serviceMap = Object.fromEntries(services.map((s) => [s.id, s]));
@@ -40,22 +46,43 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
 
   return (
     <div className="space-y-8">
-      <div>
-        <Link href="/admin/clients" className="text-sm text-muted hover:text-ink">← All clients</Link>
-        <h1 className="mt-2 text-2xl font-bold text-ink">{client.name}</h1>
-        <p className="text-slate">
-          {client.phone} {client.email ? `· ${client.email}` : ''}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <Link href="/admin/clients" className="text-sm text-muted hover:text-ink">← All clients</Link>
+          <div className="mt-2 flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-ink">{client.name}</h1>
+            {!client.isActive && <span className="pill bg-red-100 text-red-700">Closed</span>}
+          </div>
+          <p className="text-slate">
+            {client.phone} {client.email ? `· ${client.email}` : ''}
+          </p>
+        </div>
+        <CloseClientButton clientId={client.id} isActive={client.isActive} />
       </div>
 
       <div className="card max-w-xl">
-        <h2 className="mb-3 font-semibold text-ink">Addresses</h2>
-        {clientAddresses.length === 0 && <p className="text-sm text-muted">No address on file.</p>}
-        <ul className="space-y-1">
-          {clientAddresses.map((a) => (
-            <li key={a.id} className="text-sm text-slate">{a.line1}, {a.city}, {a.state} {a.zip ?? ''}</li>
-          ))}
-        </ul>
+        <h2 className="mb-4 font-semibold text-ink">Client info</h2>
+        <ClientInfoForm clientId={client.id} initial={{ name: client.name, phone: client.phone, email: client.email }} />
+      </div>
+
+      <div className="card max-w-xl">
+        <h2 className="mb-3 font-semibold text-ink">Address</h2>
+        <AddressForm
+          endpoint={`/api/admin/clients/${client.id}/address`}
+          initial={{
+            line1: primaryAddress?.line1 ?? '',
+            city: primaryAddress?.city ?? '',
+            state: primaryAddress?.state ?? '',
+            zip: primaryAddress?.zip,
+          }}
+        />
+        {otherAddresses.length > 0 && (
+          <ul className="mt-3 space-y-1 border-t border-line pt-3">
+            {otherAddresses.map((a) => (
+              <li key={a.id} className="text-sm text-muted">{a.line1}, {a.city}, {a.state} {a.zip ?? ''}</li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="card max-w-2xl">
@@ -113,6 +140,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
               <th className="px-4 py-3 font-medium">Cadence</th>
               <th className="px-4 py-3 font-medium">Price</th>
               <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-4 py-3 font-medium">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -125,12 +153,21 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
                   <td className="px-4 py-3 text-slate">{b.cadence.replace('_', ' ').toLowerCase()}</td>
                   <td className="px-4 py-3 text-slate">{formatMoney(b.priceCents)}</td>
                   <td className="px-4 py-3"><span className={`pill ${STATUS_STYLE[b.status]}`}>{b.status}</span></td>
+                  <td className="px-4 py-3">
+                    {!b.isQuoteVisit && (
+                      <BookingCadencePriceEditor
+                        bookingId={b.id}
+                        cadence={b.cadence}
+                        priceDollars={b.priceCents != null ? b.priceCents / 100 : null}
+                      />
+                    )}
+                  </td>
                 </tr>
               );
             })}
             {clientBookings.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-muted">No bookings yet.</td>
+                <td colSpan={6} className="px-4 py-8 text-center text-muted">No bookings yet.</td>
               </tr>
             )}
           </tbody>

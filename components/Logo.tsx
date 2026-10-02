@@ -1,15 +1,16 @@
 import Image from 'next/image';
 
-const SIZES = {
-  sm: { w: 120, h: 80 },
-  md: { w: 180, h: 120 },
-  lg: { w: 280, h: 187 },
-};
+const HEIGHTS = { sm: 34, md: 54, lg: 82 };
+const ASPECT = 641 / 208; // native size of the exported mark
 
-// The real 3U3 logo (white wordmark, gold "U" with water-droplet accent and
-// wave underline, backlit glow) — designed only for dark backgrounds, so
-// every placement on a light page wraps it in a dark container.
+/**
+ * The real 3U3 wordmark (exported brand asset, cropped to just the mark —
+ * no tagline, since callers that want one render it as their own text, e.g.
+ * Footer). Two variants: navy numerals for light backgrounds, white
+ * numerals for dark ones. Both keep the mark's blue-to-green gradient U.
+ */
 export default function Logo({
+  variant = 'dark',
   size = 'md',
   className = '',
 }: {
@@ -17,10 +18,12 @@ export default function Logo({
   size?: 'sm' | 'md' | 'lg';
   className?: string;
 }) {
-  const { w, h } = SIZES[size];
+  const h = HEIGHTS[size];
+  const w = Math.round(h * ASPECT);
+  const src = variant === 'light' ? '/brand/logo-light-mark.png' : '/brand/logo-navy-mark.png';
   return (
     <Image
-      src="/logo.png"
+      src={src}
       alt="3U3 Cleaning"
       width={w}
       height={h}

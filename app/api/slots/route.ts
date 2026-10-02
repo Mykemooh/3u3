@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { generateUpcomingSlots } from '@/lib/scheduling';
 import { businessTodayDate } from '@/lib/time';
-import { getTenant, getServiceType, getPrimaryCrew, getBookingsForCrewOnOrAfter } from '@/lib/data';
+import { getTenant, getServiceType } from '@/lib/data';
+import { combinedSlots } from '@/lib/capacity';
 
 // Reads live booking data — must run per-request. Without this, Next tries
 // to statically prerender the route at build time (see the same note on
@@ -19,11 +19,9 @@ export async function GET(req: Request) {
   if (!serviceTypeId) return NextResponse.json({ error: 'serviceTypeId required' }, { status: 400 });
 
   const service = await getServiceType(serviceTypeId);
-  const crew = await getPrimaryCrew(tenant.id);
-  if (!service || !crew) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (!service) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  const existing = (await getBookingsForCrewOnOrAfter(crew.id)).filter((b) => !b.isQuoteVisit);
-  const days = generateUpcomingSlots(crew, service.defaultDurationMinutes, existing, 10, businessTodayDate());
-
-  return NextResponse.json({ days, crewId: crew.id });
+  // Every team that takes online bookings, merged: a time is open if any team is free.
+  const days = await combinedSlots(tenant.id, service.defaultDurationMinutes, 10, businessTodayDate());
+  return NextResponse.json({ days });
 }

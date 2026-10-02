@@ -34,7 +34,7 @@ export default function BeforeAfter({ before, after, room }: { before: string; a
         <img src={before} alt={`${room} before cleaning`} className="h-full w-full object-cover" draggable={false} />
       </div>
       <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-ink/75 px-2.5 py-1 text-[11px] font-bold text-white">Before</span>
-      <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-gold px-2.5 py-1 text-[11px] font-bold text-ink">After</span>
+      <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-gold px-2.5 py-1 text-[11px] font-bold text-white">After</span>
       <div className="pointer-events-none absolute inset-y-0" style={{ left: `${pos}%` }}>
         <div className="absolute inset-y-0 -ml-px w-0.5 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.15)]" />
       </div>
@@ -49,7 +49,7 @@ export default function BeforeAfter({ before, after, room }: { before: string; a
           if (e.key === 'ArrowLeft') setPos((p) => Math.max(0, p - 5));
           if (e.key === 'ArrowRight') setPos((p) => Math.min(100, p + 5));
         }}
-        className="absolute top-1/2 flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-gold text-ink shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        className="absolute top-1/2 flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-gold text-white shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         style={{ left: `${pos}%` }}
       >
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2.4} aria-hidden="true">

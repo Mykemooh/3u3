@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { db } from '@/db/client';
 import { invoices, jobs } from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
-import { getTenant, getAllBookings, getPrimaryCrew, getClientsForTenant, formatMoney } from '@/lib/data';
+import { getTenant, getAllBookings, getPrimaryCrew, getClientsForTenant, formatMoney, getUnreadAdminAlerts } from '@/lib/data';
+import AdminAlertsPanel from '@/components/AdminAlertsPanel';
 import { businessNowISO, businessTodayISO } from '@/lib/time';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 import { invoiceLabel } from '@/lib/invoices';
@@ -15,11 +16,12 @@ import { invoiceLabel } from '@/lib/invoices';
 export default async function AdminOverview() {
   const tenant = await getTenant();
   if (!tenant) return null;
-  const [allBookings, crew, clients, invoiceRows] = await Promise.all([
+  const [allBookings, crew, clients, invoiceRows, alerts] = await Promise.all([
     getAllBookings(tenant.id),
     getPrimaryCrew(tenant.id),
     getClientsForTenant(tenant.id),
     db.select().from(invoices).where(eq(invoices.tenantId, tenant.id)),
+    getUnreadAdminAlerts(tenant.id),
   ]);
 
   const now = businessNowISO();
@@ -30,7 +32,7 @@ export default async function AdminOverview() {
   const upcomingJobs = cleaning.filter((b) => b.slotEnd >= now && b.status !== 'COMPLETED');
 
   const jobRows = cleaning.length ? await db.select().from(jobs).where(inArray(jobs.bookingId, cleaning.map((b) => b.id))) : [];
-  const inProgress = jobRows.filter((j) => j.status === 'IN_PROGRESS');
+  const inProgress = jobRows.filter((j) => j.status === 'IN_PROGRESS' || j.status === 'EN_ROUTE');
   const drafts = invoiceRows.filter((i) => i.status === 'DRAFT');
   const unpaid = invoiceRows.filter((i) => i.status === 'SENT');
   const clientName = new Map(clients.map((c) => [c.id, c.name]));
@@ -62,6 +64,15 @@ export default async function AdminOverview() {
         ))}
       </div>
 
+      {alerts.length > 0 && (
+        <section className="card">
+          <h2 className="mb-3 font-semibold text-ink">Alerts</h2>
+          <AdminAlertsPanel
+            alerts={alerts.map((a) => ({ id: a.id, triggerEvent: a.triggerEvent, createdAt: a.createdAt.toISOString() }))}
+          />
+        </section>
+      )}
+
       {(drafts.length > 0 || inProgress.length > 0) && (
         <section className="card">
           <h2 className="mb-3 font-semibold text-ink">Needs you</h2>
@@ -71,7 +82,7 @@ export default async function AdminOverview() {
               return (
                 <li key={j.id} className="flex items-center justify-between gap-3 py-3 text-sm">
                   <span>
-                    <span className="pill mr-2 bg-gold/20 text-bronze">Cleaning now</span>
+                    <span className="pill mr-2 bg-gold/20 text-bronze">{j.status === 'EN_ROUTE' ? 'On the way' : 'Cleaning now'}</span>
                     {b ? clientName.get(b.clientId) : 'Job'}
                   </span>
                   <Link href={`/crew/jobs/${j.id}`} className="font-semibold text-bronze hover:underline">
