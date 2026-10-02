@@ -12,6 +12,13 @@ const schema = z.object({
   workEndMinutes: z.number().int().min(0).max(1439),
   homesPerDay: z.number().int().min(1).max(10),
   commuteBufferMinutes: z.number().int().min(0).max(180),
+  // Where this team's day starts ("move a team to a location") —
+  // lib/routeOptimization.ts geocodes it fresh each time it's needed,
+  // never stored as coordinates (see db/schema.ts crews).
+  homeAddressLine1: z.string().trim().max(200).nullable().optional(),
+  homeCity: z.string().trim().max(100).nullable().optional(),
+  homeState: z.string().trim().max(50).nullable().optional(),
+  homeZip: z.string().trim().max(12).nullable().optional(),
 });
 
 // Admin-configurable scheduling engine settings (PRD 6.4). Changing any

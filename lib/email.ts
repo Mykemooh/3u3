@@ -504,3 +504,22 @@ export function estimateReminderEmail(input: { name: string; serviceName: string
 export function estimateReminderText(input: { serviceName: string; totalCents: number; url: string }) {
   return `3U3 Cleaning: your ${input.serviceName} estimate (${money(input.totalCents)}) is still open — ${input.url}`;
 }
+
+/** A standby slot opened up on the day a client asked to be held for (lib/standby.ts). */
+export function standbyOfferEmail(input: { name: string; serviceName: string; dateLabel: string; timeLabel: string; url: string; expiresLabel: string }) {
+  return {
+    subject: `A spot opened up — ${input.dateLabel}`,
+    html: branded(
+      `<h2 style="margin:0 0 12px;font-size:20px;">Good news, ${esc(input.name.split(' ')[0])}!</h2>
+       <p>A spot just opened up for <strong>${esc(input.serviceName)}</strong> on the day you asked to be held for:</p>
+       <p style="font-size:18px;font-weight:bold;margin:16px 0;">${esc(input.dateLabel)} &middot; ${esc(input.timeLabel)}</p>
+       ${button(input.url, 'Claim this spot')}
+       <p style="color:#6B727E;font-size:13px;">First come, first served — this hold expires ${esc(input.expiresLabel)}. If you don't claim it in time, we'll offer it to the next person waiting.</p>`,
+      'A spot opened up on the day you wanted.',
+    ),
+  };
+}
+
+export function standbyOfferText(input: { serviceName: string; dateLabel: string; timeLabel: string; url: string }) {
+  return `3U3 Cleaning: a spot opened up for ${input.serviceName} on ${input.dateLabel} at ${input.timeLabel} — claim it: ${input.url}`;
+}

@@ -14,6 +14,10 @@ import {
 } from '@/lib/bookings';
 import { sendEmail, clientAccountChangeOwnerEmail } from '@/lib/email';
 import { appUrl } from '@/lib/url';
+import { checkStandbyForFreedDate } from '@/lib/standby';
+import { db } from '@/db/client';
+import { bookings } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 
 const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('reschedule'), slotStart: z.string(), slotEnd: z.string() }),
@@ -40,6 +44,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   try {
     let summary = '';
+    // Captured before the change, for the standby check below — a
+    // reschedule or cancellation frees up this original date.
+    const before = (await db.select({ slotStart: bookings.slotStart, tenantId: bookings.tenantId }).from(bookings).where(eq(bookings.id, params.id)).limit(1))[0];
 
     if (parsed.data.action === 'reschedule') {
       await rescheduleBookingByClient({
@@ -49,12 +56,16 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         slotEnd: parsed.data.slotEnd,
       });
       summary = `Moved their cleaning to ${parsed.data.slotStart.replace('T', ' ')}.`;
+      if (before && before.slotStart.slice(0, 10) !== parsed.data.slotStart.slice(0, 10)) {
+        await checkStandbyForFreedDate(before.tenantId, before.slotStart.slice(0, 10));
+      }
     } else if (parsed.data.action === 'cadence') {
       await updateBookingCadenceByClient({ bookingId: params.id, clientId, cadence: parsed.data.cadence });
       summary = `Changed their cleaning frequency to ${parsed.data.cadence.replace('_', ' ').toLowerCase()}.`;
     } else {
       await cancelBookingByClient({ bookingId: params.id, clientId });
       summary = 'Cancelled an upcoming cleaning.';
+      if (before) await checkStandbyForFreedDate(before.tenantId, before.slotStart.slice(0, 10));
     }
 
     const client = await getUserById(clientId);

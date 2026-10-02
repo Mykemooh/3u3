@@ -19,25 +19,39 @@ export type SavedCard = {
  * all this app ever stores is the resulting PaymentMethod id plus
  * non-sensitive brand/last4/expiry for display (lib/payments.ts).
  */
-export default function PaymentMethodCard({ publishableKey, saved }: { publishableKey: string | null; saved: SavedCard | null }) {
+export default function PaymentMethodCard({
+  publishableKey,
+  saved,
+  bare,
+}: {
+  publishableKey: string | null;
+  saved: SavedCard | null;
+  /** Skip the self-contained card/heading — for nesting inside a shared "Payment" section that supplies its own. */
+  bare?: boolean;
+}) {
   const [card, setCard] = useState(saved);
   const [adding, setAdding] = useState(false);
+  const wrapClass = bare ? '' : 'card';
 
   if (!publishableKey) {
     return (
-      <div className="card">
-        <h2 className="mb-1 font-semibold text-ink">Payment method</h2>
+      <div className={wrapClass}>
+        {!bare && <h2 className="mb-1 font-semibold text-ink">Payment method</h2>}
         <p className="text-sm text-muted">Online payment setup isn't turned on for this business yet.</p>
       </div>
     );
   }
 
   return (
-    <div className="card">
-      <h2 className="mb-1 font-semibold text-ink">Payment method</h2>
-      <p className="mb-4 text-sm text-slate">
-        We never see or store your card number — Stripe handles it directly and securely.
-      </p>
+    <div className={wrapClass}>
+      {!bare && (
+        <>
+          <h2 className="mb-1 font-semibold text-ink">Payment method</h2>
+          <p className="mb-4 text-sm text-slate">
+            We never see or store your card number — Stripe handles it directly and securely.
+          </p>
+        </>
+      )}
       {card ? (
         <SavedCardView card={card} onChanged={setCard} onReplace={() => setAdding(true)} />
       ) : adding ? null : (

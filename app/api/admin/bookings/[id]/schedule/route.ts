@@ -9,6 +9,7 @@ import { logNotification } from '@/lib/bookings';
 import { sendEmail, bookingRescheduledCustomerEmail } from '@/lib/email';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 import { appUrl } from '@/lib/url';
+import { checkStandbyForFreedDate } from '@/lib/standby';
 
 const schema = z.object({
   crewId: z.string().min(1).optional(),
@@ -36,6 +37,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     let clientNotified = false;
     if (result.moved && result.timeChanged && notify) {
       clientNotified = await notifyClient(result.booking, result.slotStart, result.slotEnd);
+    }
+    if (result.moved && result.booking.slotStart.slice(0, 10) !== result.slotStart.slice(0, 10)) {
+      await checkStandbyForFreedDate(result.booking.tenantId, result.booking.slotStart.slice(0, 10));
     }
     return NextResponse.json({ ok: true, moved: result.moved, clientNotified });
   } catch (err) {

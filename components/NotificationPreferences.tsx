@@ -11,7 +11,16 @@ const OPTIONS: { value: Channel; label: string; needsPhone: boolean }[] = [
   { value: 'WHATSAPP', label: 'WhatsApp', needsPhone: true },
 ];
 
-export default function NotificationPreferences({ initial, hasPhone }: { initial: Channel; hasPhone: boolean }) {
+export default function NotificationPreferences({
+  initial,
+  hasPhone,
+  bare,
+}: {
+  initial: Channel;
+  hasPhone: boolean;
+  /** Skip the self-contained card/heading — for nesting inside a shared section that supplies its own. */
+  bare?: boolean;
+}) {
   const router = useRouter();
   const [channel, setChannel] = useState<Channel>(initial);
   const [busy, setBusy] = useState(false);
@@ -33,12 +42,16 @@ export default function NotificationPreferences({ initial, hasPhone }: { initial
     router.refresh();
   }
 
-  return (
-    <div className="card">
-      <h2 className="mb-1 font-semibold text-ink">Notifications</h2>
-      <p className="mb-4 text-sm text-slate">
-        Where we send booking reminders (3 days, then 36 hours before a cleaning) and other updates.
-      </p>
+  const body = (
+    <>
+      {!bare && (
+        <>
+          <h2 className="mb-1 font-semibold text-ink">Notifications</h2>
+          <p className="mb-4 text-sm text-slate">
+            Where we send booking reminders (3 days, then 36 hours before a cleaning) and other updates.
+          </p>
+        </>
+      )}
       <div className="space-y-2">
         {OPTIONS.map((opt) => {
           const disabled = busy || (opt.needsPhone && !hasPhone);
@@ -52,6 +65,8 @@ export default function NotificationPreferences({ initial, hasPhone }: { initial
         })}
       </div>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-    </div>
+    </>
   );
+
+  return bare ? body : <div className="card">{body}</div>;
 }

@@ -1,9 +1,11 @@
+import Link from 'next/link';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
-import { getPayrollReport } from '@/lib/payroll';
+import { previewPayroll, listPayrollRuns, PAY_TYPE_LABELS, type PayType } from '@/lib/payroll';
 import { businessTodayISO } from '@/lib/time';
 import { formatMoney } from '@/lib/data';
+import CreatePayrollRunButton from '@/components/admin/CreatePayrollRunButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,9 +22,10 @@ export default async function AdminPayroll({ searchParams }: { searchParams: { s
 
   const start = searchParams.start || daysAgoISO(14);
   const end = searchParams.end || businessTodayISO();
-  const rows = await getPayrollReport(user.tenantId, start, end);
-  const totalPayCents = rows.reduce((sum, r) => sum + (r.payCents ?? 0), 0);
-  const missingRate = rows.some((r) => r.payRateCentsPerHour == null);
+  const [preview, runs] = await Promise.all([previewPayroll(user.tenantId, start, end), listPayrollRuns(user.tenantId)]);
+  const previewTotalCents = preview.reduce((sum, r) => sum + (r.payCents ?? 0), 0);
+  const missingRate = preview.some((r) => r.rateCents == null);
+  const payable = preview.filter((r) => r.rateCents != null);
 
   return (
     <div className="space-y-6">
@@ -30,10 +33,8 @@ export default async function AdminPayroll({ searchParams }: { searchParams: { s
         <p className="eyebrow">Admin</p>
         <h1 className="mt-1 text-3xl font-extrabold">Payroll</h1>
         <p className="mt-2 text-slate">
-          Hours worked, from real clock-in/clock-out times on completed jobs, times each cleaner's hourly rate
-          (set on their Team page). Export the CSV below and hand it to whichever payroll processor you use —
-          there's no fully free processor API to run real paychecks through yet, so this is the input, not the
-          payment itself.
+          Preview a pay period, then create a run to lock it in for review and mark it paid. A job is never
+          counted twice — once it's in a run (reviewed or paid), it won't show up again in a later one.
         </p>
       </div>
 
@@ -47,59 +48,84 @@ export default async function AdminPayroll({ searchParams }: { searchParams: { s
           <input type="date" name="end" defaultValue={end} className="input" />
         </div>
         <button type="submit" className="btn-secondary">
-          Update
+          Preview
         </button>
-        <a href={`/api/admin/payroll/export?start=${start}&end=${end}`} className="btn-primary">
-          Export CSV
-        </a>
       </form>
 
       {missingRate && (
         <p className="rounded-xl bg-cream px-4 py-3 text-sm text-bronze">
-          Some cleaners below have no hourly rate set yet — add one on their Team page to see their pay.
+          Some cleaners below have no pay rate set yet — add one on their Team page to include them in a run.
         </p>
       )}
 
       <div className="card overflow-x-auto">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-semibold text-ink">Preview: {start} to {end}</h2>
+          {payable.length > 0 && <CreatePayrollRunButton start={start} end={end} />}
+        </div>
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b-2 border-ink text-xs uppercase tracking-wide text-muted">
               <th className="pb-2 font-bold">Cleaner</th>
-              <th className="pb-2 text-right font-bold">Jobs</th>
+              <th className="pb-2 font-bold">Pay type</th>
               <th className="pb-2 text-right font-bold">Hours</th>
-              <th className="pb-2 text-right font-bold">Rate</th>
+              <th className="pb-2 text-right font-bold">Jobs</th>
+              <th className="pb-2 text-right font-bold">Days</th>
               <th className="pb-2 text-right font-bold">Pay</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
+            {preview.map((r) => (
               <tr key={r.employeeId} className="border-b border-line">
                 <td className="py-3 font-semibold text-ink">{r.name}</td>
-                <td className="py-3 text-right">{r.jobCount}</td>
+                <td className="py-3 text-slate">{PAY_TYPE_LABELS[r.payType]}</td>
                 <td className="py-3 text-right tabular-nums">{r.hours.toFixed(2)}</td>
-                <td className="py-3 text-right tabular-nums">{r.payRateCentsPerHour != null ? `${formatMoney(r.payRateCentsPerHour)}/hr` : '—'}</td>
-                <td className="py-3 text-right tabular-nums">{r.payCents != null ? formatMoney(r.payCents) : '—'}</td>
+                <td className="py-3 text-right tabular-nums">{r.jobCount}</td>
+                <td className="py-3 text-right tabular-nums">{r.daysWorked}</td>
+                <td className="py-3 text-right tabular-nums">{r.payCents != null ? formatMoney(r.payCents) : '— no rate set'}</td>
               </tr>
             ))}
-            {rows.length === 0 && (
+            {preview.length === 0 && (
               <tr>
-                <td colSpan={5} className="py-6 text-center text-muted">
-                  No completed jobs in this range.
+                <td colSpan={6} className="py-6 text-center text-muted">
+                  No unpaid completed jobs in this range.
                 </td>
               </tr>
             )}
           </tbody>
-          {rows.length > 0 && (
+          {payable.length > 0 && (
             <tfoot>
               <tr>
-                <td colSpan={4} className="pt-3 text-right text-lg font-bold">
+                <td colSpan={5} className="pt-3 text-right text-lg font-bold">
                   Total
                 </td>
-                <td className="pt-3 text-right text-lg font-bold tabular-nums">{formatMoney(totalPayCents)}</td>
+                <td className="pt-3 text-right text-lg font-bold tabular-nums">{formatMoney(previewTotalCents)}</td>
               </tr>
             </tfoot>
           )}
         </table>
+      </div>
+
+      <div className="card">
+        <h2 className="mb-3 font-semibold text-ink">Payroll runs</h2>
+        <div className="space-y-2">
+          {runs.map((run) => (
+            <Link
+              key={run.id}
+              href={`/admin/payroll/${run.id}`}
+              className="flex items-center justify-between rounded-xl border border-line px-4 py-3 text-sm transition hover:border-gold hover:bg-cream/60"
+            >
+              <div>
+                <p className="font-semibold text-ink">{run.label}</p>
+                <p className="text-muted">{run.periodStart} to {run.periodEnd}</p>
+              </div>
+              <span className={`pill ${run.status === 'PAID' ? 'bg-green/15 text-green' : 'bg-gold/15 text-bronze'}`}>
+                {run.status === 'PAID' ? 'Paid' : 'Open'}
+              </span>
+            </Link>
+          ))}
+          {runs.length === 0 && <p className="text-sm text-muted">No payroll runs yet.</p>}
+        </div>
       </div>
     </div>
   );

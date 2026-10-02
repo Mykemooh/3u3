@@ -394,6 +394,80 @@ async function main() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
     CREATE UNIQUE INDEX IF NOT EXISTS quickbooks_links_entity_unique ON quickbooks_links(tenant_id, entity, local_id);
+
+    -- Pay types (hourly / per-clean / full-workday) alongside the existing
+    -- hourly rate column, and the payroll run → review → paid workflow.
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS pay_type TEXT NOT NULL DEFAULT 'HOURLY'
+      CHECK (pay_type IN ('HOURLY','PER_CLEAN','DAY_RATE'));
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS pay_rate_cents_per_clean INTEGER;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS pay_rate_cents_per_day INTEGER;
+
+    CREATE TABLE IF NOT EXISTS payroll_runs (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      label TEXT NOT NULL,
+      period_start TEXT NOT NULL,
+      period_end TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN','PAID')),
+      paid_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS payroll_entries (
+      id TEXT PRIMARY KEY,
+      payroll_run_id TEXT NOT NULL REFERENCES payroll_runs(id),
+      user_id TEXT NOT NULL REFERENCES users(id),
+      pay_type TEXT NOT NULL CHECK (pay_type IN ('HOURLY','PER_CLEAN','DAY_RATE')),
+      rate_cents INTEGER NOT NULL,
+      hours REAL NOT NULL DEFAULT 0,
+      job_count INTEGER NOT NULL DEFAULT 0,
+      days_worked INTEGER NOT NULL DEFAULT 0,
+      pay_cents INTEGER NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS payroll_entry_jobs (
+      id TEXT PRIMARY KEY,
+      payroll_entry_id TEXT NOT NULL REFERENCES payroll_entries(id),
+      job_id TEXT NOT NULL REFERENCES jobs(id),
+      user_id TEXT NOT NULL REFERENCES users(id),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS payroll_entry_jobs_job_user_unique ON payroll_entry_jobs(job_id, user_id);
+
+    -- A team's home base ("move a team to a location") — text only, never
+    -- lat/lng (see the comment on db/schema.ts crews for why).
+    ALTER TABLE crews ADD COLUMN IF NOT EXISTS home_address_line1 TEXT;
+    ALTER TABLE crews ADD COLUMN IF NOT EXISTS home_city TEXT;
+    ALTER TABLE crews ADD COLUMN IF NOT EXISTS home_state TEXT;
+    ALTER TABLE crews ADD COLUMN IF NOT EXISTS home_zip TEXT;
+
+    -- Standby requests (lib/standby.ts).
+    CREATE TABLE IF NOT EXISTS standby_requests (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      client_id TEXT NOT NULL REFERENCES users(id),
+      service_type_id TEXT NOT NULL REFERENCES service_types(id),
+      address_id TEXT REFERENCES addresses(id),
+      preferred_date TEXT NOT NULL,
+      cadence TEXT NOT NULL DEFAULT 'ONE_TIME' CHECK (cadence IN ('ONE_TIME','BIWEEKLY','MONTHLY')),
+      status TEXT NOT NULL DEFAULT 'WAITING' CHECK (status IN ('WAITING','OFFERED','BOOKED','EXPIRED','CANCELLED')),
+      offer_token TEXT,
+      offer_crew_id TEXT REFERENCES crews(id),
+      offer_slot_start TEXT,
+      offer_slot_end TEXT,
+      offer_expires_at TIMESTAMPTZ,
+      resulting_booking_id TEXT REFERENCES bookings(id),
+      responded_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS standby_requests_offer_token_unique ON standby_requests(offer_token);
+
+    -- "Can we use your before/after photos on social media?" — asked once
+    -- on the client's before-and-after gallery page, covers every future
+    -- cleaning until they change it.
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS social_media_consent BOOLEAN;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS social_media_consent_at TIMESTAMPTZ;
   `);
 
   console.log('Schema pushed to Postgres.');

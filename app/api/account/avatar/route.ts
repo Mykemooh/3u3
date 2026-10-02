@@ -35,7 +35,13 @@ export async function POST(req: Request) {
 
   const ext = EXT_BY_TYPE[file.type.toLowerCase().split(';')[0].trim()] ?? 'jpg';
   const key = `avatars/${userId}-${Date.now()}.${ext}`;
-  const url = await saveServerUpload(file, key);
+  let url: string;
+  try {
+    url = await saveServerUpload(file, key);
+  } catch (err) {
+    console.error('[avatar] upload failed:', err);
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Could not save that photo.' }, { status: 500 });
+  }
 
   const previous = (await db.select({ avatarUrl: users.avatarUrl }).from(users).where(eq(users.id, userId)).limit(1))[0];
   await db.update(users).set({ avatarUrl: url }).where(eq(users.id, userId));

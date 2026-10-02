@@ -30,6 +30,10 @@ export default async function AdminTeamPage() {
           workEndMinutes: t.workEndMinutes,
           homesPerDay: t.homesPerDay,
           commuteBufferMinutes: t.commuteBufferMinutes,
+          homeAddressLine1: t.homeAddressLine1,
+          homeCity: t.homeCity,
+          homeState: t.homeState,
+          homeZip: t.homeZip,
         }))}
         employees={employees}
       />

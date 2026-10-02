@@ -28,6 +28,10 @@ export type BoardTeam = {
   workEndMinutes: number;
   homesPerDay: number;
   commuteBufferMinutes: number;
+  homeAddressLine1: string | null;
+  homeCity: string | null;
+  homeState: string | null;
+  homeZip: string | null;
 };
 
 export const ROLE_LABELS: Record<StaffRole, string> = { TEAM_LEAD: 'Team Lead', CLEANER: 'Cleaner', JR_CLEANER: 'Jr. Cleaner' };
@@ -248,6 +252,10 @@ function TeamColumn({
                   workEndMinutes: team.workEndMinutes,
                   homesPerDay: team.homesPerDay,
                   commuteBufferMinutes: team.commuteBufferMinutes,
+                  homeAddressLine1: team.homeAddressLine1,
+                  homeCity: team.homeCity,
+                  homeState: team.homeState,
+                  homeZip: team.homeZip,
                 }}
               />
             </div>
@@ -296,8 +304,22 @@ function EmployeeCard({ employee, onRole }: { employee: BoardEmployee; onRole: (
   );
 }
 
+const PAY_TYPE_OPTIONS: { value: 'HOURLY' | 'PER_CLEAN' | 'DAY_RATE'; label: string; rateLabel: string }[] = [
+  { value: 'HOURLY', label: 'Hourly (clock in/out)', rateLabel: 'Rate per hour' },
+  { value: 'PER_CLEAN', label: 'Per clean (flat rate per job)', rateLabel: 'Rate per clean' },
+  { value: 'DAY_RATE', label: 'Full workday (flat daily rate)', rateLabel: 'Rate per day' },
+];
+
 function AddEmployeeForm({ teams, onDone }: { teams: BoardTeam[]; onDone: () => void }) {
-  const [form, setForm] = useState({ name: '', email: '', phone: '', staffRole: 'CLEANER' as StaffRole, crewId: teams[0]?.id ?? '' });
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    staffRole: 'CLEANER' as StaffRole,
+    crewId: teams[0]?.id ?? '',
+    payType: 'HOURLY' as 'HOURLY' | 'PER_CLEAN' | 'DAY_RATE',
+    payRate: '',
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -305,10 +327,21 @@ function AddEmployeeForm({ teams, onDone }: { teams: BoardTeam[]; onDone: () => 
     e.preventDefault();
     setBusy(true);
     setError('');
+    const rate = form.payRate ? Number(form.payRate) : null;
     const res = await fetch('/api/admin/team/employees', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, phone: form.phone || undefined, crewId: form.crewId || null }),
+      body: JSON.stringify({
+        name: form.name,
+        email: form.email,
+        phone: form.phone || undefined,
+        staffRole: form.staffRole,
+        crewId: form.crewId || null,
+        payType: form.payType,
+        payRatePerHour: form.payType === 'HOURLY' ? rate : null,
+        payRatePerClean: form.payType === 'PER_CLEAN' ? rate : null,
+        payRatePerDay: form.payType === 'DAY_RATE' ? rate : null,
+      }),
     });
     setBusy(false);
     if (!res.ok) return setError((await res.json().catch(() => ({}))).error || 'Could not add them.');
@@ -317,6 +350,7 @@ function AddEmployeeForm({ teams, onDone }: { teams: BoardTeam[]; onDone: () => 
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
+  const payTypeMeta = PAY_TYPE_OPTIONS.find((o) => o.value === form.payType)!;
 
   return (
     <form onSubmit={submit} className="card grid gap-4 sm:grid-cols-2">
@@ -353,6 +387,25 @@ function AddEmployeeForm({ teams, onDone }: { teams: BoardTeam[]; onDone: () => 
             ))}
             <option value="">Unassigned</option>
           </select>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="label">Pay type</label>
+          <select className="input" value={form.payType} onChange={set('payType')}>
+            {PAY_TYPE_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="label">{payTypeMeta.rateLabel} (optional)</label>
+          <div className="relative">
+            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate">$</span>
+            <input className="input pl-6" type="number" min={0} step={0.01} value={form.payRate} onChange={set('payRate')} placeholder="0.00" />
+          </div>
         </div>
       </div>
       {error && <p className="text-sm text-red-600 sm:col-span-2">{error}</p>}

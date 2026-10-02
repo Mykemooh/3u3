@@ -97,10 +97,25 @@ export async function setStaffRole(tenantId: string, userId: string, staffRole: 
   await db.update(users).set({ staffRole }).where(eq(users.id, userId));
 }
 
-/** Hourly pay rate for the payroll report (lib/payroll.ts). Null clears it. */
-export async function setPayRate(tenantId: string, userId: string, payRateCentsPerHour: number | null) {
+/** Pay type and rate(s) for the payroll workflow (lib/payroll.ts). Any field left out is unchanged; null clears that rate. */
+export async function setPayRates(
+  tenantId: string,
+  userId: string,
+  input: {
+    payType?: 'HOURLY' | 'PER_CLEAN' | 'DAY_RATE';
+    payRateCentsPerHour?: number | null;
+    payRateCentsPerClean?: number | null;
+    payRateCentsPerDay?: number | null;
+  },
+) {
   await requireEmployee(tenantId, userId);
-  await db.update(users).set({ payRateCentsPerHour }).where(eq(users.id, userId));
+  const set: Record<string, unknown> = {};
+  if (input.payType !== undefined) set.payType = input.payType;
+  if (input.payRateCentsPerHour !== undefined) set.payRateCentsPerHour = input.payRateCentsPerHour;
+  if (input.payRateCentsPerClean !== undefined) set.payRateCentsPerClean = input.payRateCentsPerClean;
+  if (input.payRateCentsPerDay !== undefined) set.payRateCentsPerDay = input.payRateCentsPerDay;
+  if (Object.keys(set).length === 0) return;
+  await db.update(users).set(set).where(eq(users.id, userId));
 }
 
 export async function createTeam(tenantId: string, name: string) {
@@ -121,7 +136,17 @@ export async function updateTeam(tenantId: string, crewId: string, patch: { name
  */
 export async function addEmployee(
   tenantId: string,
-  input: { name: string; email: string; phone?: string; staffRole: StaffRole; crewId: string | null },
+  input: {
+    name: string;
+    email: string;
+    phone?: string;
+    staffRole: StaffRole;
+    crewId: string | null;
+    payType?: 'HOURLY' | 'PER_CLEAN' | 'DAY_RATE';
+    payRateCentsPerHour?: number | null;
+    payRateCentsPerClean?: number | null;
+    payRateCentsPerDay?: number | null;
+  },
 ) {
   const email = input.email.trim().toLowerCase();
   const taken = (await db.select().from(users).where(eq(users.email, email)).limit(1))[0];
@@ -141,6 +166,10 @@ export async function addEmployee(
     name: input.name,
     email,
     phone: input.phone || null,
+    payType: input.payType ?? 'HOURLY',
+    payRateCentsPerHour: input.payRateCentsPerHour ?? null,
+    payRateCentsPerClean: input.payRateCentsPerClean ?? null,
+    payRateCentsPerDay: input.payRateCentsPerDay ?? null,
   });
   if (input.crewId) await db.insert(crewMembers).values({ id: crypto.randomUUID(), crewId: input.crewId, userId: id });
 

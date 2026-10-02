@@ -67,9 +67,28 @@ export const users = pgTable('users', {
   notificationChannel: text('notification_channel', { enum: ['EMAIL', 'SMS', 'WHATSAPP'] })
     .notNull()
     .default('EMAIL'),
-  // Admin-set hourly rate for a CLEANER, cents — the input to the payroll
-  // hours report (lib/payroll.ts). Null until an admin sets it.
+  // How a CLEANER is paid (Admin → Team / Add employee), and the rate for
+  // whichever one applies — the input to payroll (lib/payroll.ts):
+  //   HOURLY    — actual clock-in/out time on each job (jobs.startedAt/
+  //               completedAt), times payRateCentsPerHour.
+  //   PER_CLEAN — a flat amount per job they're credited on, times
+  //               payRateCentsPerClean, regardless of how long it took or
+  //               how many others worked it too.
+  //   DAY_RATE  — a flat "full workday" amount, payRateCentsPerDay, for
+  //               each calendar day they had at least one job.
+  // All three rates are nullable until an admin sets one.
+  payType: text('pay_type', { enum: ['HOURLY', 'PER_CLEAN', 'DAY_RATE'] }).notNull().default('HOURLY'),
   payRateCentsPerHour: integer('pay_rate_cents_per_hour'),
+  payRateCentsPerClean: integer('pay_rate_cents_per_clean'),
+  payRateCentsPerDay: integer('pay_rate_cents_per_day'),
+  // A CUSTOMER's one-time answer to "can we use your before/after photos
+  // on social media?" (app/account/jobs/[id] — the before-and-after
+  // gallery). Null = not asked yet; once set it's never asked again and
+  // covers every future cleaning too, until the client changes it
+  // themselves. True/false both count as "asked" — a decline is still a
+  // recorded, respected answer, not a re-prompt.
+  socialMediaConsent: boolean('social_media_consent'),
+  socialMediaConsentAt: timestamp('social_media_consent_at', { withTimezone: true }),
   ...timestamps,
 }, (t) => ({
   phoneUnique: uniqueIndex('users_phone_unique').on(t.phone),
@@ -136,6 +155,16 @@ export const crews = pgTable('crews', {
   // Whether customers can book this team online. Teams created from the
   // Team page start switched off, so an empty team never opens slots.
   acceptsBookings: boolean('accepts_bookings').notNull().default(true),
+  // Where this team's day starts/ends — admin-settable ("move a team to a
+  // location"), and what lib/routeOptimization.ts measures drive time
+  // from. Deliberately text, not lat/lng: this app never permanently
+  // stores geocoded coordinates (see jobs.destLat/destLng above — Mapbox's
+  // free geocoding tier only allows temporary use), so a crew's home base
+  // is geocoded fresh, in memory, each time a route is optimized.
+  homeAddressLine1: text('home_address_line1'),
+  homeCity: text('home_city'),
+  homeState: text('home_state'),
+  homeZip: text('home_zip'),
   ...timestamps,
 });
 
@@ -456,4 +485,79 @@ export const quickbooksLinks = pgTable('quickbooks_links', {
   ...timestamps,
 }, (t) => ({
   entityUnique: uniqueIndex('quickbooks_links_entity_unique').on(t.tenantId, t.entity, t.localId),
+}));
+
+// ---------------------------------------------------------------------------
+// Payroll (lib/payroll.ts) — Admin → Payroll turns the hours/pay numbers
+// into a real run → review → mark-as-paid workflow, not just a report:
+// a payroll_run is one pay period; a payroll_entry is one employee's pay
+// within it (rate and totals are snapshotted at creation time, so a later
+// rate change never rewrites history); payroll_entry_jobs records exactly
+// which jobs each entry counted, with a unique (job, employee) index —
+// that's what makes a job physically impossible to pay out twice for the
+// same person, no matter what date range a later run is generated for.
+// ---------------------------------------------------------------------------
+export const payrollRuns = pgTable('payroll_runs', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  label: text('label').notNull(),
+  periodStart: text('period_start').notNull(),
+  periodEnd: text('period_end').notNull(),
+  status: text('status', { enum: ['OPEN', 'PAID'] }).notNull().default('OPEN'),
+  paidAt: timestamp('paid_at', { withTimezone: true }),
+  ...timestamps,
+});
+
+export const payrollEntries = pgTable('payroll_entries', {
+  id: id(),
+  payrollRunId: text('payroll_run_id').notNull().references(() => payrollRuns.id),
+  userId: text('user_id').notNull().references(() => users.id),
+  // Snapshotted from the employee at the moment the run was created.
+  payType: text('pay_type', { enum: ['HOURLY', 'PER_CLEAN', 'DAY_RATE'] }).notNull(),
+  rateCents: integer('rate_cents').notNull(),
+  hours: real('hours').notNull().default(0),
+  jobCount: integer('job_count').notNull().default(0),
+  daysWorked: integer('days_worked').notNull().default(0),
+  payCents: integer('pay_cents').notNull(),
+  ...timestamps,
+});
+
+export const payrollEntryJobs = pgTable('payroll_entry_jobs', {
+  id: id(),
+  payrollEntryId: text('payroll_entry_id').notNull().references(() => payrollEntries.id),
+  jobId: text('job_id').notNull().references(() => jobs.id),
+  userId: text('user_id').notNull().references(() => users.id),
+  ...timestamps,
+}, (t) => ({
+  jobUserUnique: uniqueIndex('payroll_entry_jobs_job_user_unique').on(t.jobId, t.userId),
+}));
+
+// ---------------------------------------------------------------------------
+// Standby requests (lib/standby.ts) — "I'd rather have this day; hold my
+// spot and tell me if it opens up." Created from the booking wizard when a
+// client's first-choice day has nothing open and they book an alternative
+// instead. Whenever a booking is cancelled or moved off a date (lib/
+// bookings.ts, lib/dispatch.ts), the freed day is checked against WAITING
+// requests oldest-first; a match gets a time-boxed OFFERED link and, if it
+// lapses or is declined, the next WAITING request for that day gets it.
+// ---------------------------------------------------------------------------
+export const standbyRequests = pgTable('standby_requests', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  clientId: text('client_id').notNull().references(() => users.id),
+  serviceTypeId: text('service_type_id').notNull().references(() => serviceTypes.id),
+  addressId: text('address_id').references(() => addresses.id),
+  preferredDate: text('preferred_date').notNull(), // YYYY-MM-DD
+  cadence: text('cadence', { enum: ['ONE_TIME', 'BIWEEKLY', 'MONTHLY'] }).notNull().default('ONE_TIME'),
+  status: text('status', { enum: ['WAITING', 'OFFERED', 'BOOKED', 'EXPIRED', 'CANCELLED'] }).notNull().default('WAITING'),
+  offerToken: text('offer_token'),
+  offerCrewId: text('offer_crew_id').references(() => crews.id),
+  offerSlotStart: text('offer_slot_start'),
+  offerSlotEnd: text('offer_slot_end'),
+  offerExpiresAt: timestamp('offer_expires_at', { withTimezone: true }),
+  resultingBookingId: text('resulting_booking_id').references(() => bookings.id),
+  respondedAt: timestamp('responded_at', { withTimezone: true }),
+  ...timestamps,
+}, (t) => ({
+  offerTokenUnique: uniqueIndex('standby_requests_offer_token_unique').on(t.offerToken),
 }));

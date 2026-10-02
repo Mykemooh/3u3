@@ -13,7 +13,9 @@ import { eq } from 'drizzle-orm';
 import JourneyRail from '@/components/app/JourneyRail';
 import BeforeAfter from '@/components/app/BeforeAfter';
 import LiveTrackingMap from '@/components/app/LiveTrackingMap';
+import SocialMediaConsent from '@/components/account/SocialMediaConsent';
 import { getTracking, publicMapboxToken } from '@/lib/tracking';
+import { getUserById } from '@/lib/data';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,7 +68,11 @@ export default async function JobGallery({ params }: { params: { id: string } })
             : 'Photos of every room will appear here once your cleaning is done.'}
         </p>
       ) : (
-        items.map((item) => {
+        <>
+          {viewer.role === 'CUSTOMER' && (
+            <SocialMediaConsent initialConsent={(await getUserById(viewer.id))?.socialMediaConsent ?? null} />
+          )}
+          {items.map((item) => {
           const roomMedia = media.filter((m) => m.itemId === item.id);
           const before = roomMedia.filter((m) => m.phase === 'BEFORE');
           const after = roomMedia.filter((m) => m.phase === 'AFTER');
@@ -116,7 +122,8 @@ export default async function JobGallery({ params }: { params: { id: string } })
               )}
             </section>
           );
-        })
+        })}
+        </>
       )}
 
       {viewer.role === 'CUSTOMER' && showMedia && (
