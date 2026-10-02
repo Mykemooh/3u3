@@ -3,11 +3,12 @@ import { notFound } from 'next/navigation';
 import { db } from '@/db/client';
 import { bookings, jobs, users, addresses, serviceTypes } from '@/db/schema';
 import { inArray } from 'drizzle-orm';
-import { getTenant, SERVICE_LABELS } from '@/lib/data';
+import { getTenant, SERVICE_LABELS, getUserById } from '@/lib/data';
 import { getEmployees, getTeams, jobIdsForEmployee, STAFF_ROLE_LABELS } from '@/lib/team';
 import { startOfWeek, shiftWeek, weekDates } from '@/lib/dispatch';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 import { businessTodayISO } from '@/lib/time';
+import PayRateInput from '@/components/admin/PayRateInput';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +28,7 @@ export default async function EmployeePage({ params, searchParams }: { params: {
   const employee = employees.find((e) => e.id === params.userId);
   if (!employee) notFound();
   const teamName = (id: string | null) => teams.find((t) => t.id === id)?.name ?? 'No team';
+  const fullUser = await getUserById(employee.id);
 
   const start = startOfWeek(searchParams.week);
   const dates = weekDates(start);
@@ -75,6 +77,7 @@ export default async function EmployeePage({ params, searchParams }: { params: {
           <h1 className="mt-1 text-2xl font-bold text-ink">{employee.name}</h1>
           <p className="text-slate">{teamName(employee.crewId)}</p>
           <p className="mt-1 text-sm text-muted">{[employee.email, employee.phone].filter(Boolean).join(' · ')}</p>
+          <PayRateInput userId={employee.id} initialCentsPerHour={fullUser?.payRateCentsPerHour ?? null} />
         </div>
         <div className="text-right">
           <p className="text-3xl font-extrabold text-ink">{rows.length}</p>
