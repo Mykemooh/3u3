@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth';
 import { createBooking, DoubleBookingError, sendBookingConfirmationEmails } from '@/lib/bookings';
 import { teamsFreeFor } from '@/lib/capacity';
 import { getAddressesFor, getServiceType, getClientRatesFor, getTenant } from '@/lib/data';
+import { pickNearestTeam } from '@/lib/routeOptimization';
 
 const schema = z.object({
   serviceTypeId: z.string(),
@@ -42,10 +43,16 @@ export async function POST(req: Request) {
   const addresses = await getAddressesFor(clientId);
 
   try {
-    // First free team takes it. If another booking grabs that team a moment
-    // earlier, createBooking's transactional check refuses and the next
-    // free team is tried; only when every team is taken does it fail.
-    const teams = await teamsFreeFor(tenant.id, service.defaultDurationMinutes, slotStart, slotEnd);
+    // Whichever free team is closest to the client takes it — a fast,
+    // no-API-call straight-line estimate (lib/routeOptimization.ts
+    // pickNearestTeam), not a full route optimization on every booking;
+    // that's reserved for the admin's deliberate day-level "Optimize
+    // route" (Admin -> Routes). If another booking grabs that team a
+    // moment earlier, createBooking's transactional check refuses and
+    // the next-nearest free team is tried; only when every team is taken
+    // does it fail.
+    const freeTeams = await teamsFreeFor(tenant.id, service.defaultDurationMinutes, slotStart, slotEnd);
+    const teams = await pickNearestTeam(freeTeams, addresses[0] ?? null);
     let bookingId: string | null = null;
     for (const team of teams) {
       try {
