@@ -3,6 +3,7 @@ import { bookings, jobs, invoices, jobMedia, serviceTypes, addresses } from '@/d
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import type { JourneyStep } from '@/components/app/JourneyRail';
 import { formatClock } from '@/lib/time';
+import { invoiceLabel } from '@/lib/invoices';
 
 export type AccountBooking = Awaited<ReturnType<typeof getAccountBookings>>[number];
 
@@ -74,4 +75,46 @@ export function cleaningJourney(row: Pick<AccountBooking, 'job' | 'invoice'>): J
     { label: 'Invoice', state: state(sent, complete && !sent) },
     { label: 'Paid', state: state(paid, sent && !paid) },
   ];
+}
+
+export type PendingInvoiceRow = { id: string; label: string; amountCents: number; dateLabel: string };
+
+/** Invoices sent but not yet paid — My Account → Payment. */
+export function pendingInvoicesFor(rows: AccountBooking[]): PendingInvoiceRow[] {
+  return rows
+    .filter((r) => r.invoice?.status === 'SENT')
+    .map((r) => ({
+      id: r.invoice!.id,
+      label: invoiceLabel(r.invoice!),
+      amountCents: r.invoice!.totalCents + r.invoice!.tipCents,
+      dateLabel: (r.invoice!.sentAt ?? r.invoice!.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+    }))
+    .sort((a, b) => a.dateLabel.localeCompare(b.dateLabel));
+}
+
+export type PaidInvoiceRow = { id: string; label: string; amountCents: number; dateLabel: string; receiptUrl: string | null };
+export type PaymentMonthGroup = { monthKey: string; monthLabel: string; totalCents: number; invoices: PaidInvoiceRow[] };
+
+/** Paid invoices grouped by the month they were paid, newest month first — My Account → Payment history. */
+export function paymentHistoryByMonth(rows: AccountBooking[]): PaymentMonthGroup[] {
+  const paid = rows.filter((r) => r.invoice?.status === 'PAID' && r.invoice.paidAt);
+  const groups = new Map<string, PaymentMonthGroup>();
+  for (const r of paid) {
+    const invoice = r.invoice!;
+    const paidAt = invoice.paidAt!;
+    const monthKey = `${paidAt.getFullYear()}-${String(paidAt.getMonth() + 1).padStart(2, '0')}`;
+    const monthLabel = paidAt.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const group = groups.get(monthKey) ?? { monthKey, monthLabel, totalCents: 0, invoices: [] };
+    const amountCents = invoice.totalCents + invoice.tipCents;
+    group.totalCents += amountCents;
+    group.invoices.push({
+      id: invoice.id,
+      label: invoiceLabel(invoice),
+      amountCents,
+      dateLabel: paidAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      receiptUrl: invoice.receiptUrl,
+    });
+    groups.set(monthKey, group);
+  }
+  return [...groups.values()].sort((a, b) => b.monthKey.localeCompare(a.monthKey));
 }

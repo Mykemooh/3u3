@@ -7,11 +7,14 @@ import {
 } from '@/lib/data';
 import { canModifyBooking } from '@/lib/bookings';
 import { publicStripeKey } from '@/lib/payments';
+import { getAccountBookings, pendingInvoicesFor, paymentHistoryByMonth } from '@/lib/account';
 import AddressForm from '@/components/AddressForm';
 import MyBookingCard from '@/components/MyBookingCard';
 import AvatarUpload from '@/components/AvatarUpload';
 import PaymentMethodCard from '@/components/PaymentMethodCard';
 import NotificationPreferences from '@/components/NotificationPreferences';
+import PendingInvoices from '@/components/account/PendingInvoices';
+import PaymentHistoryByMonth from '@/components/account/PaymentHistoryByMonth';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,16 +26,19 @@ export default async function AccountSettings() {
   const tenant = await getTenant();
   if (!tenant) redirect('/account');
 
-  const [me, services, rates, addresses, upcoming] = await Promise.all([
+  const [me, services, rates, addresses, upcoming, accountBookings] = await Promise.all([
     getUserById(user.id),
     getServiceTypes(tenant.id),
     getClientRatesFor(user.id),
     getAddressesFor(user.id),
     getUpcomingBookingsForClient(user.id),
+    getAccountBookings(user.id),
   ]);
   if (!me) redirect('/account');
 
   const primaryAddress = addresses.find((a) => a.isPrimary) ?? addresses[0];
+  const pending = pendingInvoicesFor(accountBookings);
+  const paymentMonths = paymentHistoryByMonth(accountBookings);
 
   return (
     <div className="space-y-6">
@@ -40,50 +46,75 @@ export default async function AccountSettings() {
         <p className="eyebrow">My account</p>
         <h1 className="mt-1 text-3xl font-extrabold">Settings</h1>
         <p className="mt-2 text-slate">
-          Update your address, payment method, or notification preferences, or change an upcoming cleaning —
-          all up to 24 hours before it begins.
+          Update your profile, payment, or notification preferences, or change an upcoming cleaning — all up
+          to 24 hours before it begins.
         </p>
       </div>
 
-      <div className="card">
-        <h2 className="mb-4 font-semibold text-ink">Profile picture</h2>
-        <AvatarUpload name={me.name} initialUrl={me.avatarUrl} />
-      </div>
+      <section className="card">
+        <h2 className="mb-4 text-lg font-bold text-ink">My account</h2>
+        <div className="grid gap-6 sm:grid-cols-3">
+          <div>
+            <h3 className="mb-2 text-sm font-semibold text-ink">Profile picture</h3>
+            <AvatarUpload name={me.name} initialUrl={me.avatarUrl} />
+          </div>
+          <div>
+            <h3 className="mb-2 text-sm font-semibold text-ink">My address</h3>
+            <p className="mb-3 text-xs text-slate">Changed addresses? Update it here and we'll let the team know.</p>
+            <AddressForm
+              endpoint="/api/account/address"
+              initial={{
+                line1: primaryAddress?.line1 ?? '',
+                city: primaryAddress?.city ?? '',
+                state: primaryAddress?.state ?? '',
+                zip: primaryAddress?.zip,
+                notes: primaryAddress?.notes,
+              }}
+            />
+          </div>
+          <div>
+            <h3 className="mb-2 text-sm font-semibold text-ink">Notifications</h3>
+            <p className="mb-3 text-xs text-slate">Where we send booking reminders and other updates.</p>
+            <NotificationPreferences initial={me.notificationChannel} hasPhone={!!me.phone} bare />
+          </div>
+        </div>
+      </section>
 
-      <div className="card">
-        <h2 className="mb-1 font-semibold text-ink">My address</h2>
-        <p className="mb-4 text-sm text-slate">Changed addresses? Update it here and we'll let the team know.</p>
-        <AddressForm
-          endpoint="/api/account/address"
-          initial={{
-            line1: primaryAddress?.line1 ?? '',
-            city: primaryAddress?.city ?? '',
-            state: primaryAddress?.state ?? '',
-            zip: primaryAddress?.zip,
-            notes: primaryAddress?.notes,
-          }}
-        />
-      </div>
+      <section className="card space-y-6">
+        <h2 className="text-lg font-bold text-ink">Payment</h2>
 
-      <PaymentMethodCard
-        publishableKey={publicStripeKey()}
-        saved={
-          me.stripeDefaultPaymentMethodId
-            ? {
-                brand: me.paymentMethodBrand,
-                last4: me.paymentMethodLast4,
-                expMonth: me.paymentMethodExpMonth,
-                expYear: me.paymentMethodExpYear,
-                autopayEnabled: me.autopayEnabled,
-              }
-            : null
-        }
-      />
+        <div>
+          <h3 className="mb-2 text-sm font-semibold text-ink">Payment method</h3>
+          <PaymentMethodCard
+            publishableKey={publicStripeKey()}
+            saved={
+              me.stripeDefaultPaymentMethodId
+                ? {
+                    brand: me.paymentMethodBrand,
+                    last4: me.paymentMethodLast4,
+                    expMonth: me.paymentMethodExpMonth,
+                    expYear: me.paymentMethodExpYear,
+                    autopayEnabled: me.autopayEnabled,
+                  }
+                : null
+            }
+            bare
+          />
+        </div>
 
-      <NotificationPreferences initial={me.notificationChannel} hasPhone={!!me.phone} />
+        <div>
+          <h3 className="mb-2 text-sm font-semibold text-ink">Pending invoice{pending.length === 1 ? '' : 's'}</h3>
+          <PendingInvoices invoices={pending} />
+        </div>
 
-      <div className="card">
-        <h2 className="mb-1 font-semibold text-ink">Upcoming cleanings</h2>
+        <div>
+          <h3 className="mb-2 text-sm font-semibold text-ink">Payment history</h3>
+          <PaymentHistoryByMonth months={paymentMonths} />
+        </div>
+      </section>
+
+      <section className="card">
+        <h2 className="mb-1 text-lg font-bold text-ink">Upcoming cleanings</h2>
         <p className="mb-4 text-sm text-slate">
           Change your frequency, reschedule, or cancel up to 24 hours before a cleaning begins. Closer than
           that, please call us directly.
@@ -111,7 +142,7 @@ export default async function AccountSettings() {
           })}
           {upcoming.length === 0 && <p className="text-sm text-muted">Nothing scheduled right now.</p>}
         </div>
-      </div>
+      </section>
     </div>
   );
 }
