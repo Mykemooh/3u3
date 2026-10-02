@@ -9,6 +9,7 @@ import { sendEmail, jobCompleteCustomerEmail, jobCompleteOwnerEmail } from '@/li
 import { appUrl } from '@/lib/url';
 import { formatSlotDateLong } from '@/lib/time';
 import { MEDIA_LIMITS, deleteStored, type MediaKind, type MediaPhase } from '@/lib/storage';
+import { mediaExpiry } from '@/lib/mediaRetention';
 
 /**
  * The job lifecycle, in one place: start → document each room (photos and
@@ -231,12 +232,6 @@ export async function setPhotoPolicy(
   return { job: { ...job, ...next }, items: updatedItems };
 }
 
-function videoExpiry(kind: MediaKind) {
-  const days = Number(process.env.VIDEO_RETENTION_DAYS || 0);
-  if (kind !== 'VIDEO' || !days || days < 1) return null;
-  return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-}
-
 export async function addMedia(input: {
   jobId: string;
   itemId: string;
@@ -255,7 +250,7 @@ export async function addMedia(input: {
   const row = {
     id: crypto.randomUUID(),
     ...input,
-    expiresAt: videoExpiry(input.kind),
+    expiresAt: mediaExpiry(input.kind),
   };
   await db.insert(jobMedia).values(row);
   const item = await syncItem(input.itemId);

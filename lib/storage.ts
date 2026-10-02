@@ -9,15 +9,20 @@ import path from 'node:path';
  *
  *  1. Cloudflare R2 (preferred) — set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID,
  *     R2_SECRET_ACCESS_KEY, R2_BUCKET and R2_PUBLIC_URL. 10 GB free every
- *     month with no charge for downloads (egress), versus roughly 1 GB on
- *     Vercel Blob's free tier. The phone uploads straight to R2 using a
- *     short-lived signed URL, so files never pass through a Vercel function.
- *     That matters: Vercel rejects any request body over ~4.5 MB, which a
- *     single full-resolution phone photo can exceed and every video does.
+ *     month with no charge for downloads (egress), versus a hard 1 GB
+ *     *total* cap on Vercel Blob's free (Hobby) tier — exceeding that cap
+ *     doesn't bill, it locks out all Blob access for 30 days. The phone
+ *     uploads straight to R2 using a short-lived signed URL, so files
+ *     never pass through a Vercel function.
  *
- *  2. Vercel Blob — if only BLOB_READ_WRITE_TOKEN is set. Uploads go through
- *     the server, so they're capped at SERVER_UPLOAD_MAX_BYTES. Photos fit
- *     (the browser shrinks them first); videos generally don't.
+ *  2. Vercel Blob — if only BLOB_READ_WRITE_TOKEN is set. Small files
+ *     (photos, already shrunk by the browser) go through the server,
+ *     capped at SERVER_UPLOAD_MAX_BYTES — Vercel rejects any function
+ *     request body over ~4.5 MB. Videos use Blob's own client-upload
+ *     token flow instead (app/api/crew/jobs/[jobId]/items/[itemId]/media/
+ *     blob-token, lib/clientUpload.ts) — the phone uploads straight to
+ *     Blob from the browser, same as R2's presigned URL, bypassing the
+ *     function body limit entirely.
  *
  *  3. Local disk under public/uploads — local development with neither set.
  *
@@ -33,8 +38,14 @@ export type StorageMode = 'r2' | 'blob' | 'local';
 export const MEDIA_LIMITS = {
   /** Largest photo accepted after the browser has compressed it. */
   photoBytes: 8 * 1024 * 1024,
-  /** Largest video accepted. About 30 s of 1080p phone video; 720p is far smaller. */
-  videoBytes: 80 * 1024 * 1024,
+  /**
+   * Largest video accepted — about 30s at 720p. Deliberately well under
+   * what a 30s clip could reach at 1080p: Vercel Blob's free tier caps
+   * total storage at 1 GB account-wide, so a handful of oversized videos
+   * could eat the whole budget. lib/mediaRetention.ts's storage-budget
+   * eviction is the other half of staying under that cap.
+   */
+  videoBytes: 30 * 1024 * 1024,
   /** Longest video the crew app will accept, in seconds. */
   videoSeconds: 30,
   /** Photos plus videos per room, per phase (before / after). */
@@ -53,6 +64,11 @@ function baseType(contentType: string) {
 
 export function isAllowedType(kind: MediaKind, contentType: string) {
   return (kind === 'PHOTO' ? PHOTO_TYPES : VIDEO_TYPES).includes(baseType(contentType));
+}
+
+/** The content types Blob's client-upload token should accept for this kind. */
+export function allowedTypesFor(kind: MediaKind) {
+  return kind === 'PHOTO' ? PHOTO_TYPES : VIDEO_TYPES;
 }
 
 export function maxBytesFor(kind: MediaKind) {
@@ -83,10 +99,15 @@ export function storageMode(): StorageMode {
   return 'local';
 }
 
-/** Largest file the current backend can take, for a given kind. */
+/** Largest file the small server-upload path (multipart through the Vercel function) can take. */
 export function effectiveMaxBytes(kind: MediaKind) {
   const cap = maxBytesFor(kind);
   return storageMode() === 'blob' ? Math.min(cap, SERVER_UPLOAD_MAX_BYTES) : cap;
+}
+
+/** Whether this backend can take a direct, browser-to-storage upload (R2 presigned, or Blob's client-upload token) — the full per-kind cap applies, not SERVER_UPLOAD_MAX_BYTES. */
+export function canDirectUpload(): boolean {
+  return storageMode() === 'r2' || storageMode() === 'blob';
 }
 
 const EXT_BY_TYPE: Record<string, string> = {

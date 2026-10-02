@@ -311,9 +311,10 @@ export const jobChecklistItems = pgTable('job_checklist_items', {
 // legacy columns on job_checklist_items (before/afterPhotoPath) are kept in
 // step with the first photo of each phase so older code keeps working.
 //
-// expiresAt is set on videos only, when VIDEO_RETENTION_DAYS is configured:
-// the daily clean-up job deletes the file after that, keeping storage
-// inside the free tier. Photos are kept for good.
+// expiresAt (lib/mediaRetention.ts) is set on every row at upload time —
+// photos default to 6 months, videos to 30 days, both overridable via
+// PHOTO_RETENTION_DAYS / VIDEO_RETENTION_DAYS — and the daily clean-up job
+// deletes the file once it passes, keeping storage inside the free tier.
 // ---------------------------------------------------------------------------
 export const jobMedia = pgTable('job_media', {
   id: id(),

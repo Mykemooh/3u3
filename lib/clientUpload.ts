@@ -118,6 +118,36 @@ export async function uploadMedia(input: {
     return data;
   }
 
+  // Vercel Blob's own client-upload: the phone PUTs straight to Blob
+  // storage with a short-lived token (blob-token/route.ts), bypassing the
+  // ~4.5 MB Vercel function body limit the same way the R2 "direct" path
+  // above does. Used for videos when Blob (not R2) is the active backend.
+  if (sign.mode === 'blob-direct') {
+    const { upload } = await import('@vercel/blob/client');
+    const ext = contentType.split('/')[1] || 'bin';
+    const pathname = `videos/${jobId}/${itemId}-${phase.toLowerCase()}-${Date.now()}.${ext}`;
+    let blob: { url: string };
+    try {
+      blob = await upload(pathname, body, {
+        access: 'public',
+        handleUploadUrl: `${endpoint}/blob-token`,
+        clientPayload: JSON.stringify({ phase, kind }),
+        contentType,
+        onUploadProgress: (p) => input.onProgress?.(p.percentage / 100),
+      });
+    } catch (err) {
+      throw new Error(err instanceof Error ? err.message : 'Upload to storage failed. Please try again.');
+    }
+    const commitRes = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'commit-blob', url: blob.url, phase, kind, durationSeconds }),
+    });
+    const data = await readJson(commitRes);
+    if (!commitRes.ok) throw new Error(data.error || 'Upload failed.');
+    return data;
+  }
+
   if (sign.maxBytes && body.size > sign.maxBytes) {
     const mb = Math.floor(sign.maxBytes / (1024 * 1024));
     throw new Error(
