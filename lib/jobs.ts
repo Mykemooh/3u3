@@ -110,14 +110,34 @@ const CLEAR_TRACKING = {
  * Mark the crew as on site and working — from PENDING, or from EN_ROUTE
  * (the crew's "I've arrived" tap), which also ends live tracking.
  * Idempotent.
+ *
+ * When the property has "cleaner needs to know" notes on file (pets, gate
+ * codes, anything the crew should see first — components/CrewJob.tsx shows
+ * these before this button is tappable), the caller must say so has been
+ * acknowledged. Enforced here too, not just client-side, so a bypassed UI
+ * can't skip it.
  */
-export async function startJob(jobId: string, viewer: Viewer | null) {
+export async function startJob(jobId: string, viewer: Viewer | null, acknowledgedNotes = false) {
   const job = await requireLead(jobId, viewer);
   if (job.status === 'COMPLETE') throw new JobError('This job is already finished', 409);
   if (job.status === 'IN_PROGRESS') return job;
+
+  const booking = (await db.select().from(bookings).where(eq(bookings.id, job.bookingId)).limit(1))[0];
+  const address = booking?.addressId
+    ? (await db.select().from(addresses).where(eq(addresses.id, booking.addressId)).limit(1))[0]
+    : undefined;
+  const hasNotes = !!address?.notes?.trim();
+  if (hasNotes && !acknowledgedNotes) {
+    throw new JobError('Please review the cleaner notes for this address before starting.', 400);
+  }
+
   const startedAt = new Date();
-  await db.update(jobs).set({ status: 'IN_PROGRESS', startedAt, ...CLEAR_TRACKING }).where(eq(jobs.id, jobId));
-  return { ...job, ...CLEAR_TRACKING, status: 'IN_PROGRESS' as const, startedAt };
+  const cleanerNotesAckAt = hasNotes ? startedAt : job.cleanerNotesAckAt;
+  await db
+    .update(jobs)
+    .set({ status: 'IN_PROGRESS', startedAt, cleanerNotesAckAt, ...CLEAR_TRACKING })
+    .where(eq(jobs.id, jobId));
+  return { ...job, ...CLEAR_TRACKING, status: 'IN_PROGRESS' as const, startedAt, cleanerNotesAckAt };
 }
 
 /** A room the crew can document right now: job started, not yet finished. */

@@ -71,3 +71,25 @@ export function formatClock(date: Date | null | undefined): string {
   if (!date) return '';
   return date.toLocaleTimeString('en-US', { timeZone: BUSINESS_TIMEZONE, hour: 'numeric', minute: '2-digit' });
 }
+
+/**
+ * The real UTC instant a naive business-local slot string ("YYYY-MM-
+ * DDTHH:MM:00") refers to — what a calendar invite (lib/calendar.ts) or a
+ * "how many hours until this booking" check (lib/reminders.ts) needs,
+ * since both have to agree with clocks outside the business's own
+ * timezone. Standard two-pass zoned-to-UTC conversion: guess the instant
+ * by treating the wall-clock numbers as UTC, see what that guess actually
+ * reads as in the business timezone, and correct by the difference. Right
+ * for every real date; off by at most an hour for a wall-clock time that
+ * doesn't exist or exists twice on a DST-transition day, which 3U3's
+ * booking hours never land on.
+ */
+export function businessLocalToUtc(naive: string): Date {
+  const [datePart, timePart = '00:00:00'] = naive.split('T');
+  const [y, m, d] = datePart.split('-').map(Number);
+  const [hh, mm, ss] = timePart.split(':').map((n) => Number(n) || 0);
+  const guess = Date.UTC(y, m - 1, d, hh, mm, ss);
+  const p = parts(new Date(guess));
+  const asIfUtc = Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day), Number(p.hour), Number(p.minute), Number(p.second));
+  return new Date(guess + (guess - asIfUtc));
+}

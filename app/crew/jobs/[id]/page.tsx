@@ -36,11 +36,13 @@ export default async function CrewJobPage({ params }: { params: { id: string } }
           completedLabel: job.completedAt ? formatClock(job.completedAt) : null,
           requireBeforePhoto: job.requireBeforePhoto,
           noPhotosNeeded: job.noPhotosNeeded,
+          cleanerNotesAckAt: job.cleanerNotesAckAt ? job.cleanerNotesAckAt.toISOString() : null,
         }}
         client={{ name: client?.name ?? 'Client', phone: client?.phone ?? null }}
         serviceLabel={service ? SERVICE_LABELS[service.key] ?? service.name : 'Cleaning'}
         whenLabel={whenLabel}
         addressLabel={address ? `${address.line1}, ${address.city}, ${address.state}${address.zip ? ` ${address.zip}` : ''}` : null}
+        cleanerNotes={address?.notes ?? null}
         items={items.map((i) => ({ id: i.id, roomName: i.roomName, taskDetail: i.taskDetail, status: i.status, skipReason: i.skipReason }))}
         media={media.map((m) => ({ id: m.id, itemId: m.itemId, phase: m.phase, kind: m.kind, url: m.url }))}
         perPhase={MEDIA_LIMITS.perPhase}

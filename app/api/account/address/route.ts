@@ -15,6 +15,7 @@ const schema = z.object({
   city: z.string().trim().min(1),
   state: z.string().trim().min(2),
   zip: z.string().trim().optional(),
+  notes: z.string().trim().max(2000).optional(),
 });
 
 // Customer self-service address change. Updates their primary address in
@@ -31,7 +32,7 @@ export async function PATCH(req: Request) {
   const body = await req.json();
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: 'Please fill in a complete address.' }, { status: 400 });
-  const { line1, city, state, zip } = parsed.data;
+  const { line1, city, state, zip, notes } = parsed.data;
 
   const tenant = await getTenant();
   if (!tenant) return NextResponse.json({ error: 'Not set up' }, { status: 500 });
@@ -41,9 +42,9 @@ export async function PATCH(req: Request) {
   const changed = !primary || primary.line1 !== line1 || primary.city !== city || primary.state !== state || primary.zip !== zip;
 
   if (primary) {
-    await db.update(addresses).set({ line1, city, state, zip }).where(eq(addresses.id, primary.id));
+    await db.update(addresses).set({ line1, city, state, zip, notes: notes ?? null }).where(eq(addresses.id, primary.id));
   } else {
-    await db.insert(addresses).values({ id: crypto.randomUUID(), userId: clientId, line1, city, state, zip, isPrimary: true });
+    await db.insert(addresses).values({ id: crypto.randomUUID(), userId: clientId, line1, city, state, zip, notes: notes ?? null, isPrimary: true });
   }
 
   if (changed) {

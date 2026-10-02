@@ -9,6 +9,7 @@ import { businessNowISO } from '@/lib/time';
 import { invoiceLabel } from '@/lib/invoices';
 import JourneyRail from '@/components/app/JourneyRail';
 import LiveTrackingMap from '@/components/app/LiveTrackingMap';
+import AddToCalendar from '@/components/AddToCalendar';
 import { getTracking, publicMapboxToken, type TrackingState } from '@/lib/tracking';
 
 export const dynamic = 'force-dynamic';
@@ -91,14 +92,24 @@ export default async function AccountHome() {
             {upcoming
               .filter((r) => r !== focus)
               .map((r) => (
-                <div key={r.booking.id} className="card flex items-center justify-between p-5">
+                <div key={r.booking.id} className="card flex items-center justify-between gap-3 p-5">
                   <div>
                     <p className="font-semibold">{formatDateLabel(r.booking.slotStart.slice(0, 10))}</p>
                     <p className="text-sm text-slate">
                       {formatSlotLabel(r.booking.slotStart, r.booking.slotEnd)} · {serviceName(r)}
                     </p>
                   </div>
-                  <span className="pill bg-surface text-slate">Booked</span>
+                  <AddToCalendar
+                    bookingId={r.booking.id}
+                    event={{
+                      uid: `booking-${r.booking.id}@3u3cleaning`,
+                      title: `${serviceName(r)} — 3U3 Cleaning`,
+                      description: `Your ${serviceName(r).toLowerCase()} with 3U3 Cleaning.`,
+                      location: r.address ? `${r.address.line1}, ${r.address.city}` : undefined,
+                      slotStart: r.booking.slotStart,
+                      slotEnd: r.booking.slotEnd,
+                    }}
+                  />
                 </div>
               ))}
           </div>
@@ -159,8 +170,25 @@ function FocusCard({ row, isPast, tracking }: { row: AccountBooking; isPast: boo
   return (
     <section className="overflow-hidden rounded-2xl border border-line bg-white shadow-card">
       <div className="p-6">
-        <p className="eyebrow">{heading}</p>
-        <p className="mt-2 text-2xl font-bold">{formatDateLabel(booking.slotStart.slice(0, 10))}</p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="eyebrow">{heading}</p>
+            <p className="mt-2 text-2xl font-bold">{formatDateLabel(booking.slotStart.slice(0, 10))}</p>
+          </div>
+          {!status || status === 'PENDING' ? (
+            <AddToCalendar
+              bookingId={booking.id}
+              event={{
+                uid: `booking-${booking.id}@3u3cleaning`,
+                title: `${serviceName(row)} — 3U3 Cleaning`,
+                description: `Your ${serviceName(row).toLowerCase()} with 3U3 Cleaning.`,
+                location: row.address ? `${row.address.line1}, ${row.address.city}` : undefined,
+                slotStart: booking.slotStart,
+                slotEnd: booking.slotEnd,
+              }}
+            />
+          ) : null}
+        </div>
         <p className="mt-1 text-slate">
           {formatSlotLabel(booking.slotStart, booking.slotEnd)} · {serviceName(row)}
           {booking.priceCents != null ? ` · ${formatMoney(booking.priceCents)}` : ''}

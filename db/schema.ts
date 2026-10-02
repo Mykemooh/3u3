@@ -51,6 +51,25 @@ export const users = pgTable('users', {
   // Admin "close client" toggle (closed clients can't sign in or book, but
   // their history is kept, not deleted).
   isActive: boolean('is_active').notNull().default(true),
+  avatarUrl: text('avatar_url'),
+  // Saved payment method for autopay — only ever an opaque Stripe
+  // PaymentMethod id. brand/last4/exp are non-sensitive display fields
+  // Stripe returns about that method; the actual card number never
+  // touches our server or database (PCI scope stays with Stripe).
+  stripeDefaultPaymentMethodId: text('stripe_default_payment_method_id'),
+  paymentMethodBrand: text('payment_method_brand'),
+  paymentMethodLast4: text('payment_method_last4'),
+  paymentMethodExpMonth: integer('payment_method_exp_month'),
+  paymentMethodExpYear: integer('payment_method_exp_year'),
+  autopayEnabled: boolean('autopay_enabled').notNull().default(false),
+  // Where reminders and alerts go for this person — a customer picks this
+  // in My Account; defaults to email until they choose otherwise.
+  notificationChannel: text('notification_channel', { enum: ['EMAIL', 'SMS', 'WHATSAPP'] })
+    .notNull()
+    .default('EMAIL'),
+  // Admin-set hourly rate for a CLEANER, cents — the input to the payroll
+  // hours report (lib/payroll.ts). Null until an admin sets it.
+  payRateCentsPerHour: integer('pay_rate_cents_per_hour'),
   ...timestamps,
 }, (t) => ({
   phoneUnique: uniqueIndex('users_phone_unique').on(t.phone),
@@ -66,6 +85,11 @@ export const addresses = pgTable('addresses', {
   state: text('state').notNull().default('TX'),
   zip: text('zip'),
   isPrimary: boolean('is_primary').notNull().default(true),
+  // "Cleaner needs to know" — pets, gate/lockbox codes, parking, anything
+  // the crew should see before they start. Client-editable from My
+  // Account; shown to the crew on the job and must be acknowledged
+  // before they can start (see jobs.cleanerNotesAckAt).
+  notes: text('notes'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdate(() => new Date()),
   ...timestamps,
 });
@@ -166,6 +190,11 @@ export const bookings = pgTable('bookings', {
   status: text('status', { enum: ['REQUESTED', 'CONFIRMED', 'COMPLETED', 'CANCELLED'] }).notNull().default('CONFIRMED'),
   priceCents: integer('price_cents'),
   isQuoteVisit: boolean('is_quote_visit').notNull().default(false),
+  // Upcoming-cleaning reminders (lib/reminders.ts, cron-driven): set the
+  // first time each has gone out, so a booking never gets the same
+  // reminder twice no matter how often the cron runs.
+  reminder3dSentAt: timestamp('reminder_3d_sent_at', { withTimezone: true }),
+  reminder36hSentAt: timestamp('reminder_36h_sent_at', { withTimezone: true }),
   updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdate(() => new Date()),
   ...timestamps,
 }, (t) => ({
@@ -194,6 +223,11 @@ export const jobs = pgTable('jobs', {
   // original behavior — before and after both required.
   requireBeforePhoto: boolean('require_before_photo').notNull().default(true),
   noPhotosNeeded: boolean('no_photos_needed').notNull().default(false),
+  // Set the moment the crew lead acknowledges the property's "cleaner
+  // needs to know" notes — gates the "I've arrived — start job" button in
+  // the crew app when there's something on file (components/CrewJob.tsx).
+  // Null when there was nothing to acknowledge, or it hasn't happened yet.
+  cleanerNotesAckAt: timestamp('cleaner_notes_ack_at', { withTimezone: true }),
   // Live tracking while EN_ROUTE — only the crew's latest position is kept,
   // never a history, and all of it is cleared the moment they arrive.
   // routeGeojson / routeDurationSeconds are the last Mapbox Directions
@@ -301,6 +335,13 @@ export const quotes = pgTable('quotes', {
   sentAt: timestamp('sent_at', { withTimezone: true }),
   respondedAt: timestamp('responded_at', { withTimezone: true }),
   expiresAt: timestamp('expires_at', { withTimezone: true }),
+  // Follow-up cadence for a SENT quote nobody has answered yet
+  // (lib/reminders.ts): 24h, then +3d, then +2d, then weekly — each send
+  // bumps reminderCount and lastReminderAt. remindersOptedOut is set by
+  // the "stop these reminders" link every reminder carries.
+  reminderCount: integer('reminder_count').notNull().default(0),
+  lastReminderAt: timestamp('last_reminder_at', { withTimezone: true }),
+  remindersOptedOut: boolean('reminders_opted_out').notNull().default(false),
   ...timestamps,
 }, (t) => ({
   tokenUnique: uniqueIndex('quotes_approval_token_unique').on(t.approvalToken),
@@ -339,6 +380,14 @@ export const invoices = pgTable('invoices', {
   // Human-facing sequential number (1001, 1002, ...) printed on the invoice.
   invoiceNumber: integer('invoice_number'),
   receiptUrl: text('receipt_url'),
+  // A tip the client added on top of the invoice total, paid separately
+  // via its own small Stripe Checkout session (the main invoice is
+  // already finalized at a fixed amount by the time a tip is possible) —
+  // see lib/tips.ts. Counted into nothing else; purely additive.
+  tipCents: integer('tip_cents').notNull().default(0),
+  // Whether this invoice was paid by autopay (client.autopayEnabled) vs.
+  // the usual emailed pay-link, purely informational for the admin.
+  autopayCharged: boolean('autopay_charged').notNull().default(false),
   sentAt: timestamp('sent_at', { withTimezone: true }),
   paidAt: timestamp('paid_at', { withTimezone: true }),
   ...timestamps,
@@ -361,7 +410,7 @@ export const invoiceItems = pgTable('invoice_items', {
 export const notificationLog = pgTable('notification_log', {
   id: id(),
   tenantId: text('tenant_id').notNull().references(() => tenants.id),
-  channel: text('channel', { enum: ['EMAIL', 'SMS'] }).notNull(),
+  channel: text('channel', { enum: ['EMAIL', 'SMS', 'WHATSAPP'] }).notNull(),
   recipient: text('recipient').notNull(),
   triggerEvent: text('trigger_event').notNull(),
   costCents: real('cost_cents').notNull().default(0),
@@ -373,3 +422,38 @@ export const notificationLog = pgTable('notification_log', {
   isRead: boolean('is_read').notNull().default(false),
   ...timestamps,
 });
+
+// ---------------------------------------------------------------------------
+// Third-party accounting/payroll connections (QuickBooks Online today —
+// lib/quickbooks.ts). One row per tenant per provider, OAuth tokens only.
+// Nothing here is required: every caller checks for a connected row first
+// and no-ops (same graceful-degradation pattern as Stripe/Twilio) when
+// there isn't one.
+// ---------------------------------------------------------------------------
+export const integrations = pgTable('integrations', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  provider: text('provider', { enum: ['QUICKBOOKS'] }).notNull(),
+  accessToken: text('access_token').notNull(),
+  refreshToken: text('refresh_token').notNull(),
+  // QuickBooks' "realm id" — which company file these tokens authorize.
+  externalAccountId: text('external_account_id'),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  connectedAt: timestamp('connected_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdate(() => new Date()),
+}, (t) => ({
+  tenantProviderUnique: uniqueIndex('integrations_tenant_provider_unique').on(t.tenantId, t.provider),
+}));
+
+// Maps our own users/invoices to QuickBooks' ids once each has been synced
+// once, so a repeat sync updates instead of duplicating.
+export const quickbooksLinks = pgTable('quickbooks_links', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  entity: text('entity', { enum: ['CUSTOMER', 'INVOICE'] }).notNull(),
+  localId: text('local_id').notNull(),
+  quickbooksId: text('quickbooks_id').notNull(),
+  ...timestamps,
+}, (t) => ({
+  entityUnique: uniqueIndex('quickbooks_links_entity_unique').on(t.tenantId, t.entity, t.localId),
+}));

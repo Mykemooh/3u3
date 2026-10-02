@@ -9,6 +9,7 @@ import { db } from '@/db/client';
 import { jobs } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import PrintButton from '@/components/account/PrintButton';
+import TipButton from '@/components/account/TipButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +22,7 @@ function longDate(d: Date | null | undefined) {
   return d ? d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }) : '—';
 }
 
-export default async function InvoiceView({ params }: { params: { id: string } }) {
+export default async function InvoiceView({ params, searchParams }: { params: { id: string }; searchParams: { tip?: string } }) {
   const session = await getServerSession(authOptions);
   const user = session?.user as { id?: string; role?: string } | undefined;
   if (!user?.id) redirect(`/signin?next=/account/invoices/${params.id}`);
@@ -66,6 +67,12 @@ export default async function InvoiceView({ params }: { params: { id: string } }
       {user.role === 'ADMIN' && invoice.status === 'DRAFT' && (
         <p className="no-print rounded-xl bg-cream px-4 py-3 text-sm text-bronze">
           Draft preview — this is exactly what the client will see once you send it.
+        </p>
+      )}
+
+      {searchParams.tip === 'thanks' && (
+        <p className="no-print rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
+          Thank you — your tip has been sent to the crew.
         </p>
       )}
 
@@ -130,6 +137,12 @@ export default async function InvoiceView({ params }: { params: { id: string } }
                 <td className="pt-2 text-right text-lg font-bold">Total</td>
                 <td className="pt-2 text-right text-lg font-bold tabular-nums">{formatMoney(invoice.totalCents)}</td>
               </tr>
+              {invoice.tipCents > 0 && (
+                <tr>
+                  <td className="pt-1 text-right text-slate">Tip for the crew</td>
+                  <td className="pt-1 text-right tabular-nums text-slate">{formatMoney(invoice.tipCents)}</td>
+                </tr>
+              )}
             </tfoot>
           </table>
 
@@ -146,7 +159,7 @@ export default async function InvoiceView({ params }: { params: { id: string } }
         </div>
       </article>
 
-      <div className="no-print flex flex-wrap gap-2">
+      <div className="no-print flex flex-wrap items-start gap-2">
         {invoice.status === 'SENT' && invoice.hostedInvoiceUrl && (
           <a href={invoice.hostedInvoiceUrl} target="_blank" rel="noreferrer" className="btn-primary">
             Pay {formatMoney(invoice.totalCents)}
@@ -157,6 +170,7 @@ export default async function InvoiceView({ params }: { params: { id: string } }
             Card receipt
           </a>
         )}
+        {invoice.status === 'PAID' && user.role !== 'ADMIN' && <TipButton invoiceId={invoice.id} />}
       </div>
     </div>
   );

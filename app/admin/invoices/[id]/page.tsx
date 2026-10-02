@@ -93,7 +93,11 @@ export default async function AdminInvoiceDetail({ params }: { params: { id: str
               )}
               {invoice.status === 'PAID' && (
                 <>
-                  <p className="text-emerald-700">Paid {invoice.paidAt?.toLocaleString()}</p>
+                  <p className="text-emerald-700">
+                    Paid {invoice.paidAt?.toLocaleString()}
+                    {invoice.autopayCharged && ' · autopay'}
+                  </p>
+                  {invoice.tipCents > 0 && <p className="text-slate">Tip: {formatMoney(invoice.tipCents)}</p>}
                   {invoice.receiptUrl && (
                     <p>
                       <a href={invoice.receiptUrl} target="_blank" rel="noreferrer" className="font-semibold text-bronze hover:underline">

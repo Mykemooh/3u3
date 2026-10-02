@@ -97,6 +97,12 @@ export async function setStaffRole(tenantId: string, userId: string, staffRole: 
   await db.update(users).set({ staffRole }).where(eq(users.id, userId));
 }
 
+/** Hourly pay rate for the payroll report (lib/payroll.ts). Null clears it. */
+export async function setPayRate(tenantId: string, userId: string, payRateCentsPerHour: number | null) {
+  await requireEmployee(tenantId, userId);
+  await db.update(users).set({ payRateCentsPerHour }).where(eq(users.id, userId));
+}
+
 export async function createTeam(tenantId: string, name: string) {
   const id = crypto.randomUUID();
   // Off for online bookings until the office has staffed it and switches it on.
