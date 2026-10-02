@@ -1,10 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import LogoBadge from '@/components/LogoBadge';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 import { SERVICE_LABELS } from '@/lib/data';
+import BookingCalendar from '@/components/BookingCalendar';
+
+const NEARBY_BEFORE_DAYS = 3;
+const NEARBY_AFTER_DAYS = 14;
 
 type Service = {
   id: string;
@@ -35,10 +39,12 @@ export default function BookWizard({
   const [service, setService] = useState<Service | null>(null);
   const [days, setDays] = useState<Day[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selected, setSelected] = useState<Slot | null>(null);
   const [cadence, setCadence] = useState<Cadence>('ONE_TIME');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [standbyStatus, setStandbyStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
 
   useEffect(() => {
     if (step !== 'schedule' || !service) return;
@@ -49,11 +55,56 @@ export default function BookWizard({
       .finally(() => setLoadingSlots(false));
   }, [step, service]);
 
+  const availability = useMemo(() => new Map(days.map((d) => [d.date, d.slots.some((s) => s.available)])), [days]);
+
+  const directSlots = useMemo(() => {
+    if (!selectedDate) return [];
+    return days.find((d) => d.date === selectedDate)?.slots.filter((s) => s.available) ?? [];
+  }, [days, selectedDate]);
+
+  // When the chosen day has nothing open, real nearby alternatives — 3
+  // days before to 2 weeks after — closest to the chosen day first.
+  const nearbyDays = useMemo(() => {
+    if (!selectedDate || directSlots.length > 0) return [];
+    const base = new Date(`${selectedDate}T00:00:00`);
+    const from = new Date(base);
+    from.setDate(from.getDate() - NEARBY_BEFORE_DAYS);
+    const to = new Date(base);
+    to.setDate(to.getDate() + NEARBY_AFTER_DAYS);
+    const fromISO = from.toISOString().slice(0, 10);
+    const toISO = to.toISOString().slice(0, 10);
+    return days
+      .filter((d) => d.date >= fromISO && d.date <= toISO && d.slots.some((s) => s.available))
+      .map((d) => ({ ...d, distance: Math.abs(new Date(`${d.date}T00:00:00`).getTime() - base.getTime()) }))
+      .sort((a, b) => a.distance - b.distance);
+  }, [days, selectedDate, directSlots]);
+
+  const choseAlternateDay = !!selected && !!selectedDate && selected.start.slice(0, 10) !== selectedDate;
+
   function pickService(s: Service) {
     setService(s);
+    setSelectedDate(null);
     setSelected(null);
     setCadence('ONE_TIME');
+    setStandbyStatus('idle');
     setStep('schedule');
+  }
+
+  function pickDate(date: string) {
+    setSelectedDate(date);
+    setSelected(null);
+    setStandbyStatus('idle');
+  }
+
+  async function requestStandby() {
+    if (!service || !selectedDate) return;
+    setStandbyStatus('saving');
+    await fetch('/api/account/standby', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ serviceTypeId: service.id, preferredDate: selectedDate, cadence }),
+    }).catch(() => {});
+    setStandbyStatus('saved');
   }
 
   function proceedFromSchedule() {
@@ -141,37 +192,96 @@ export default function BookWizard({
           </button>
           <h1 className="text-xl font-bold mb-1">{service.name}</h1>
           <p className="text-sm text-slate mb-6">
-            Your rate: <span className="font-semibold text-bronze">{service.rateLabel}</span> · pick a real open slot on our crew's calendar.
+            Your rate: <span className="font-semibold text-bronze">{service.rateLabel}</span> · pick a day on the
+            calendar, up to a year out — every date shown is our crew's real availability.
           </p>
-          {loadingSlots && <p className="text-sm text-muted">Loading real availability…</p>}
-          <div className="space-y-5 max-h-[380px] overflow-y-auto pr-1">
-            {days.filter((d) => d.slots.some((s) => s.available)).map((day) => (
-              <div key={day.date}>
-                <p className="text-sm font-semibold text-bronze mb-2">{formatDateLabel(day.date)}</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {day.slots.map((slot) => (
-                    <button
-                      key={slot.start}
-                      disabled={!slot.available}
-                      onClick={() => setSelected(slot)}
-                      className={`rounded-lg border-2 px-3 py-2 text-sm font-medium transition ${
-                        !slot.available
-                          ? 'cursor-not-allowed border-line bg-surface text-muted line-through'
-                          : selected?.start === slot.start
-                          ? 'border-gold bg-gold/10 text-ink'
-                          : 'border-line hover:border-gold'
-                      }`}
-                    >
-                      {formatSlotLabel(slot.start, slot.end)}
-                    </button>
-                  ))}
+          {loadingSlots ? (
+            <p className="text-sm text-muted">Loading real availability…</p>
+          ) : (
+            <>
+              <BookingCalendar availability={availability} selectedDate={selectedDate} onSelectDate={pickDate} />
+
+              {selectedDate && directSlots.length > 0 && (
+                <div className="mt-5">
+                  <p className="text-sm font-semibold text-bronze mb-2">{formatDateLabel(selectedDate)}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {directSlots.map((slot) => (
+                      <button
+                        key={slot.start}
+                        onClick={() => setSelected(slot)}
+                        className={`rounded-lg border-2 px-3 py-2 text-sm font-medium transition ${
+                          selected?.start === slot.start ? 'border-gold bg-gold/10 text-ink' : 'border-line hover:border-gold'
+                        }`}
+                      >
+                        {formatSlotLabel(slot.start, slot.end)}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-            {!loadingSlots && days.every((d) => !d.slots.some((s) => s.available)) && (
-              <p className="text-sm text-muted">No open slots in the next 10 days — please check back soon.</p>
-            )}
-          </div>
+              )}
+
+              {selectedDate && directSlots.length === 0 && (
+                <div className="mt-5">
+                  <p className="text-sm font-semibold text-ink mb-1">Nothing open on {formatDateLabel(selectedDate)}</p>
+                  <p className="text-sm text-slate mb-3">Here's what's open nearby — {NEARBY_BEFORE_DAYS} days before to {NEARBY_AFTER_DAYS / 7} weeks after:</p>
+                  {nearbyDays.length === 0 ? (
+                    <p className="text-sm text-muted">Nothing open nearby either — try another month, or hold your spot below.</p>
+                  ) : (
+                    <div className="max-h-[220px] space-y-4 overflow-y-auto pr-1">
+                      {nearbyDays.map((day) => (
+                        <div key={day.date}>
+                          <p className="text-xs font-semibold text-bronze mb-1.5">{formatDateLabel(day.date)}</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {day.slots
+                              .filter((s) => s.available)
+                              .map((slot) => (
+                                <button
+                                  key={slot.start}
+                                  onClick={() => setSelected(slot)}
+                                  className={`rounded-lg border-2 px-3 py-2 text-sm font-medium transition ${
+                                    selected?.start === slot.start ? 'border-gold bg-gold/10 text-ink' : 'border-line hover:border-gold'
+                                  }`}
+                                >
+                                  {formatSlotLabel(slot.start, slot.end)}
+                                </button>
+                              ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-4 rounded-xl bg-cream px-4 py-3">
+                    {standbyStatus === 'saved' ? (
+                      <p className="text-sm font-semibold text-bronze">
+                        ✓ You're on standby for {formatDateLabel(selectedDate)} — we'll let you know if it opens up.
+                      </p>
+                    ) : (
+                      <>
+                        <p className="text-sm text-ink">
+                          Rather have <strong>{formatDateLabel(selectedDate)}</strong>? We'll notify you the moment a spot
+                          opens up that day.
+                        </p>
+                        <button
+                          onClick={requestStandby}
+                          disabled={standbyStatus === 'saving'}
+                          className="btn-secondary !px-4 !py-2 mt-2 text-sm"
+                        >
+                          {standbyStatus === 'saving' ? 'Holding your spot…' : `Hold my spot for ${formatDateLabel(selectedDate)}`}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {choseAlternateDay && standbyStatus !== 'saved' && (
+                <p className="mt-3 text-xs text-muted">
+                  Booking {formatDateLabel(selected!.start.slice(0, 10))} instead — want us to watch {formatDateLabel(selectedDate!)} too? Use the button above.
+                </p>
+              )}
+            </>
+          )}
           <button disabled={!selected} onClick={proceedFromSchedule} className="btn-primary w-full mt-6">
             Continue
           </button>
