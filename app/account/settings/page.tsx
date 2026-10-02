@@ -3,11 +3,15 @@ import { redirect } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
 import {
   getTenant, getServiceTypes, getClientRatesFor, getAddressesFor, getUpcomingBookingsForClient,
-  formatMoney, SERVICE_LABELS,
+  getUserById, formatMoney, SERVICE_LABELS,
 } from '@/lib/data';
 import { canModifyBooking } from '@/lib/bookings';
+import { publicStripeKey } from '@/lib/payments';
 import AddressForm from '@/components/AddressForm';
 import MyBookingCard from '@/components/MyBookingCard';
+import AvatarUpload from '@/components/AvatarUpload';
+import PaymentMethodCard from '@/components/PaymentMethodCard';
+import NotificationPreferences from '@/components/NotificationPreferences';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,12 +23,14 @@ export default async function AccountSettings() {
   const tenant = await getTenant();
   if (!tenant) redirect('/account');
 
-  const [services, rates, addresses, upcoming] = await Promise.all([
+  const [me, services, rates, addresses, upcoming] = await Promise.all([
+    getUserById(user.id),
     getServiceTypes(tenant.id),
     getClientRatesFor(user.id),
     getAddressesFor(user.id),
     getUpcomingBookingsForClient(user.id),
   ]);
+  if (!me) redirect('/account');
 
   const primaryAddress = addresses.find((a) => a.isPrimary) ?? addresses[0];
 
@@ -34,9 +40,14 @@ export default async function AccountSettings() {
         <p className="eyebrow">My account</p>
         <h1 className="mt-1 text-3xl font-extrabold">Settings</h1>
         <p className="mt-2 text-slate">
-          Update your address, or change the frequency, time, or status of an upcoming cleaning — all up to
-          24 hours before it begins.
+          Update your address, payment method, or notification preferences, or change an upcoming cleaning —
+          all up to 24 hours before it begins.
         </p>
+      </div>
+
+      <div className="card">
+        <h2 className="mb-4 font-semibold text-ink">Profile picture</h2>
+        <AvatarUpload name={me.name} initialUrl={me.avatarUrl} />
       </div>
 
       <div className="card">
@@ -53,6 +64,23 @@ export default async function AccountSettings() {
           }}
         />
       </div>
+
+      <PaymentMethodCard
+        publishableKey={publicStripeKey()}
+        saved={
+          me.stripeDefaultPaymentMethodId
+            ? {
+                brand: me.paymentMethodBrand,
+                last4: me.paymentMethodLast4,
+                expMonth: me.paymentMethodExpMonth,
+                expYear: me.paymentMethodExpYear,
+                autopayEnabled: me.autopayEnabled,
+              }
+            : null
+        }
+      />
+
+      <NotificationPreferences initial={me.notificationChannel} hasPhone={!!me.phone} />
 
       <div className="card">
         <h2 className="mb-1 font-semibold text-ink">Upcoming cleanings</h2>

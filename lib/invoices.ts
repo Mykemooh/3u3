@@ -152,14 +152,20 @@ async function getOrCreateStripeCustomer(clientId: string): Promise<string> {
 }
 
 /**
- * Sends the invoice: creates a real Stripe Invoice (collection_method
- * "send_invoice", so Stripe never auto-charges anything on file — this is
- * the pay-link flow per product decision), finalizes it to get a
+ * Sends the invoice: creates a real Stripe Invoice, finalizes it to get a
  * Stripe-hosted pay page + PDF, then emails the customer ourselves via
  * Resend (so branding/copy stays consistent with every other email this
  * app sends, rather than also having Stripe's own invoice email go out).
  * Reuses the existing Stripe invoice if this is a re-send, so this never
  * double-creates one.
+ *
+ * If the client has autopay on (My Account → payment method) and a
+ * default payment method on file, the invoice is created with
+ * collection_method "charge_automatically" and charged immediately —
+ * otherwise collection_method stays "send_invoice" (Stripe never auto-
+ * charges anything on file) and the client pays via the emailed link, as
+ * before. A declined/failed autopay charge falls back to that same
+ * emailed pay link rather than leaving the invoice stuck.
  */
 export async function sendInvoice(invoiceId: string): Promise<{ url: string }> {
   const data = await getInvoiceWithItems(invoiceId);
@@ -170,18 +176,22 @@ export async function sendInvoice(invoiceId: string): Promise<{ url: string }> {
   if (invoice.status === 'VOID') throw new InvoiceError('This invoice is void');
 
   let hostedUrl = invoice.hostedInvoiceUrl;
+  let autopayCharged = false;
 
   if (!hostedUrl) {
     const stripe = getStripe();
     const customerId = await getOrCreateStripeCustomer(invoice.clientId);
+    const useAutopay = !!client?.autopayEnabled && !!client?.stripeDefaultPaymentMethodId;
 
     const stripeInvoice = await stripe.invoices.create({
       customer: customerId,
       // Our own number, shown on Stripe's page and PDF. (Not Stripe's `number`
       // field: a retried send would collide with a half-created earlier one.)
       custom_fields: [{ name: 'Invoice', value: invoiceLabel(invoice) }],
-      collection_method: 'send_invoice',
-      days_until_due: 7,
+      collection_method: useAutopay ? 'charge_automatically' : 'send_invoice',
+      ...(useAutopay
+        ? { default_payment_method: client!.stripeDefaultPaymentMethodId! }
+        : { days_until_due: 7 }),
       auto_advance: false,
       metadata: { invoiceId },
     });
@@ -199,6 +209,20 @@ export async function sendInvoice(invoiceId: string): Promise<{ url: string }> {
     const finalized = await stripe.invoices.finalizeInvoice(stripeInvoice.id);
     hostedUrl = finalized.hosted_invoice_url ?? null;
 
+    if (useAutopay) {
+      try {
+        const paid = await stripe.invoices.pay(finalized.id);
+        autopayCharged = true;
+        // Confirmed synchronously here rather than waiting on the
+        // invoice.paid webhook (which may be delayed, or not configured
+        // in every environment) — confirmInvoicePaid is idempotent, so
+        // a webhook delivery for the same invoice later is a no-op.
+        await confirmInvoicePaid(paid);
+      } catch (err) {
+        console.warn(`[invoices] autopay charge failed for ${invoiceId}, falling back to the emailed pay link:`, err);
+      }
+    }
+
     await db
       .update(invoices)
       .set({
@@ -207,6 +231,7 @@ export async function sendInvoice(invoiceId: string): Promise<{ url: string }> {
         invoicePdfUrl: finalized.invoice_pdf ?? null,
         status: 'SENT',
         sentAt: new Date(),
+        autopayCharged,
       })
       .where(eq(invoices.id, invoiceId));
   } else if (invoice.status === 'DRAFT') {
@@ -215,7 +240,10 @@ export async function sendInvoice(invoiceId: string): Promise<{ url: string }> {
 
   if (!hostedUrl) throw new InvoiceError('Stripe did not return a payment link for this invoice');
 
-  if (client?.email) {
+  // When autopay just succeeded, confirmInvoicePaid() above already sent
+  // the "payment received" email — sending the "please pay" one too would
+  // be confusing.
+  if (!autopayCharged && client?.email) {
     const { subject, html } = invoiceEmail({
       name: client.name,
       totalCents: invoice.totalCents,
@@ -225,13 +253,15 @@ export async function sendInvoice(invoiceId: string): Promise<{ url: string }> {
     await sendEmail({ to: client.email, subject, html });
   }
 
-  await logNotification({
-    tenantId: invoice.tenantId,
-    channel: 'EMAIL',
-    recipient: client?.email ?? client?.phone ?? 'customer',
-    triggerEvent: 'INVOICE_SENT_CUSTOMER',
-    relatedBookingId: invoice.bookingId,
-  });
+  if (!autopayCharged) {
+    await logNotification({
+      tenantId: invoice.tenantId,
+      channel: 'EMAIL',
+      recipient: client?.email ?? client?.phone ?? 'customer',
+      triggerEvent: 'INVOICE_SENT_CUSTOMER',
+      relatedBookingId: invoice.bookingId,
+    });
+  }
 
   return { url: hostedUrl };
 }

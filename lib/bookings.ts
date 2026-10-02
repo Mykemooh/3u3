@@ -181,7 +181,7 @@ export async function createQuoteVisitBooking(input: {
 
 export async function logNotification(input: {
   tenantId: string;
-  channel: 'EMAIL' | 'SMS';
+  channel: 'EMAIL' | 'SMS' | 'WHATSAPP';
   recipient: string;
   triggerEvent: string;
   relatedBookingId?: string;
