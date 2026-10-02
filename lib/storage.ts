@@ -235,6 +235,16 @@ export async function saveServerUpload(file: File, key: string): Promise<string>
     });
     return blob.url;
   }
+  // On Vercel, only /tmp is writable at runtime — public/uploads is part
+  // of the read-only deployment bundle. Writing there doesn't throw a
+  // helpful error (it can even silently "succeed" against an ephemeral
+  // overlay that's gone by the next request), so this is caught here and
+  // turned into a clear, actionable message instead of a confusing
+  // not-found later. Local dev (no VERCEL env var) still writes to disk
+  // as before.
+  if (process.env.VERCEL) {
+    throw new Error('Image storage is not set up for this deployment yet — add Vercel Blob storage (Storage tab → Create → Blob) or Cloudflare R2, then try again.');
+  }
   const filePath = path.join(process.cwd(), 'public', 'uploads', key);
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, Buffer.from(await file.arrayBuffer()));
