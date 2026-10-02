@@ -434,6 +434,40 @@ async function main() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
     CREATE UNIQUE INDEX IF NOT EXISTS payroll_entry_jobs_job_user_unique ON payroll_entry_jobs(job_id, user_id);
+
+    -- A team's home base ("move a team to a location") — text only, never
+    -- lat/lng (see the comment on db/schema.ts crews for why).
+    ALTER TABLE crews ADD COLUMN IF NOT EXISTS home_address_line1 TEXT;
+    ALTER TABLE crews ADD COLUMN IF NOT EXISTS home_city TEXT;
+    ALTER TABLE crews ADD COLUMN IF NOT EXISTS home_state TEXT;
+    ALTER TABLE crews ADD COLUMN IF NOT EXISTS home_zip TEXT;
+
+    -- Standby requests (lib/standby.ts).
+    CREATE TABLE IF NOT EXISTS standby_requests (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      client_id TEXT NOT NULL REFERENCES users(id),
+      service_type_id TEXT NOT NULL REFERENCES service_types(id),
+      address_id TEXT REFERENCES addresses(id),
+      preferred_date TEXT NOT NULL,
+      cadence TEXT NOT NULL DEFAULT 'ONE_TIME' CHECK (cadence IN ('ONE_TIME','BIWEEKLY','MONTHLY')),
+      status TEXT NOT NULL DEFAULT 'WAITING' CHECK (status IN ('WAITING','OFFERED','BOOKED','EXPIRED','CANCELLED')),
+      offer_token TEXT,
+      offer_crew_id TEXT REFERENCES crews(id),
+      offer_slot_start TEXT,
+      offer_slot_end TEXT,
+      offer_expires_at TIMESTAMPTZ,
+      resulting_booking_id TEXT REFERENCES bookings(id),
+      responded_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS standby_requests_offer_token_unique ON standby_requests(offer_token);
+
+    -- "Can we use your before/after photos on social media?" — asked once
+    -- on the client's before-and-after gallery page, covers every future
+    -- cleaning until they change it.
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS social_media_consent BOOLEAN;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS social_media_consent_at TIMESTAMPTZ;
   `);
 
   console.log('Schema pushed to Postgres.');

@@ -19,6 +19,7 @@ const NAV = [
   { href: '/admin/estimates', label: 'Estimates' },
   { href: '/admin/clients', label: 'Clients' },
   { href: '/admin/schedule', label: 'Schedule' },
+  { href: '/admin/routes', label: 'Routes' },
   { href: '/admin/team', label: 'Team' },
   { href: '/admin/bookings', label: 'Bookings' },
   { href: '/crew', label: 'Jobs & photos' },

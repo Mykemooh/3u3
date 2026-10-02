@@ -21,7 +21,12 @@ export async function GET(req: Request) {
   const service = await getServiceType(serviceTypeId);
   if (!service) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  // Every team that takes online bookings, merged: a time is open if any team is free.
-  const days = await combinedSlots(tenant.id, service.defaultDurationMinutes, 10, businessTodayDate());
+  // Every team that takes online bookings, merged: a time is open if any
+  // team is free. A full year out (not just the next couple of weeks) so
+  // the booking calendar (components/BookingCalendar.tsx) can show real
+  // availability for any month a client navigates to without another
+  // round trip — this is cheap: one query per crew, then pure in-memory
+  // date math (lib/scheduling.ts), not 365 separate day queries.
+  const days = await combinedSlots(tenant.id, service.defaultDurationMinutes, 365, businessTodayDate());
   return NextResponse.json({ days });
 }

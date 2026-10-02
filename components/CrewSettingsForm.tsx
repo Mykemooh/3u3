@@ -12,7 +12,16 @@ export default function CrewSettingsForm({
   initial,
 }: {
   crewId: string;
-  initial: { workStartMinutes: number; workEndMinutes: number; homesPerDay: number; commuteBufferMinutes: number };
+  initial: {
+    workStartMinutes: number;
+    workEndMinutes: number;
+    homesPerDay: number;
+    commuteBufferMinutes: number;
+    homeAddressLine1: string | null;
+    homeCity: string | null;
+    homeState: string | null;
+    homeZip: string | null;
+  };
 }) {
   const router = useRouter();
   const startHM = minutesToHM(initial.workStartMinutes);
@@ -21,6 +30,10 @@ export default function CrewSettingsForm({
   const [end, setEnd] = useState(`${String(endHM.h).padStart(2, '0')}:${String(endHM.m).padStart(2, '0')}`);
   const [homesPerDay, setHomesPerDay] = useState(initial.homesPerDay);
   const [buffer, setBuffer] = useState(initial.commuteBufferMinutes);
+  const [homeLine1, setHomeLine1] = useState(initial.homeAddressLine1 ?? '');
+  const [homeCity, setHomeCity] = useState(initial.homeCity ?? '');
+  const [homeState, setHomeState] = useState(initial.homeState ?? '');
+  const [homeZip, setHomeZip] = useState(initial.homeZip ?? '');
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   async function onSubmit(e: React.FormEvent) {
@@ -37,6 +50,10 @@ export default function CrewSettingsForm({
         workEndMinutes: eh * 60 + em,
         homesPerDay,
         commuteBufferMinutes: buffer,
+        homeAddressLine1: homeLine1 || null,
+        homeCity: homeCity || null,
+        homeState: homeState || null,
+        homeZip: homeZip || null,
       }),
     });
     if (res.ok) {
@@ -82,6 +99,15 @@ export default function CrewSettingsForm({
             value={buffer}
             onChange={(e) => setBuffer(Number(e.target.value))}
           />
+        </div>
+      </div>
+      <div>
+        <label className="label">Home base (where this team's day starts — for route optimization)</label>
+        <input className="input" placeholder="Street address" value={homeLine1} onChange={(e) => setHomeLine1(e.target.value)} />
+        <div className="mt-2 grid grid-cols-3 gap-3">
+          <input className="input col-span-1" placeholder="City" value={homeCity} onChange={(e) => setHomeCity(e.target.value)} />
+          <input className="input" placeholder="State" maxLength={2} value={homeState} onChange={(e) => setHomeState(e.target.value)} />
+          <input className="input" placeholder="ZIP" value={homeZip} onChange={(e) => setHomeZip(e.target.value)} />
         </div>
       </div>
       <button type="submit" disabled={status === 'saving'} className="btn-primary">

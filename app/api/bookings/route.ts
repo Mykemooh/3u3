@@ -2,12 +2,10 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { createBooking, DoubleBookingError, logNotification } from '@/lib/bookings';
+import { createBooking, DoubleBookingError, sendBookingConfirmationEmails } from '@/lib/bookings';
 import { teamsFreeFor } from '@/lib/capacity';
-import { getAddressesFor, getServiceType, getClientRatesFor, getTenant, getUserById, getOwnerEmail, formatMoney } from '@/lib/data';
-import { sendEmail, bookingConfirmedCustomerEmail, newBookingOwnerEmail } from '@/lib/email';
-import { formatSlotLabel, formatDateLabel } from '@/lib/scheduling';
-import { appUrl } from '@/lib/url';
+import { getAddressesFor, getServiceType, getClientRatesFor, getTenant } from '@/lib/data';
+import { pickNearestTeam } from '@/lib/routeOptimization';
 
 const schema = z.object({
   serviceTypeId: z.string(),
@@ -45,10 +43,16 @@ export async function POST(req: Request) {
   const addresses = await getAddressesFor(clientId);
 
   try {
-    // First free team takes it. If another booking grabs that team a moment
-    // earlier, createBooking's transactional check refuses and the next
-    // free team is tried; only when every team is taken does it fail.
-    const teams = await teamsFreeFor(tenant.id, service.defaultDurationMinutes, slotStart, slotEnd);
+    // Whichever free team is closest to the client takes it — a fast,
+    // no-API-call straight-line estimate (lib/routeOptimization.ts
+    // pickNearestTeam), not a full route optimization on every booking;
+    // that's reserved for the admin's deliberate day-level "Optimize
+    // route" (Admin -> Routes). If another booking grabs that team a
+    // moment earlier, createBooking's transactional check refuses and
+    // the next-nearest free team is tried; only when every team is taken
+    // does it fail.
+    const freeTeams = await teamsFreeFor(tenant.id, service.defaultDurationMinutes, slotStart, slotEnd);
+    const teams = await pickNearestTeam(freeTeams, addresses[0] ?? null);
     let bookingId: string | null = null;
     for (const team of teams) {
       try {
@@ -75,7 +79,7 @@ export async function POST(req: Request) {
     // the client gets a real email and the owner gets an alert. Neither can
     // fail the booking — it's already safely in the database.
     try {
-      await sendBookingEmails({
+      await sendBookingConfirmationEmails({
         tenantId: tenant.id,
         bookingId,
         clientId,
@@ -96,63 +100,5 @@ export async function POST(req: Request) {
     }
     console.error(err);
     return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 });
-  }
-}
-
-async function sendBookingEmails(input: {
-  tenantId: string;
-  bookingId: string;
-  clientId: string;
-  serviceName: string;
-  slotStart: string;
-  slotEnd: string;
-  priceCents: number | null;
-  address?: { line1: string; city: string; state: string; zip: string | null };
-}) {
-  const client = await getUserById(input.clientId);
-  const whenLabel = `${formatDateLabel(input.slotStart.slice(0, 10))}, ${formatSlotLabel(input.slotStart, input.slotEnd)}`;
-  const addressLabel = input.address
-    ? `${input.address.line1}, ${input.address.city}, ${input.address.state}${input.address.zip ? ` ${input.address.zip}` : ''}`
-    : undefined;
-  const priceLabel = input.priceCents != null ? formatMoney(input.priceCents) : undefined;
-
-  if (client?.email) {
-    const { subject, html } = bookingConfirmedCustomerEmail({
-      name: client.name,
-      serviceName: input.serviceName,
-      whenLabel,
-      addressLabel,
-      priceLabel,
-      accountUrl: appUrl('/account'),
-    });
-    const ok = await sendEmail({ to: client.email, subject, html });
-    await logNotification({
-      tenantId: input.tenantId,
-      channel: 'EMAIL',
-      recipient: client.email,
-      triggerEvent: ok ? 'BOOKING_CONFIRMATION_CUSTOMER' : 'BOOKING_CONFIRMATION_CUSTOMER_NOT_DELIVERED',
-      relatedBookingId: input.bookingId,
-    });
-  }
-
-  const ownerEmail = await getOwnerEmail(input.tenantId);
-  if (ownerEmail) {
-    const { subject, html } = newBookingOwnerEmail({
-      clientName: client?.name ?? 'A client',
-      clientPhone: client?.phone ?? undefined,
-      serviceName: input.serviceName,
-      whenLabel,
-      addressLabel,
-      priceLabel,
-      scheduleUrl: appUrl(`/admin/schedule?week=${input.slotStart.slice(0, 10)}`),
-    });
-    const ok = await sendEmail({ to: ownerEmail, subject, html });
-    await logNotification({
-      tenantId: input.tenantId,
-      channel: 'EMAIL',
-      recipient: ownerEmail,
-      triggerEvent: ok ? 'NEW_BOOKING_OWNER_ALERT' : 'NEW_BOOKING_OWNER_ALERT_NOT_DELIVERED',
-      relatedBookingId: input.bookingId,
-    });
   }
 }

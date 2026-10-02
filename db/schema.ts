@@ -81,6 +81,14 @@ export const users = pgTable('users', {
   payRateCentsPerHour: integer('pay_rate_cents_per_hour'),
   payRateCentsPerClean: integer('pay_rate_cents_per_clean'),
   payRateCentsPerDay: integer('pay_rate_cents_per_day'),
+  // A CUSTOMER's one-time answer to "can we use your before/after photos
+  // on social media?" (app/account/jobs/[id] — the before-and-after
+  // gallery). Null = not asked yet; once set it's never asked again and
+  // covers every future cleaning too, until the client changes it
+  // themselves. True/false both count as "asked" — a decline is still a
+  // recorded, respected answer, not a re-prompt.
+  socialMediaConsent: boolean('social_media_consent'),
+  socialMediaConsentAt: timestamp('social_media_consent_at', { withTimezone: true }),
   ...timestamps,
 }, (t) => ({
   phoneUnique: uniqueIndex('users_phone_unique').on(t.phone),
@@ -147,6 +155,16 @@ export const crews = pgTable('crews', {
   // Whether customers can book this team online. Teams created from the
   // Team page start switched off, so an empty team never opens slots.
   acceptsBookings: boolean('accepts_bookings').notNull().default(true),
+  // Where this team's day starts/ends — admin-settable ("move a team to a
+  // location"), and what lib/routeOptimization.ts measures drive time
+  // from. Deliberately text, not lat/lng: this app never permanently
+  // stores geocoded coordinates (see jobs.destLat/destLng above — Mapbox's
+  // free geocoding tier only allows temporary use), so a crew's home base
+  // is geocoded fresh, in memory, each time a route is optimized.
+  homeAddressLine1: text('home_address_line1'),
+  homeCity: text('home_city'),
+  homeState: text('home_state'),
+  homeZip: text('home_zip'),
   ...timestamps,
 });
 
@@ -512,4 +530,34 @@ export const payrollEntryJobs = pgTable('payroll_entry_jobs', {
   ...timestamps,
 }, (t) => ({
   jobUserUnique: uniqueIndex('payroll_entry_jobs_job_user_unique').on(t.jobId, t.userId),
+}));
+
+// ---------------------------------------------------------------------------
+// Standby requests (lib/standby.ts) — "I'd rather have this day; hold my
+// spot and tell me if it opens up." Created from the booking wizard when a
+// client's first-choice day has nothing open and they book an alternative
+// instead. Whenever a booking is cancelled or moved off a date (lib/
+// bookings.ts, lib/dispatch.ts), the freed day is checked against WAITING
+// requests oldest-first; a match gets a time-boxed OFFERED link and, if it
+// lapses or is declined, the next WAITING request for that day gets it.
+// ---------------------------------------------------------------------------
+export const standbyRequests = pgTable('standby_requests', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  clientId: text('client_id').notNull().references(() => users.id),
+  serviceTypeId: text('service_type_id').notNull().references(() => serviceTypes.id),
+  addressId: text('address_id').references(() => addresses.id),
+  preferredDate: text('preferred_date').notNull(), // YYYY-MM-DD
+  cadence: text('cadence', { enum: ['ONE_TIME', 'BIWEEKLY', 'MONTHLY'] }).notNull().default('ONE_TIME'),
+  status: text('status', { enum: ['WAITING', 'OFFERED', 'BOOKED', 'EXPIRED', 'CANCELLED'] }).notNull().default('WAITING'),
+  offerToken: text('offer_token'),
+  offerCrewId: text('offer_crew_id').references(() => crews.id),
+  offerSlotStart: text('offer_slot_start'),
+  offerSlotEnd: text('offer_slot_end'),
+  offerExpiresAt: timestamp('offer_expires_at', { withTimezone: true }),
+  resultingBookingId: text('resulting_booking_id').references(() => bookings.id),
+  respondedAt: timestamp('responded_at', { withTimezone: true }),
+  ...timestamps,
+}, (t) => ({
+  offerTokenUnique: uniqueIndex('standby_requests_offer_token_unique').on(t.offerToken),
 }));
