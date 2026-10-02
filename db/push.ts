@@ -462,6 +462,12 @@ async function main() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
     CREATE UNIQUE INDEX IF NOT EXISTS standby_requests_offer_token_unique ON standby_requests(offer_token);
+
+    -- "Can we use your before/after photos on social media?" — asked once
+    -- on the client's before-and-after gallery page, covers every future
+    -- cleaning until they change it.
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS social_media_consent BOOLEAN;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS social_media_consent_at TIMESTAMPTZ;
   `);
 
   console.log('Schema pushed to Postgres.');

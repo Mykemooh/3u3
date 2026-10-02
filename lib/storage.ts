@@ -38,7 +38,7 @@ export const MEDIA_LIMITS = {
   /** Longest video the crew app will accept, in seconds. */
   videoSeconds: 30,
   /** Photos plus videos per room, per phase (before / after). */
-  perPhase: 6,
+  perPhase: 10,
 };
 
 /** What a Vercel function will accept as a request body, with headroom. */

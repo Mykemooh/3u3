@@ -81,6 +81,14 @@ export const users = pgTable('users', {
   payRateCentsPerHour: integer('pay_rate_cents_per_hour'),
   payRateCentsPerClean: integer('pay_rate_cents_per_clean'),
   payRateCentsPerDay: integer('pay_rate_cents_per_day'),
+  // A CUSTOMER's one-time answer to "can we use your before/after photos
+  // on social media?" (app/account/jobs/[id] — the before-and-after
+  // gallery). Null = not asked yet; once set it's never asked again and
+  // covers every future cleaning too, until the client changes it
+  // themselves. True/false both count as "asked" — a decline is still a
+  // recorded, respected answer, not a re-prompt.
+  socialMediaConsent: boolean('social_media_consent'),
+  socialMediaConsentAt: timestamp('social_media_consent_at', { withTimezone: true }),
   ...timestamps,
 }, (t) => ({
   phoneUnique: uniqueIndex('users_phone_unique').on(t.phone),
