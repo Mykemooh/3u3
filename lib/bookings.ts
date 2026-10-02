@@ -5,6 +5,10 @@ import {
 } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { businessNowISO } from '@/lib/time';
+import { formatSlotLabel, formatDateLabel } from '@/lib/scheduling';
+import { getAddressesFor, getUserById, getOwnerEmail, formatMoney } from '@/lib/data';
+import { sendEmail, bookingConfirmedCustomerEmail, newBookingOwnerEmail } from '@/lib/email';
+import { appUrl } from '@/lib/url';
 
 export class DoubleBookingError extends Error {
   constructor() {
@@ -139,6 +143,80 @@ export async function createBooking(input: {
 
     return bookingId;
   });
+}
+
+/**
+ * The client confirmation + owner new-booking alert, shared by every path
+ * that creates a real booking — the normal booking wizard
+ * (app/api/bookings/route.ts) and a standby offer being accepted
+ * (lib/standby.ts) both call this so the emails read identically either
+ * way. Never fails the booking itself; errors are caught by the caller.
+ */
+export async function sendBookingConfirmationEmails(input: {
+  tenantId: string;
+  bookingId: string;
+  clientId: string;
+  serviceName: string;
+  slotStart: string;
+  slotEnd: string;
+  priceCents: number | null;
+  address?: { line1: string; city: string; state: string; zip: string | null };
+}) {
+  const client = await getUserById(input.clientId);
+  const whenLabel = `${formatDateLabel(input.slotStart.slice(0, 10))}, ${formatSlotLabel(input.slotStart, input.slotEnd)}`;
+  const addressLabel = input.address
+    ? `${input.address.line1}, ${input.address.city}, ${input.address.state}${input.address.zip ? ` ${input.address.zip}` : ''}`
+    : undefined;
+  const priceLabel = input.priceCents != null ? formatMoney(input.priceCents) : undefined;
+
+  if (client?.email) {
+    const { subject, html } = bookingConfirmedCustomerEmail({
+      name: client.name,
+      serviceName: input.serviceName,
+      whenLabel,
+      addressLabel,
+      priceLabel,
+      accountUrl: appUrl('/account'),
+    });
+    const ok = await sendEmail({ to: client.email, subject, html });
+    await logNotification({
+      tenantId: input.tenantId,
+      channel: 'EMAIL',
+      recipient: client.email,
+      triggerEvent: ok ? 'BOOKING_CONFIRMATION_CUSTOMER' : 'BOOKING_CONFIRMATION_CUSTOMER_NOT_DELIVERED',
+      relatedBookingId: input.bookingId,
+    });
+  }
+
+  const ownerEmail = await getOwnerEmail(input.tenantId);
+  if (ownerEmail) {
+    const { subject, html } = newBookingOwnerEmail({
+      clientName: client?.name ?? 'A client',
+      clientPhone: client?.phone ?? undefined,
+      serviceName: input.serviceName,
+      whenLabel,
+      addressLabel,
+      priceLabel,
+      scheduleUrl: appUrl(`/admin/schedule?week=${input.slotStart.slice(0, 10)}`),
+    });
+    const ok = await sendEmail({ to: ownerEmail, subject, html });
+    await logNotification({
+      tenantId: input.tenantId,
+      channel: 'EMAIL',
+      recipient: ownerEmail,
+      triggerEvent: ok ? 'NEW_BOOKING_OWNER_ALERT' : 'NEW_BOOKING_OWNER_ALERT_NOT_DELIVERED',
+      relatedBookingId: input.bookingId,
+    });
+  }
+}
+
+/** Convenience wrapper for sendBookingConfirmationEmails when only the client's addressId is known. */
+export async function sendBookingConfirmationEmailsForAddress(
+  input: Omit<Parameters<typeof sendBookingConfirmationEmails>[0], 'address'> & { addressId?: string | null },
+) {
+  const addresses = input.addressId ? await getAddressesFor(input.clientId) : [];
+  const address = addresses.find((a) => a.id === input.addressId) ?? addresses[0];
+  return sendBookingConfirmationEmails({ ...input, address });
 }
 
 /**

@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth';
 import { db } from '@/db/client';
 import { bookings } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { checkStandbyForFreedDate } from '@/lib/standby';
 
 const schema = z
   .object({
@@ -48,5 +49,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (parsed.data.priceDollars !== undefined) updates.priceCents = Math.round(parsed.data.priceDollars * 100);
 
   await db.update(bookings).set(updates).where(eq(bookings.id, params.id));
+
+  if (updates.status === 'CANCELLED') {
+    await checkStandbyForFreedDate(existing.tenantId, existing.slotStart.slice(0, 10));
+  }
+
   return NextResponse.json({ ok: true });
 }

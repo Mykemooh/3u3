@@ -1,12 +1,14 @@
 import { NextResponse } from 'next/server';
 import { sendBookingReminders, sendQuoteReminders } from '@/lib/reminders';
+import { expireStaleStandbyOffers } from '@/lib/standby';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * Daily cron (vercel.json → crons): upcoming-cleaning reminders (3 days,
- * then 36 hours before) and the quote follow-up cadence (24h, +3d, +2d,
- * then weekly). Same CRON_SECRET bearer-token gate as
+ * then 36 hours before), the quote follow-up cadence (24h, +3d, +2d, then
+ * weekly), and expiring stale standby offers (cascading each to the next
+ * person waiting on that date). Same CRON_SECRET bearer-token gate as
  * app/api/cron/media-cleanup/route.ts — only Vercel's scheduler can call
  * this.
  */
@@ -15,6 +17,6 @@ export async function GET(req: Request) {
   if (!secret || req.headers.get('authorization') !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Not allowed' }, { status: 401 });
   }
-  const [booking, quote] = await Promise.all([sendBookingReminders(), sendQuoteReminders()]);
-  return NextResponse.json({ booking, quote });
+  const [booking, quote, standby] = await Promise.all([sendBookingReminders(), sendQuoteReminders(), expireStaleStandbyOffers()]);
+  return NextResponse.json({ booking, quote, standby });
 }
