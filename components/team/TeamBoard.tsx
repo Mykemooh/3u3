@@ -28,6 +28,10 @@ export type BoardTeam = {
   workEndMinutes: number;
   homesPerDay: number;
   commuteBufferMinutes: number;
+  homeAddressLine1: string | null;
+  homeCity: string | null;
+  homeState: string | null;
+  homeZip: string | null;
 };
 
 export const ROLE_LABELS: Record<StaffRole, string> = { TEAM_LEAD: 'Team Lead', CLEANER: 'Cleaner', JR_CLEANER: 'Jr. Cleaner' };
@@ -248,6 +252,10 @@ function TeamColumn({
                   workEndMinutes: team.workEndMinutes,
                   homesPerDay: team.homesPerDay,
                   commuteBufferMinutes: team.commuteBufferMinutes,
+                  homeAddressLine1: team.homeAddressLine1,
+                  homeCity: team.homeCity,
+                  homeState: team.homeState,
+                  homeZip: team.homeZip,
                 }}
               />
             </div>
