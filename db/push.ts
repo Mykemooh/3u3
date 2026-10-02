@@ -322,6 +322,78 @@ async function main() {
     ALTER TABLE addresses ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
     ALTER TABLE bookings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
     ALTER TABLE notification_log ADD COLUMN IF NOT EXISTS is_read BOOLEAN NOT NULL DEFAULT false;
+
+    -- My Account beef-up: profile picture, saved payment method (Stripe
+    -- only — no card data here), notification channel preference, and a
+    -- cleaner's hourly pay rate (payroll report input).
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_default_payment_method_id TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_method_brand TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_method_last4 TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_method_exp_month INTEGER;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS payment_method_exp_year INTEGER;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS autopay_enabled BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_channel TEXT NOT NULL DEFAULT 'EMAIL'
+      CHECK (notification_channel IN ('EMAIL','SMS','WHATSAPP'));
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS pay_rate_cents_per_hour INTEGER;
+
+    -- "Cleaner needs to know" per property, and the crew's acknowledgement
+    -- of it before a job can start.
+    ALTER TABLE addresses ADD COLUMN IF NOT EXISTS notes TEXT;
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS cleaner_notes_ack_at TIMESTAMPTZ;
+
+    -- Upcoming-cleaning reminders (3 days, then 36 hours before).
+    ALTER TABLE bookings ADD COLUMN IF NOT EXISTS reminder_3d_sent_at TIMESTAMPTZ;
+    ALTER TABLE bookings ADD COLUMN IF NOT EXISTS reminder_36h_sent_at TIMESTAMPTZ;
+
+    -- Tips (paid as their own small Stripe Checkout session, since the
+    -- main invoice is already finalized at a fixed amount by then) and
+    -- whether an invoice was settled by autopay.
+    ALTER TABLE invoices ADD COLUMN IF NOT EXISTS tip_cents INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE invoices ADD COLUMN IF NOT EXISTS autopay_charged BOOLEAN NOT NULL DEFAULT false;
+
+    -- Quote follow-up cadence (24h, +3d, +2d, then weekly) and its opt-out.
+    ALTER TABLE quotes ADD COLUMN IF NOT EXISTS reminder_count INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE quotes ADD COLUMN IF NOT EXISTS last_reminder_at TIMESTAMPTZ;
+    ALTER TABLE quotes ADD COLUMN IF NOT EXISTS reminders_opted_out BOOLEAN NOT NULL DEFAULT false;
+
+    -- WhatsApp joins Email/SMS as a notification channel.
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conrelid = 'notification_log'::regclass AND conname = 'notification_log_channel_check'
+          AND pg_get_constraintdef(oid) LIKE '%WHATSAPP%'
+      ) THEN
+        ALTER TABLE notification_log DROP CONSTRAINT IF EXISTS notification_log_channel_check;
+        ALTER TABLE notification_log ADD CONSTRAINT notification_log_channel_check
+          CHECK (channel IN ('EMAIL','SMS','WHATSAPP'));
+      END IF;
+    END $$;
+
+    -- Accounting/payroll connections (QuickBooks today) — see lib/quickbooks.ts.
+    CREATE TABLE IF NOT EXISTS integrations (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      provider TEXT NOT NULL CHECK (provider IN ('QUICKBOOKS')),
+      access_token TEXT NOT NULL,
+      refresh_token TEXT NOT NULL,
+      external_account_id TEXT,
+      expires_at TIMESTAMPTZ,
+      connected_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS integrations_tenant_provider_unique ON integrations(tenant_id, provider);
+
+    CREATE TABLE IF NOT EXISTS quickbooks_links (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      entity TEXT NOT NULL CHECK (entity IN ('CUSTOMER','INVOICE')),
+      local_id TEXT NOT NULL,
+      quickbooks_id TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS quickbooks_links_entity_unique ON quickbooks_links(tenant_id, entity, local_id);
   `);
 
   console.log('Schema pushed to Postgres.');
