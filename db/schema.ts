@@ -109,6 +109,11 @@ export const addresses = pgTable('addresses', {
   // Account; shown to the crew on the job and must be acknowledged
   // before they can start (see jobs.cleanerNotesAckAt).
   notes: text('notes'),
+  // Captured during the quote process (app/new) or set later by the admin
+  // or client — drives how many "Bedroom N" entries a job's checklist gets
+  // (lib/bookings.ts createBooking, checklistTemplateItems.perBedroom).
+  // Null/1 keeps the single generic "Bedroom" item.
+  bedrooms: integer('bedrooms'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdate(() => new Date()),
   ...timestamps,
 });
@@ -193,6 +198,12 @@ export const checklistTemplateItems = pgTable('checklist_template_items', {
   roomName: text('room_name').notNull(),
   taskDetail: text('task_detail'),
   sortOrder: integer('sort_order').notNull().default(0),
+  // When true (the seeded "Bedrooms" row), lib/bookings.ts createBooking
+  // expands this one template item into one job checklist item per actual
+  // bedroom at the client's address ("Bedroom 1", "Bedroom 2", ...) instead
+  // of a single generic entry — each gets its own before/after photos like
+  // any other room.
+  perBedroom: boolean('per_bedroom').notNull().default(false),
   ...timestamps,
 });
 

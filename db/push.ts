@@ -468,6 +468,11 @@ async function main() {
     -- cleaning until they change it.
     ALTER TABLE users ADD COLUMN IF NOT EXISTS social_media_consent BOOLEAN;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS social_media_consent_at TIMESTAMPTZ;
+    -- Per-bedroom checklist items: a client's bedroom count (captured at
+    -- quote time, app/new) and which template item expands per-bedroom.
+    ALTER TABLE addresses ADD COLUMN IF NOT EXISTS bedrooms INTEGER;
+    ALTER TABLE checklist_template_items ADD COLUMN IF NOT EXISTS per_bedroom BOOLEAN NOT NULL DEFAULT false;
+    UPDATE checklist_template_items SET per_bedroom = true WHERE room_name = 'Bedrooms' AND per_bedroom = false;
   `);
 
   console.log('Schema pushed to Postgres.');

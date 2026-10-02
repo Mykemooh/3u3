@@ -25,6 +25,7 @@ export default function NewCustomerPage() {
   const [email, setEmail] = useState('');
   const [addressLine1, setAddressLine1] = useState('');
   const [address, setAddress] = useState<PickedAddress | null>(null);
+  const [bedrooms, setBedrooms] = useState('');
   // Brand-new builds can be missing from the map data — let those through as typed.
   const [useTyped, setUseTyped] = useState(false);
   const [addressError, setAddressError] = useState(false);
@@ -66,6 +67,7 @@ export default function NewCustomerPage() {
           email: email.trim(),
           addressLine1,
           address: address ?? undefined,
+          bedrooms: bedrooms ? Number(bedrooms) : undefined,
           serviceTypeId,
           slotStart: selected.start,
           slotEnd: selected.end,
@@ -213,6 +215,20 @@ export default function NewCustomerPage() {
                   </button>
                 </p>
               )}
+            </div>
+            <div>
+              <label className="label" htmlFor="bedrooms">
+                Bedrooms
+              </label>
+              <select id="bedrooms" className="input" value={bedrooms} onChange={(e) => setBedrooms(e.target.value)}>
+                <option value="">Not sure yet</option>
+                {[1, 2, 3, 4, 5, 6].map((n) => (
+                  <option key={n} value={n}>
+                    {n} {n === 6 ? '+' : ''}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-muted">So we can set up your checklist room-by-room.</p>
             </div>
             <button type="submit" className="btn-primary w-full">
               Continue to pick a visit time

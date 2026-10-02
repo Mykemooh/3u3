@@ -1,7 +1,7 @@
 import { db } from '@/db/client';
 import {
   bookings, jobs, jobChecklistItems, checklistTemplates, checklistTemplateItems,
-  notificationLog, serviceTypes,
+  notificationLog, serviceTypes, addresses,
 } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { businessNowISO } from '@/lib/time';
@@ -123,18 +123,41 @@ export async function createBooking(input: {
       await tx.insert(jobs).values({ id: jobId, bookingId, crewId: input.crewId, status: 'PENDING' });
 
       if (template) {
-        const items = await tx
-          .select()
-          .from(checklistTemplateItems)
-          .where(eq(checklistTemplateItems.templateId, template.id));
+        const items = (
+          await tx.select().from(checklistTemplateItems).where(eq(checklistTemplateItems.templateId, template.id))
+        ).sort((a, b) => a.sortOrder - b.sortOrder);
+
+        // The one perBedroom template item (seeded as "Bedrooms") becomes
+        // "Bedroom 1", "Bedroom 2", ... matching the client's actual
+        // bedroom count (app/new, or set later on their address) — every
+        // other room passes through unchanged. Unknown or a single
+        // bedroom keeps the plain singular name rather than "Bedroom 1".
+        const address = input.addressId
+          ? (await tx.select().from(addresses).where(eq(addresses.id, input.addressId)).limit(1))[0]
+          : undefined;
+        const bedroomCount = Math.max(1, address?.bedrooms ?? 1);
+
+        const expanded: { templateItemId: string; roomName: string; taskDetail: string | null }[] = [];
         for (const item of items) {
+          if (!item.perBedroom) {
+            expanded.push({ templateItemId: item.id, roomName: item.roomName, taskDetail: item.taskDetail });
+          } else if (bedroomCount <= 1) {
+            expanded.push({ templateItemId: item.id, roomName: 'Bedroom', taskDetail: item.taskDetail });
+          } else {
+            for (let i = 1; i <= bedroomCount; i += 1) {
+              expanded.push({ templateItemId: item.id, roomName: `Bedroom ${i}`, taskDetail: item.taskDetail });
+            }
+          }
+        }
+
+        for (let i = 0; i < expanded.length; i += 1) {
           await tx.insert(jobChecklistItems).values({
             id: crypto.randomUUID(),
             jobId,
-            templateItemId: item.id,
-            roomName: item.roomName,
-            taskDetail: item.taskDetail,
-            sortOrder: item.sortOrder,
+            templateItemId: expanded[i].templateItemId,
+            roomName: expanded[i].roomName,
+            taskDetail: expanded[i].taskDetail,
+            sortOrder: i,
             status: 'PENDING',
           });
         }

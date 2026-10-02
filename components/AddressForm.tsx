@@ -10,7 +10,7 @@ export default function AddressForm({
   onSaved,
 }: {
   endpoint: string;
-  initial: { line1: string; city: string; state: string; zip?: string | null; notes?: string | null };
+  initial: { line1: string; city: string; state: string; zip?: string | null; notes?: string | null; bedrooms?: number | null };
   onSaved?: () => void;
 }) {
   const router = useRouter();
@@ -20,6 +20,7 @@ export default function AddressForm({
   const [state, setState] = useState(initial.state ?? '');
   const [zip, setZip] = useState(initial.zip ?? '');
   const [notes, setNotes] = useState(initial.notes ?? '');
+  const [bedrooms, setBedrooms] = useState(initial.bedrooms ? String(initial.bedrooms) : '');
   const [picked, setPicked] = useState<PickedAddress | null>(null);
   const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
   const [error, setError] = useState('');
@@ -41,7 +42,7 @@ export default function AddressForm({
     const res = await fetch(endpoint, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ line1, city, state, zip, notes }),
+      body: JSON.stringify({ line1, city, state, zip, notes, bedrooms: bedrooms ? Number(bedrooms) : null }),
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok) {
@@ -102,6 +103,18 @@ export default function AddressForm({
           <label className="label">ZIP</label>
           <input className="input" value={zip} onChange={(e) => setZip(e.target.value)} />
         </div>
+      </div>
+      <div>
+        <label className="label">Bedrooms</label>
+        <select className="input" value={bedrooms} onChange={(e) => setBedrooms(e.target.value)}>
+          <option value="">Not set</option>
+          {[1, 2, 3, 4, 5, 6].map((n) => (
+            <option key={n} value={n}>
+              {n} {n === 6 ? '+' : ''}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1 text-xs text-muted">Sets how many "Bedroom" entries show up on the cleaning checklist.</p>
       </div>
       <div>
         <label className="label">Cleaner needs to know</label>

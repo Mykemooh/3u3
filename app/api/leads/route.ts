@@ -19,6 +19,7 @@ const schema = z.object({
   email: z.string().email(),
   addressLine1: z.string().min(1),
   address: pickedAddressSchema.optional(),
+  bedrooms: z.number().int().min(1).max(20).optional(),
   serviceTypeId: z.string().min(1),
   slotStart: z.string(),
   slotEnd: z.string(),
@@ -38,7 +39,7 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'Please fill in every field.' }, { status: 400 });
   }
-  const { name, phone, email, addressLine1, address: picked, serviceTypeId, slotStart, slotEnd } = parsed.data;
+  const { name, phone, email, addressLine1, address: picked, bedrooms, serviceTypeId, slotStart, slotEnd } = parsed.data;
 
   const service = (await db.select().from(serviceTypes).where(eq(serviceTypes.id, serviceTypeId)).limit(1))[0];
   if (!service || service.tenantId !== tenant.id) {
@@ -58,8 +59,11 @@ export async function POST(req: Request) {
   let address = (await db.select().from(addresses).where(eq(addresses.userId, user.id)).limit(1))[0];
   if (!address) {
     const id = crypto.randomUUID();
-    await db.insert(addresses).values({ id, userId: user.id, ...addressFields(picked, addressLine1) });
+    await db.insert(addresses).values({ id, userId: user.id, bedrooms, ...addressFields(picked, addressLine1) });
     address = (await db.select().from(addresses).where(eq(addresses.id, id)).limit(1))[0]!;
+  } else if (bedrooms && !address.bedrooms) {
+    await db.update(addresses).set({ bedrooms }).where(eq(addresses.id, address.id));
+    address = { ...address, bedrooms };
   }
 
   try {

@@ -75,6 +75,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
             state: primaryAddress?.state ?? '',
             zip: primaryAddress?.zip,
             notes: primaryAddress?.notes,
+            bedrooms: primaryAddress?.bedrooms,
           }}
         />
         {otherAddresses.length > 0 && (
