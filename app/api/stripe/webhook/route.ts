@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe';
 import { confirmInvoicePaid } from '@/lib/invoices';
+import { confirmTipPaid } from '@/lib/tips';
 import type Stripe from 'stripe';
 
 // Stripe needs the raw request body to verify the signature — never parse
@@ -24,6 +25,8 @@ export async function POST(req: Request) {
   try {
     if (event.type === 'invoice.paid') {
       await confirmInvoicePaid(event.data.object as Stripe.Invoice);
+    } else if (event.type === 'checkout.session.completed') {
+      await confirmTipPaid(event.data.object as Stripe.Checkout.Session);
     }
   } catch (err) {
     // Log and still 200 — Stripe retries on non-2xx, and a bug in our own
