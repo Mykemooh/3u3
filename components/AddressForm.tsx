@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import AddressInput, { type PickedAddress } from '@/components/AddressInput';
 
 export default function AddressForm({
   endpoint,
@@ -18,8 +19,19 @@ export default function AddressForm({
   const [city, setCity] = useState(initial.city ?? '');
   const [state, setState] = useState(initial.state ?? '');
   const [zip, setZip] = useState(initial.zip ?? '');
+  const [picked, setPicked] = useState<PickedAddress | null>(null);
   const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
   const [error, setError] = useState('');
+
+  function onPick(address: PickedAddress | null) {
+    setPicked(address);
+    if (address) {
+      setLine1(address.line1);
+      setCity(address.city);
+      setState(address.state);
+      setZip(address.zip);
+    }
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -68,7 +80,7 @@ export default function AddressForm({
     <form onSubmit={onSubmit} className="space-y-3">
       <div>
         <label className="label">Street address</label>
-        <input className="input" value={line1} onChange={(e) => setLine1(e.target.value)} required />
+        <AddressInput value={line1} onChange={setLine1} picked={picked} onPick={onPick} required />
       </div>
       <div className="grid grid-cols-3 gap-3">
         <div className="col-span-1">
