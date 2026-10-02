@@ -28,11 +28,13 @@ type JobStatus = 'PENDING' | 'EN_ROUTE' | 'IN_PROGRESS' | 'COMPLETE';
 type PhotoPolicy = { requireBeforePhoto: boolean; noPhotosNeeded: boolean };
 
 type Props = {
-  job: { id: string; status: JobStatus; startedLabel: string | null; completedLabel: string | null } & PhotoPolicy;
+  job: { id: string; status: JobStatus; startedLabel: string | null; completedLabel: string | null; cleanerNotesAckAt: string | null } & PhotoPolicy;
   client: { name: string; phone: string | null };
   serviceLabel: string;
   whenLabel: string;
   addressLabel: string | null;
+  /** "Cleaner needs to know" — pets, gate codes, parking, anything the crew should see before they start (components/AddressForm.tsx sets it). */
+  cleanerNotes: string | null;
   items: CrewItem[];
   media: CrewMedia[];
   perPhase: number;
@@ -56,6 +58,9 @@ export default function CrewJob(props: Props) {
   const [finished, setFinished] = useState<{ invoiceId: string | null } | null>(null);
   const [showDirections, setShowDirections] = useState(false);
   const [addressCopied, setAddressCopied] = useState(false);
+  const [notesAcknowledged, setNotesAcknowledged] = useState(!!props.job.cleanerNotesAckAt);
+  const hasCleanerNotes = !!props.cleanerNotes?.trim();
+  const notesBlockStart = hasCleanerNotes && !notesAcknowledged;
   const [policy, setPolicy] = useState<PhotoPolicy>({
     requireBeforePhoto: props.job.requireBeforePhoto,
     noPhotosNeeded: props.job.noPhotosNeeded,
@@ -114,9 +119,14 @@ export default function CrewJob(props: Props) {
   }
 
   async function start() {
+    if (notesBlockStart) return setError('Please review the cleaner notes below first.');
     setBusy('start');
     setError('');
-    const res = await fetch(`/api/crew/jobs/${props.job.id}/start`, { method: 'POST' });
+    const res = await fetch(`/api/crew/jobs/${props.job.id}/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ acknowledgedNotes: notesAcknowledged }),
+    });
     const data = await res.json().catch(() => ({}));
     setBusy(null);
     if (!res.ok) return setError(data.error || 'Could not start the job.');
@@ -331,6 +341,27 @@ export default function CrewJob(props: Props) {
         </p>
       )}
 
+      {hasCleanerNotes && status !== 'COMPLETE' && (
+        <section className="card border-gold/50 bg-gold/5 space-y-3">
+          <div className="flex items-center gap-2">
+            <Icon d="M12 9v4m0 4h.01M10.3 3.9 2.7 17.5a1.5 1.5 0 0 0 1.3 2.3h16a1.5 1.5 0 0 0 1.3-2.3L13.7 3.9a1.5 1.5 0 0 0-2.6 0Z" />
+            <h2 className="font-bold text-ink">Cleaner needs to know</h2>
+          </div>
+          <p className="whitespace-pre-wrap text-sm text-ink">{props.cleanerNotes}</p>
+          {notStarted && (
+            <label className="flex items-start gap-2 text-sm font-semibold text-bronze">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={notesAcknowledged}
+                onChange={(e) => setNotesAcknowledged(e.target.checked)}
+              />
+              I've read this
+            </label>
+          )}
+        </section>
+      )}
+
       {status === 'EN_ROUTE' && props.canLead && (
         <p className="rounded-xl bg-cream px-4 py-3 text-sm text-bronze" aria-live="polite">
           {location === 'denied' ? (
@@ -408,7 +439,7 @@ export default function CrewJob(props: Props) {
                 <button onClick={startDriving} disabled={busy !== null} className="btn-primary flex-1">
                   {busy === 'drive' ? 'Letting the client know…' : 'Start driving'}
                 </button>
-                <button onClick={start} disabled={busy !== null} className="btn-secondary">
+                <button onClick={start} disabled={busy !== null || notesBlockStart} className="btn-secondary">
                   {busy === 'start' ? 'Starting…' : 'Already here'}
                 </button>
               </div>
@@ -418,8 +449,8 @@ export default function CrewJob(props: Props) {
                   <span className={`h-2 w-2 rounded-full ${location === 'sharing' ? 'bg-green' : 'bg-amber-500'}`} aria-hidden="true" />
                   {location === 'sharing' ? 'Sharing your location with the client' : location === 'locating' ? 'Finding your location…' : 'Location not shared'}
                 </p>
-                <button onClick={start} disabled={busy === 'start'} className="btn-primary w-full">
-                  {busy === 'start' ? 'Starting…' : "I've arrived — start job"}
+                <button onClick={start} disabled={busy === 'start' || notesBlockStart} className="btn-primary w-full">
+                  {busy === 'start' ? 'Starting…' : notesBlockStart ? 'Review cleaner notes above first' : "I've arrived — start job"}
                 </button>
               </>
             ) : (

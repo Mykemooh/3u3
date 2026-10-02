@@ -49,6 +49,7 @@ export default async function AccountSettings() {
             city: primaryAddress?.city ?? '',
             state: primaryAddress?.state ?? '',
             zip: primaryAddress?.zip,
+            notes: primaryAddress?.notes,
           }}
         />
       </div>

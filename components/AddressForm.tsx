@@ -10,7 +10,7 @@ export default function AddressForm({
   onSaved,
 }: {
   endpoint: string;
-  initial: { line1: string; city: string; state: string; zip?: string | null };
+  initial: { line1: string; city: string; state: string; zip?: string | null; notes?: string | null };
   onSaved?: () => void;
 }) {
   const router = useRouter();
@@ -19,6 +19,7 @@ export default function AddressForm({
   const [city, setCity] = useState(initial.city ?? '');
   const [state, setState] = useState(initial.state ?? '');
   const [zip, setZip] = useState(initial.zip ?? '');
+  const [notes, setNotes] = useState(initial.notes ?? '');
   const [picked, setPicked] = useState<PickedAddress | null>(null);
   const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
   const [error, setError] = useState('');
@@ -40,7 +41,7 @@ export default function AddressForm({
     const res = await fetch(endpoint, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ line1, city, state, zip }),
+      body: JSON.stringify({ line1, city, state, zip, notes }),
     });
     const data = await res.json().catch(() => ({}));
     if (res.ok) {
@@ -64,6 +65,12 @@ export default function AddressForm({
               <p>
                 {initial.city}, {initial.state} {initial.zip}
               </p>
+              {initial.notes && (
+                <p className="mt-2 rounded-lg bg-gold/10 px-3 py-2 text-xs text-ink">
+                  <span className="font-semibold text-bronze">Cleaner needs to know: </span>
+                  {initial.notes}
+                </p>
+              )}
             </>
           ) : (
             <p className="text-muted">No address on file yet.</p>
@@ -95,6 +102,17 @@ export default function AddressForm({
           <label className="label">ZIP</label>
           <input className="input" value={zip} onChange={(e) => setZip(e.target.value)} />
         </div>
+      </div>
+      <div>
+        <label className="label">Cleaner needs to know</label>
+        <textarea
+          className="input"
+          rows={3}
+          placeholder="Pets, gate or lockbox codes, parking, anything the crew should know before they arrive"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+        />
+        <p className="mt-1 text-xs text-muted">Shown to the crew on this job — they'll see it before they can start.</p>
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex gap-2">
