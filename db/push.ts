@@ -394,6 +394,46 @@ async function main() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
     CREATE UNIQUE INDEX IF NOT EXISTS quickbooks_links_entity_unique ON quickbooks_links(tenant_id, entity, local_id);
+
+    -- Pay types (hourly / per-clean / full-workday) alongside the existing
+    -- hourly rate column, and the payroll run → review → paid workflow.
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS pay_type TEXT NOT NULL DEFAULT 'HOURLY'
+      CHECK (pay_type IN ('HOURLY','PER_CLEAN','DAY_RATE'));
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS pay_rate_cents_per_clean INTEGER;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS pay_rate_cents_per_day INTEGER;
+
+    CREATE TABLE IF NOT EXISTS payroll_runs (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      label TEXT NOT NULL,
+      period_start TEXT NOT NULL,
+      period_end TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN','PAID')),
+      paid_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS payroll_entries (
+      id TEXT PRIMARY KEY,
+      payroll_run_id TEXT NOT NULL REFERENCES payroll_runs(id),
+      user_id TEXT NOT NULL REFERENCES users(id),
+      pay_type TEXT NOT NULL CHECK (pay_type IN ('HOURLY','PER_CLEAN','DAY_RATE')),
+      rate_cents INTEGER NOT NULL,
+      hours REAL NOT NULL DEFAULT 0,
+      job_count INTEGER NOT NULL DEFAULT 0,
+      days_worked INTEGER NOT NULL DEFAULT 0,
+      pay_cents INTEGER NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS payroll_entry_jobs (
+      id TEXT PRIMARY KEY,
+      payroll_entry_id TEXT NOT NULL REFERENCES payroll_entries(id),
+      job_id TEXT NOT NULL REFERENCES jobs(id),
+      user_id TEXT NOT NULL REFERENCES users(id),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS payroll_entry_jobs_job_user_unique ON payroll_entry_jobs(job_id, user_id);
   `);
 
   console.log('Schema pushed to Postgres.');

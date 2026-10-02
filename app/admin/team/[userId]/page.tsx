@@ -8,7 +8,7 @@ import { getEmployees, getTeams, jobIdsForEmployee, STAFF_ROLE_LABELS } from '@/
 import { startOfWeek, shiftWeek, weekDates } from '@/lib/dispatch';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 import { businessTodayISO } from '@/lib/time';
-import PayRateInput from '@/components/admin/PayRateInput';
+import PayRateEditor from '@/components/admin/PayRateEditor';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,7 +77,15 @@ export default async function EmployeePage({ params, searchParams }: { params: {
           <h1 className="mt-1 text-2xl font-bold text-ink">{employee.name}</h1>
           <p className="text-slate">{teamName(employee.crewId)}</p>
           <p className="mt-1 text-sm text-muted">{[employee.email, employee.phone].filter(Boolean).join(' · ')}</p>
-          <PayRateInput userId={employee.id} initialCentsPerHour={fullUser?.payRateCentsPerHour ?? null} />
+          <PayRateEditor
+            userId={employee.id}
+            initialPayType={fullUser?.payType ?? 'HOURLY'}
+            initialRatesCents={{
+              hourly: fullUser?.payRateCentsPerHour ?? null,
+              perClean: fullUser?.payRateCentsPerClean ?? null,
+              perDay: fullUser?.payRateCentsPerDay ?? null,
+            }}
+          />
         </div>
         <div className="text-right">
           <p className="text-3xl font-extrabold text-ink">{rows.length}</p>

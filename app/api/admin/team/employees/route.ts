@@ -9,6 +9,11 @@ const schema = z.object({
   phone: z.string().trim().max(30).optional(),
   staffRole: z.enum(['TEAM_LEAD', 'CLEANER', 'JR_CLEANER']),
   crewId: z.string().min(1).nullable(),
+  payType: z.enum(['HOURLY', 'PER_CLEAN', 'DAY_RATE']).optional(),
+  // Dollars, as typed in the admin UI — converted to cents here.
+  payRatePerHour: z.number().nonnegative().nullable().optional(),
+  payRatePerClean: z.number().nonnegative().nullable().optional(),
+  payRatePerDay: z.number().nonnegative().nullable().optional(),
 });
 
 // New employee: a cleaner login, emailed a link to create their password.
@@ -20,7 +25,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid request' }, { status: 400 });
   }
   try {
-    return NextResponse.json({ ok: true, userId: await addEmployee(tenantId, parsed.data) });
+    const { payRatePerHour, payRatePerClean, payRatePerDay, ...rest } = parsed.data;
+    const toCents = (v: number | null | undefined) => (v == null ? null : Math.round(v * 100));
+    const userId = await addEmployee(tenantId, {
+      ...rest,
+      payRateCentsPerHour: toCents(payRatePerHour),
+      payRateCentsPerClean: toCents(payRatePerClean),
+      payRateCentsPerDay: toCents(payRatePerDay),
+    });
+    return NextResponse.json({ ok: true, userId });
   } catch (err) {
     return teamApiError(err);
   }
