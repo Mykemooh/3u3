@@ -467,3 +467,40 @@ export function passwordSetupEmail(input: { name: string; url: string }) {
     ),
   };
 }
+
+/** 3-day / 36-hour heads-up before a booked cleaning (lib/reminders.ts). */
+export function bookingReminderEmail(input: { name: string; serviceName: string; dateLabel: string; timeLabel: string; horizon: '3 days' | '36 hours' }) {
+  return {
+    subject: `Reminder: your cleaning is in ${input.horizon}`,
+    html: branded(
+      `<h2 style="margin:0 0 12px;font-size:20px;">Hi ${esc(input.name.split(' ')[0])},</h2>
+       <p>Just a heads-up — your <strong>${esc(input.serviceName)}</strong> is coming up in ${input.horizon}:</p>
+       <p style="font-size:18px;font-weight:bold;margin:16px 0;">${esc(input.dateLabel)} &middot; ${esc(input.timeLabel)}</p>
+       <p style="color:#6B727E;font-size:13px;">Need to reschedule or cancel? You can do that from My Account up to 24 hours before — after that, just give us a call.</p>`,
+      `Your cleaning is in ${input.horizon}.`,
+    ),
+  };
+}
+
+export function bookingReminderText(input: { serviceName: string; dateLabel: string; timeLabel: string; horizon: '3 days' | '36 hours' }) {
+  return `3U3 Cleaning: your ${input.serviceName} is in ${input.horizon} — ${input.dateLabel} at ${input.timeLabel}.`;
+}
+
+/** Quote follow-up cadence: 24h, +3d, +2d, then weekly, until answered or opted out (lib/reminders.ts). */
+export function estimateReminderEmail(input: { name: string; serviceName: string; totalCents: number; url: string; optOutUrl: string }) {
+  return {
+    subject: `Still thinking it over? Your 3U3 Cleaning estimate — ${money(input.totalCents)}`,
+    html: branded(
+      `<h2 style="margin:0 0 12px;font-size:20px;">Hi ${esc(input.name.split(' ')[0])},</h2>
+       <p>Just checking in — your estimate for <strong>${esc(input.serviceName)}</strong> is still waiting on you:</p>
+       <p style="font-size:20px;font-weight:bold;margin:16px 0;">${money(input.totalCents)}</p>
+       ${button(input.url, 'View and approve')}
+       <p style="color:#6B727E;font-size:13px;">Not interested? <a href="${input.optOutUrl}" style="color:#6B727E;">Stop these reminders</a>.</p>`,
+      'Your estimate is still waiting.',
+    ),
+  };
+}
+
+export function estimateReminderText(input: { serviceName: string; totalCents: number; url: string }) {
+  return `3U3 Cleaning: your ${input.serviceName} estimate (${money(input.totalCents)}) is still open — ${input.url}`;
+}
