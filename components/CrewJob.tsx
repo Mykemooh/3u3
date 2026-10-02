@@ -54,6 +54,8 @@ export default function CrewJob(props: Props) {
   const [busy, setBusy] = useState<'drive' | 'start' | 'finish' | null>(null);
   const [error, setError] = useState('');
   const [finished, setFinished] = useState<{ invoiceId: string | null } | null>(null);
+  const [showDirections, setShowDirections] = useState(false);
+  const [addressCopied, setAddressCopied] = useState(false);
   const [policy, setPolicy] = useState<PhotoPolicy>({
     requireBeforePhoto: props.job.requireBeforePhoto,
     noPhotosNeeded: props.job.noPhotosNeeded,
@@ -205,9 +207,25 @@ export default function CrewJob(props: Props) {
     router.refresh();
   }
 
-  const mapsUrl = props.addressLabel
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(props.addressLabel)}`
-    : null;
+  const address = props.addressLabel;
+  const directionLinks = address
+    ? [
+        { label: 'Google Maps', href: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}` },
+        { label: 'Apple Maps', href: `https://maps.apple.com/?q=${encodeURIComponent(address)}` },
+        { label: 'Waze', href: `https://waze.com/ul?q=${encodeURIComponent(address)}&navigate=yes` },
+      ]
+    : [];
+
+  async function copyAddress() {
+    if (!address) return;
+    try {
+      await navigator.clipboard.writeText(address);
+      setAddressCopied(true);
+      setTimeout(() => setAddressCopied(false), 1500);
+    } catch {
+      // Clipboard access can be denied; the sheet still shows the address to copy by hand.
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -224,11 +242,11 @@ export default function CrewJob(props: Props) {
           {props.addressLabel && <p className="text-slate">{props.addressLabel}</p>}
         </div>
         <div className="grid grid-cols-3 gap-2">
-          {mapsUrl ? (
-            <a href={mapsUrl} target="_blank" rel="noreferrer" className="quick-action">
+          {address ? (
+            <button type="button" onClick={() => setShowDirections(true)} className="quick-action">
               <Icon d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21Zm0-9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" />
               Directions
-            </a>
+            </button>
           ) : (
             <span className="quick-action opacity-40">No address</span>
           )}
@@ -430,6 +448,44 @@ export default function CrewJob(props: Props) {
                 )}
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {showDirections && address && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => setShowDirections(false)}>
+          <div
+            className="w-full max-w-xl rounded-t-2xl border-t border-line bg-white p-5"
+            style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="eyebrow">Get directions</p>
+            <p className="mt-1 mb-4 text-sm text-slate">{address}</p>
+            <div className="space-y-2">
+              {directionLinks.map((link) => (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={() => setShowDirections(false)}
+                  className="flex items-center justify-between rounded-xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:border-gold hover:bg-cream/60"
+                >
+                  {link.label}
+                  <span aria-hidden="true" className="text-muted">↗</span>
+                </a>
+              ))}
+              <button
+                type="button"
+                onClick={copyAddress}
+                className="flex w-full items-center justify-between rounded-xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:border-gold hover:bg-cream/60"
+              >
+                {addressCopied ? 'Address copied' : 'Copy address'}
+              </button>
+            </div>
+            <button type="button" onClick={() => setShowDirections(false)} className="btn-secondary mt-4 w-full">
+              Cancel
+            </button>
           </div>
         </div>
       )}
