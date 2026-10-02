@@ -312,6 +312,29 @@ export function jobCompleteCustomerEmail(input: {
   };
 }
 
+/**
+ * Sent to the owner whenever a client makes a change themselves from their
+ * account — new address, changed frequency, self-service reschedule, or a
+ * cancellation. One generic template so the owner has a single consistent
+ * "a client just did something" alert, mirrored in the admin Alerts panel.
+ */
+export function clientAccountChangeOwnerEmail(input: {
+  clientName: string;
+  clientPhone?: string;
+  summary: string;
+  manageUrl: string;
+}) {
+  return {
+    subject: `${input.clientName} updated their account`,
+    html: branded(
+      `<h2 style="margin:0 0 12px;font-size:20px;">A client made a change</h2>
+       <p><strong>${esc(input.clientName)}</strong>${input.clientPhone ? ` (${esc(input.clientPhone)})` : ''}</p>
+       <p>${esc(input.summary)}</p>
+       ${button(input.manageUrl, 'Open their account')}`,
+    ),
+  };
+}
+
 export function bookingRescheduledCustomerEmail(input: {
   name: string;
   serviceName: string;

@@ -38,9 +38,14 @@ export default async function AccountHome() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <p className="eyebrow">Your home, cared for</p>
-        <h1 className="mt-1 text-3xl font-extrabold">Hi {first}</h1>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="eyebrow">Your home, cared for</p>
+          <h1 className="mt-1 text-3xl font-extrabold">Hi {first}</h1>
+        </div>
+        <Link href="/account/settings" className="mt-1 text-sm font-semibold text-bronze hover:underline">
+          Account settings →
+        </Link>
       </div>
 
       {needsPayment.length > 0 && (

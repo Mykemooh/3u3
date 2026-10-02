@@ -315,6 +315,13 @@ async function main() {
       ) AS numbered
       WHERE invoices.id = numbered.id;
     CREATE UNIQUE INDEX IF NOT EXISTS invoices_number_unique ON invoices(tenant_id, invoice_number);
+
+    -- Client management: admin close/reopen, self-service address edits,
+    -- and the admin "Alerts" feed for client-initiated changes.
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true;
+    ALTER TABLE addresses ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
+    ALTER TABLE bookings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ;
+    ALTER TABLE notification_log ADD COLUMN IF NOT EXISTS is_read BOOLEAN NOT NULL DEFAULT false;
   `);
 
   console.log('Schema pushed to Postgres.');

@@ -48,6 +48,9 @@ export const users = pgTable('users', {
   // Last time a "forgot password" link was sent (lib/passwordReset.ts), so
   // the form can't be used to flood someone's inbox or phone.
   passwordResetSentAt: timestamp('password_reset_sent_at', { withTimezone: true }),
+  // Admin "close client" toggle (closed clients can't sign in or book, but
+  // their history is kept, not deleted).
+  isActive: boolean('is_active').notNull().default(true),
   ...timestamps,
 }, (t) => ({
   phoneUnique: uniqueIndex('users_phone_unique').on(t.phone),
@@ -63,6 +66,7 @@ export const addresses = pgTable('addresses', {
   state: text('state').notNull().default('TX'),
   zip: text('zip'),
   isPrimary: boolean('is_primary').notNull().default(true),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdate(() => new Date()),
   ...timestamps,
 });
 
@@ -162,6 +166,7 @@ export const bookings = pgTable('bookings', {
   status: text('status', { enum: ['REQUESTED', 'CONFIRMED', 'COMPLETED', 'CANCELLED'] }).notNull().default('CONFIRMED'),
   priceCents: integer('price_cents'),
   isQuoteVisit: boolean('is_quote_visit').notNull().default(false),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdate(() => new Date()),
   ...timestamps,
 }, (t) => ({
   // No double-booking: a crew cannot hold two active bookings starting at
@@ -362,5 +367,9 @@ export const notificationLog = pgTable('notification_log', {
   costCents: real('cost_cents').notNull().default(0),
   status: text('status', { enum: ['SENT', 'FAILED', 'RETRIED'] }).notNull().default('SENT'),
   relatedBookingId: text('related_booking_id').references(() => bookings.id),
+  // Drives the admin "Alerts" feed (a client changed their own address,
+  // frequency, time or cancelled) — separate from the SENT/FAILED/RETRIED
+  // delivery status above.
+  isRead: boolean('is_read').notNull().default(false),
   ...timestamps,
 });

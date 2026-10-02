@@ -68,6 +68,16 @@ export async function getAllBookings(tenantId: string) {
   return rows.sort((a, b) => a.slotStart.localeCompare(b.slotStart));
 }
 
+// Upcoming, non-cancelled, non-quote-visit bookings for a single client —
+// backs the customer self-service settings page (reschedule/cadence/cancel).
+export async function getUpcomingBookingsForClient(clientId: string) {
+  const rows = await db.select().from(bookings).where(eq(bookings.clientId, clientId));
+  const nowIso = new Date().toISOString();
+  return rows
+    .filter((b) => !b.isQuoteVisit && b.status !== 'CANCELLED' && b.slotStart >= nowIso)
+    .sort((a, b) => a.slotStart.localeCompare(b.slotStart));
+}
+
 export async function getJobsForCrew(crewId: string) {
   return db.select().from(jobs).where(eq(jobs.crewId, crewId));
 }
@@ -116,6 +126,16 @@ export async function getAllInvoicesForTenant(tenantId: string) {
 export async function getNotificationLogForTenant(tenantId: string) {
   const rows = await db.select().from(notificationLog).where(eq(notificationLog.tenantId, tenantId));
   return rows.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+}
+
+/** Unread entries for the admin "Alerts" panel — client-initiated changes
+ * (address, cadence, reschedule, cancel) that the owner should see. */
+export async function getUnreadAdminAlerts(tenantId: string, limit = 20) {
+  const rows = await db
+    .select()
+    .from(notificationLog)
+    .where(and(eq(notificationLog.tenantId, tenantId), eq(notificationLog.isRead, false)));
+  return rows.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, limit);
 }
 
 export const SERVICE_LABELS: Record<string, string> = {

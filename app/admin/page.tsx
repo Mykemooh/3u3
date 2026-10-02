@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { db } from '@/db/client';
 import { invoices, jobs } from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
-import { getTenant, getAllBookings, getPrimaryCrew, getClientsForTenant, formatMoney } from '@/lib/data';
+import { getTenant, getAllBookings, getPrimaryCrew, getClientsForTenant, formatMoney, getUnreadAdminAlerts } from '@/lib/data';
+import AdminAlertsPanel from '@/components/AdminAlertsPanel';
 import { businessNowISO, businessTodayISO } from '@/lib/time';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 import { invoiceLabel } from '@/lib/invoices';
@@ -15,11 +16,12 @@ import { invoiceLabel } from '@/lib/invoices';
 export default async function AdminOverview() {
   const tenant = await getTenant();
   if (!tenant) return null;
-  const [allBookings, crew, clients, invoiceRows] = await Promise.all([
+  const [allBookings, crew, clients, invoiceRows, alerts] = await Promise.all([
     getAllBookings(tenant.id),
     getPrimaryCrew(tenant.id),
     getClientsForTenant(tenant.id),
     db.select().from(invoices).where(eq(invoices.tenantId, tenant.id)),
+    getUnreadAdminAlerts(tenant.id),
   ]);
 
   const now = businessNowISO();
@@ -61,6 +63,15 @@ export default async function AdminOverview() {
           </Link>
         ))}
       </div>
+
+      {alerts.length > 0 && (
+        <section className="card">
+          <h2 className="mb-3 font-semibold text-ink">Alerts</h2>
+          <AdminAlertsPanel
+            alerts={alerts.map((a) => ({ id: a.id, triggerEvent: a.triggerEvent, createdAt: a.createdAt.toISOString() }))}
+          />
+        </section>
+      )}
 
       {(drafts.length > 0 || inProgress.length > 0) && (
         <section className="card">
