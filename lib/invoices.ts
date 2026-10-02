@@ -6,6 +6,7 @@ import { getStripe } from '@/lib/stripe';
 import { getOwnerEmail } from '@/lib/data';
 import { logNotification } from '@/lib/bookings';
 import { sendEmail, invoiceEmail, paymentReceivedCustomerEmail, paymentReceivedOwnerEmail } from '@/lib/email';
+import { pushPaidInvoice } from '@/lib/quickbooks';
 import type Stripe from 'stripe';
 
 export class InvoiceError extends Error {}
@@ -328,4 +329,13 @@ export async function confirmInvoicePaid(stripeInvoice: Stripe.Invoice) {
     triggerEvent: 'PAYMENT_RECEIVED_OWNER_ALERT',
     relatedBookingId: invoice.bookingId,
   });
+
+  // Best-effort QuickBooks sync — only does anything once an admin has
+  // connected it (Admin → Integrations), and never blocks recording the
+  // payment in our own database if it fails.
+  try {
+    await pushPaidInvoice(invoice.tenantId, invoice.id);
+  } catch (err) {
+    console.warn(`[invoices] QuickBooks sync failed for ${invoice.id}:`, err);
+  }
 }
