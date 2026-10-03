@@ -665,6 +665,10 @@ async function main() {
       redeemed_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
     CREATE UNIQUE INDEX IF NOT EXISTS promo_code_redemptions_unique ON promo_code_redemptions(promo_code_id, tenant_id);
+
+    -- Dashboard customization (lib/dashboard.ts, Admin → Dashboard).
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS dashboard_hidden_widgets TEXT NOT NULL DEFAULT '';
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS avg_supply_cost_cents_per_clean INTEGER NOT NULL DEFAULT 800;
   `);
 
   console.log('Schema pushed to Postgres.');

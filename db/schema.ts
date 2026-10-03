@@ -60,6 +60,15 @@ export const tenants = pgTable('tenants', {
   percentPayBasis: text('percent_pay_basis', { enum: ['BASE_PRICE', 'INVOICE_TOTAL'] }).notNull().default('BASE_PRICE'),
   hourlyPayModel: text('hourly_pay_model', { enum: ['ACTUAL_TIME', 'TARGET_TIME'] }).notNull().default('ACTUAL_TIME'),
   tipSplitMethod: text('tip_split_method', { enum: ['EVEN', 'BY_HOURS'] }).notNull().default('EVEN'),
+  // Admin → Dashboard customization (lib/dashboard.ts). Comma-separated
+  // widget keys the admin has hidden — a plain text list rather than a
+  // new column type, consistent with how the rest of this schema stores
+  // small config. avgSupplyCostCentsPerClean is the one variable "profit
+  // per clean" can't derive from real data (no per-job supplies
+  // tracking exists) — an admin-set estimate instead of a guess baked
+  // into the code.
+  dashboardHiddenWidgets: text('dashboard_hidden_widgets').notNull().default(''),
+  avgSupplyCostCentsPerClean: integer('avg_supply_cost_cents_per_clean').notNull().default(800),
   ...timestamps,
 }, (t) => ({
   slugUnique: uniqueIndex('tenants_slug_unique').on(t.slug),
