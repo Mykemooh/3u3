@@ -3,7 +3,7 @@ import { jobs, jobChecklistItems, jobMedia, bookings, users, serviceTypes, addre
 import { and, eq, isNull } from 'drizzle-orm';
 import { getOwnerEmail } from '@/lib/data';
 import { isOnJob, canLeadJob } from '@/lib/team';
-import { createDraftInvoiceForBooking } from '@/lib/invoices';
+import { createDraftInvoiceForBooking, sendInvoice } from '@/lib/invoices';
 import { logNotification } from '@/lib/bookings';
 import { sendEmail, jobCompleteCustomerEmail, jobCompleteOwnerEmail } from '@/lib/email';
 import { appUrl } from '@/lib/url';
@@ -294,10 +294,15 @@ export async function setSkip(jobId: string, itemId: string, viewer: Viewer | nu
 /**
  * Finish the job. Every room must have a before and after photo, or a
  * logged reason it was skipped. Then, in order: the job and booking are
- * marked complete, the invoice is drafted at the client's agreed rate, the
- * client is emailed a link to their before-and-after photos, and the owner
- * is told there's an invoice to review. Nothing after the status change can
- * block completion — a failed email is logged, not fatal.
+ * marked complete, the invoice is drafted at the client's agreed rate,
+ * an autopay client is charged immediately (lib/invoices.ts sendInvoice)
+ * with no admin step in between — anyone else's invoice stays a DRAFT
+ * for the admin to review and send — the client is emailed a link to
+ * their before-and-after photos, and the owner is told there's an
+ * invoice to review. Nothing after the status change can block
+ * completion — a failed email, or a declined autopay charge, is logged,
+ * not fatal (a declined autopay charge still leaves a SENT invoice with
+ * its normal emailed pay link, same as sendInvoice always does).
  */
 export async function completeJob(jobId: string, viewer: Viewer | null) {
   const job = await requireLead(jobId, viewer);
@@ -323,6 +328,22 @@ export async function completeJob(jobId: string, viewer: Viewer | null) {
     invoiceId = await createDraftInvoiceForBooking(job.bookingId);
   } catch (err) {
     console.error('[jobs] invoice draft failed for booking', job.bookingId, err);
+  }
+
+  // Autopay means exactly that — charged the moment the cleaning is
+  // done, no admin step in between. A non-autopay client's invoice stays
+  // a DRAFT for the admin to review and send manually, same as before —
+  // only an autopay client's invoice gets sent (and charged) here.
+  if (invoiceId) {
+    try {
+      const booking = (await db.select().from(bookings).where(eq(bookings.id, job.bookingId)).limit(1))[0];
+      const client = booking ? (await db.select().from(users).where(eq(users.id, booking.clientId)).limit(1))[0] : undefined;
+      if (client?.autopayEnabled && client.stripeDefaultPaymentMethodId) {
+        await sendInvoice(invoiceId);
+      }
+    } catch (err) {
+      console.error('[jobs] autopay charge failed for invoice', invoiceId, err);
+    }
   }
 
   try {

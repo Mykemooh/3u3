@@ -1,14 +1,26 @@
 import { db } from '@/db/client';
-import { invoices, invoiceItems, bookings, users, serviceTypes, addresses } from '@/db/schema';
+import { invoices, invoiceItems, bookings, users, serviceTypes, addresses, tenants } from '@/db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { formatSlotDateLong } from '@/lib/time';
 import { getBookingAddOns } from '@/lib/addons';
 import { getStripe } from '@/lib/stripe';
 import { getOwnerEmail } from '@/lib/data';
 import { logNotification } from '@/lib/bookings';
-import { sendEmail, invoiceEmail, paymentReceivedCustomerEmail, paymentReceivedOwnerEmail } from '@/lib/email';
+import { sendEmail, invoiceEmail, paymentReceivedCustomerEmail, paymentReceivedOwnerEmail, type EmailBrand } from '@/lib/email';
 import { pushPaidInvoice } from '@/lib/quickbooks';
 import type Stripe from 'stripe';
+
+/** This tenant's own name/colors/logo for the invoice and payment emails — never 3U3's, once this is a different company's booking. */
+async function brandFor(tenantId: string): Promise<EmailBrand> {
+  const tenant = (await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1))[0];
+  return {
+    name: tenant?.name ?? '3U3 Cleaning',
+    tagline: tenant?.tagline ?? null,
+    primaryColor: tenant?.primaryColor ?? '#2563EB',
+    bronzeColor: tenant?.bronzeColor ?? '#1D4ED8',
+    logoUrl: tenant?.logoUrl ?? null,
+  };
+}
 
 export class InvoiceError extends Error {}
 
@@ -116,7 +128,8 @@ export async function getInvoiceWithItems(invoiceId: string) {
   const service = booking?.serviceTypeId
     ? (await db.select().from(serviceTypes).where(eq(serviceTypes.id, booking.serviceTypeId)).limit(1))[0]
     : undefined;
-  return { invoice, items, client, booking, address, service };
+  const brand = await brandFor(invoice.tenantId);
+  return { invoice, items, client, booking, address, service, brand };
 }
 
 /** Replaces an invoice's line items wholesale — only while it's still a DRAFT. */
@@ -198,12 +211,18 @@ export async function sendInvoice(invoiceId: string): Promise<{ url: string }> {
     const stripe = getStripe();
     const customerId = await getOrCreateStripeCustomer(invoice.clientId);
     const useAutopay = !!client?.autopayEnabled && !!client?.stripeDefaultPaymentMethodId;
+    const brand = await brandFor(invoice.tenantId);
 
     const stripeInvoice = await stripe.invoices.create({
       customer: customerId,
       // Our own number, shown on Stripe's page and PDF. (Not Stripe's `number`
       // field: a retried send would collide with a half-created earlier one.)
       custom_fields: [{ name: 'Invoice', value: invoiceLabel(invoice) }],
+      // The hosted page's top-level logo/name is Stripe-account-wide (all
+      // tenants currently share one Stripe account) and can't be
+      // overridden per invoice — but the footer can, so the actual
+      // company name still shows up on the page and the PDF.
+      footer: brand.name,
       collection_method: useAutopay ? 'charge_automatically' : 'send_invoice',
       ...(useAutopay
         ? { default_payment_method: client!.stripeDefaultPaymentMethodId! }
@@ -261,6 +280,7 @@ export async function sendInvoice(invoiceId: string): Promise<{ url: string }> {
   // be confusing.
   if (!autopayCharged && client?.email) {
     const { subject, html } = invoiceEmail({
+      brand: await brandFor(invoice.tenantId), // separate call: hostedUrl may already exist (re-send path), skipping the block above that declared `brand`
       name: client.name,
       totalCents: invoice.totalCents,
       items,
@@ -311,9 +331,11 @@ export async function confirmInvoicePaid(stripeInvoice: Stripe.Invoice) {
 
   const client = (await db.select().from(users).where(eq(users.id, invoice.clientId)).limit(1))[0];
   const items = await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoice.id));
+  const brand = await brandFor(invoice.tenantId);
 
   if (client?.email) {
     const { subject, html } = paymentReceivedCustomerEmail({
+      brand,
       name: client.name,
       totalCents: invoice.totalCents,
       receiptUrl,
@@ -331,6 +353,7 @@ export async function confirmInvoicePaid(stripeInvoice: Stripe.Invoice) {
   const ownerEmail = await getOwnerEmail(invoice.tenantId);
   if (ownerEmail) {
     const { subject, html } = paymentReceivedOwnerEmail({
+      brand,
       clientName: client?.name ?? 'A client',
       totalCents: invoice.totalCents,
       items,

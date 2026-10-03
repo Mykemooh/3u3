@@ -1,5 +1,27 @@
 import { appUrl } from '@/lib/url';
 
+/**
+ * A tenant's own name/colors/logo for the handful of templates that carry
+ * real money (invoice, payment-received) — the ones a company's own
+ * branding actually needs to show up on, not every notification. Most of
+ * this file's other templates are still hardcoded to 3U3 itself (a
+ * known gap, not an oversight): rebranding all of them means threading
+ * a tenant through every call site across the app, which hasn't been
+ * done yet. FROM_EMAIL below is unaffected either way — one shared
+ * Resend sender for the whole platform, since per-tenant sending would
+ * need each company to verify its own domain with Resend.
+ */
+export type EmailBrand = { name: string; tagline: string | null; primaryColor: string; bronzeColor: string; logoUrl: string | null };
+
+function brandHeader(brand: EmailBrand, heading: string) {
+  const logo = brand.logoUrl ? `<img src="${brand.logoUrl}" alt="${esc(brand.name)}" style="max-height:40px;display:block;margin-bottom:8px;" />` : '';
+  return `${logo}<h2 style="color:${brand.bronzeColor};margin:0 0 4px;">${esc(heading)}</h2>`;
+}
+
+function brandFooter(brand: EmailBrand) {
+  return `<p style="color:#6b6b6b;font-size:13px;margin-top:24px;">— ${esc(brand.name)}</p>`;
+}
+
 // Real email sending via Resend (https://resend.com — free tier covers
 // thousands/month, matching the PRD's "effectively free at launch volume"
 // note in section 6.6). Every send still goes through logNotification()
@@ -159,16 +181,17 @@ export function estimateRespondedOwnerEmail(input: {
 }
 
 export function invoiceEmail(input: {
+  brand: EmailBrand;
   name: string;
   totalCents: number;
   items: { description: string; amountCents: number }[];
   payUrl: string;
 }) {
   return {
-    subject: `Your invoice from 3U3 Cleaning — ${money(input.totalCents)}`,
+    subject: `Your invoice from ${input.brand.name} — ${money(input.totalCents)}`,
     html: `
       <div style="font-family:sans-serif;color:#0B1F3B;max-width:480px;margin:0 auto;">
-        <h2 style="color:#1D4ED8;">3U3 Cleaning — Invoice</h2>
+        ${brandHeader(input.brand, `${input.brand.name} — Invoice`)}
         <p>Hi ${esc(input.name)}, thanks for having us out! Here's your invoice:</p>
         <table style="width:100%;border-collapse:collapse;margin:16px 0;">
           ${input.items
@@ -186,33 +209,34 @@ export function invoiceEmail(input: {
           </tr>
         </table>
         <p style="text-align:center;margin:24px 0;">
-          <a href="${input.payUrl}" style="background:#2563EB;color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">Pay now</a>
+          <a href="${input.payUrl}" style="background:${input.brand.primaryColor};color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">Pay now</a>
         </p>
-        <p style="color:#6b6b6b;font-size:13px;">— 3U3 Cleaning, Katy, TX</p>
+        ${brandFooter(input.brand)}
       </div>
     `,
   };
 }
 
-export function paymentReceivedCustomerEmail(input: { name: string; totalCents: number; receiptUrl?: string }) {
+export function paymentReceivedCustomerEmail(input: { brand: EmailBrand; name: string; totalCents: number; receiptUrl?: string }) {
   return {
     subject: `Payment received — thank you!`,
     html: `
       <div style="font-family:sans-serif;color:#0B1F3B;max-width:480px;margin:0 auto;">
-        <h2 style="color:#1D4ED8;">Payment received</h2>
+        ${brandHeader(input.brand, 'Payment received')}
         <p>Hi ${esc(input.name)}, we've received your payment of <strong>${money(input.totalCents)}</strong>. Thank you!</p>
         ${
           input.receiptUrl
-            ? `<p><a href="${input.receiptUrl}" style="color:#1D4ED8;">View your receipt</a></p>`
+            ? `<p><a href="${input.receiptUrl}" style="color:${input.brand.bronzeColor};">View your receipt</a></p>`
             : ''
         }
-        <p style="color:#6b6b6b;font-size:13px;margin-top:24px;">— 3U3 Cleaning, Katy, TX</p>
+        ${brandFooter(input.brand)}
       </div>
     `,
   };
 }
 
 export function paymentReceivedOwnerEmail(input: {
+  brand: EmailBrand;
   clientName: string;
   totalCents: number;
   items: { description: string; amountCents: number }[];
@@ -221,7 +245,7 @@ export function paymentReceivedOwnerEmail(input: {
     subject: `Payment received: ${esc(input.clientName)} — ${money(input.totalCents)}`,
     html: `
       <div style="font-family:sans-serif;color:#0B1F3B;max-width:480px;margin:0 auto;">
-        <h2 style="color:#1D4ED8;">Payment received</h2>
+        ${brandHeader(input.brand, 'Payment received')}
         <p><strong>${esc(input.clientName)}</strong> just paid <strong>${money(input.totalCents)}</strong>.</p>
         <ul>
           ${input.items.map((i) => `<li>${esc(i.description)} — ${money(i.amountCents)}</li>`).join('')}

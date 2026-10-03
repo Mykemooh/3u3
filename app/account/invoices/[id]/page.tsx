@@ -29,7 +29,7 @@ export default async function InvoiceView({ params, searchParams }: { params: { 
 
   const data = await getInvoiceWithItems(params.id);
   if (!data) notFound();
-  const { invoice, items, client, booking, address, service } = data;
+  const { invoice, items, client, booking, address, service, brand } = data;
   // A client sees only their own invoices, and only once sent — a draft is
   // the office's working copy.
   if (user.role !== 'ADMIN' && (invoice.clientId !== user.id || invoice.status === 'DRAFT' || invoice.status === 'VOID')) notFound();
@@ -81,7 +81,11 @@ export default async function InvoiceView({ params, searchParams }: { params: { 
 
       <article className="print-sheet overflow-hidden rounded-2xl border border-line bg-white shadow-card">
         <header className="flex items-center justify-between gap-4 bg-ink px-6 py-5 text-white sm:px-8">
-          <img src="/brand/logo-640.png" alt="3U3 Cleaning" className="h-auto w-36 sm:w-44" />
+          {brand.logoUrl ? (
+            <img src={brand.logoUrl} alt={brand.name} className="h-auto max-h-12 w-auto" />
+          ) : (
+            <img src="/brand/logo-640.png" alt={brand.name} className="h-auto w-36 sm:w-44" />
+          )}
           <div className="text-right">
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-gold">Invoice</p>
             <p className="mt-1 text-xl font-bold text-white">{invoiceLabel(invoice)}</p>
@@ -152,12 +156,12 @@ export default async function InvoiceView({ params, searchParams }: { params: { 
           {invoice.status === 'PAID' ? (
             <p className="inline-flex rounded-full border-2 border-green px-4 py-1 text-sm font-bold uppercase tracking-wide text-green">Paid — thank you</p>
           ) : (
-            <p className="text-sm text-slate">Payment is due within 7 days. Pay securely by card from the link in your invoice email, or from your 3U3 account.</p>
+            <p className="text-sm text-slate">Payment is due within 7 days. Pay securely by card from the link in your invoice email, or from your account.</p>
           )}
 
           <footer className="border-t border-line pt-5 text-sm text-muted">
-            <p className="font-semibold text-slate">3U3 Cleaning — Family Owned by Parents of Three boys, Built in Texas.</p>
-            <p>Katy, TX · Thank you for trusting us with your home.</p>
+            <p className="font-semibold text-slate">{brand.name}{brand.tagline ? ` — ${brand.tagline}` : ''}</p>
+            <p>Thank you for trusting us with your home.</p>
           </footer>
         </div>
       </article>
