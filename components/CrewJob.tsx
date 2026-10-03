@@ -129,8 +129,16 @@ export default function CrewJob(props: Props) {
 
   const offline = useOfflineSync(props.job.id, {
     onChecklistSynced: (_itemId, item) => applyItem(item),
-    onMediaSynced: (data) => {
-      if (data.media) setMedia((m) => [...m.filter((x) => !x.id.startsWith('pending:')), data.media]);
+    onMediaSynced: (pendingId, data) => {
+      // Only replace the one placeholder that actually just synced —
+      // other still-queued items (and their own local previews) must
+      // stay exactly as they are until their own turn comes.
+      setMedia((m) => {
+        const placeholder = m.find((x) => x.id === `pending:${pendingId}`);
+        if (placeholder) URL.revokeObjectURL(placeholder.url);
+        const withoutPlaceholder = m.filter((x) => x.id !== `pending:${pendingId}`);
+        return data.media ? [...withoutPlaceholder, data.media] : withoutPlaceholder;
+      });
       applyItem(data.item);
     },
     onJobStatusSynced: (action, data) => {
@@ -145,7 +153,13 @@ export default function CrewJob(props: Props) {
       }
     },
     onActionFailed: (action, message) => {
-      if (action.kind === 'MEDIA') setMedia((m) => m.filter((x) => x.id !== `pending:${action.id}`));
+      if (action.kind === 'MEDIA') {
+        setMedia((m) => {
+          const placeholder = m.find((x) => x.id === `pending:${action.id}`);
+          if (placeholder) URL.revokeObjectURL(placeholder.url);
+          return m.filter((x) => x.id !== `pending:${action.id}`);
+        });
+      }
       setError(message);
     },
   });
@@ -171,7 +185,11 @@ export default function CrewJob(props: Props) {
     } catch (err) {
       setBusy(null);
       if (!isNetworkError(err) || !offlineQueueSupported()) return setError('Could not start driving.');
-      await enqueueAction({ kind: 'JOB_STATUS', jobId: props.job.id, action: 'en-route', body });
+      try {
+        await enqueueAction({ kind: 'JOB_STATUS', jobId: props.job.id, action: 'en-route', body });
+      } catch {
+        return setError("Couldn't save this on your phone — try again, or free up some storage.");
+      }
       offline.refreshPendingCount();
       setStatus('EN_ROUTE');
     }
@@ -198,7 +216,11 @@ export default function CrewJob(props: Props) {
     } catch (err) {
       setBusy(null);
       if (!isNetworkError(err) || !offlineQueueSupported()) return setError('Could not start the job.');
-      await enqueueAction({ kind: 'JOB_STATUS', jobId: props.job.id, action: 'start', body });
+      try {
+        await enqueueAction({ kind: 'JOB_STATUS', jobId: props.job.id, action: 'start', body });
+      } catch {
+        return setError("Couldn't save this on your phone — try again, or free up some storage.");
+      }
       offline.refreshPendingCount();
       setStatus('IN_PROGRESS');
       setStartedLabel(new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }));
@@ -229,18 +251,23 @@ export default function CrewJob(props: Props) {
           // tab is closed before the connection comes back, and show
           // the real photo/video immediately via a local preview URL so
           // the crew can see it was actually captured.
-          const queued = await enqueueAction({
-            kind: 'MEDIA',
-            jobId: props.job.id,
-            itemId,
-            phase,
-            mediaKind: kind,
-            fileBlob: file,
-            fileName: file.name,
-            fileType: file.type,
-          });
-          setMedia((m) => [...m, { id: `pending:${queued.id}`, itemId, phase, kind, url: URL.createObjectURL(file) }]);
-          offline.refreshPendingCount();
+          try {
+            const queued = await enqueueAction({
+              kind: 'MEDIA',
+              jobId: props.job.id,
+              itemId,
+              phase,
+              mediaKind: kind,
+              fileBlob: file,
+              fileName: file.name,
+              fileType: file.type,
+            });
+            setMedia((m) => [...m, { id: `pending:${queued.id}`, itemId, phase, kind, url: URL.createObjectURL(file) }]);
+            offline.refreshPendingCount();
+          } catch {
+            // Likely IndexedDB storage full — a video can be tens of MB.
+            setError("Couldn't save this on your phone (storage may be full) — try a photo instead, or free up space.");
+          }
         } else {
           setError((err as Error).message);
         }
@@ -255,6 +282,7 @@ export default function CrewJob(props: Props) {
     if (m.id.startsWith('pending:')) {
       // Still queued, not yet uploaded anywhere — just drop it locally.
       await removePendingAction(m.id.slice('pending:'.length));
+      URL.revokeObjectURL(m.url);
       setMedia((all) => all.filter((x) => x.id !== m.id));
       offline.refreshPendingCount();
       return;
@@ -292,7 +320,11 @@ export default function CrewJob(props: Props) {
       applyItem(data.item);
     } catch (err) {
       if (!isNetworkError(err) || !offlineQueueSupported()) return setError('Could not update the room.');
-      await enqueueAction({ kind: 'CHECKLIST', jobId: props.job.id, itemId, action });
+      try {
+        await enqueueAction({ kind: 'CHECKLIST', jobId: props.job.id, itemId, action });
+      } catch {
+        return setError("Couldn't save this on your phone — try again, or free up some storage.");
+      }
       offline.refreshPendingCount();
       setItems((prev) => prev.map((i) => (i.id === itemId ? { ...i, status: done ? 'COMPLETE' : 'PENDING' } : i)));
     }
@@ -310,7 +342,11 @@ export default function CrewJob(props: Props) {
       applyItem(data.item);
     } catch (err) {
       if (!isNetworkError(err) || !offlineQueueSupported()) return setError('Could not update the room.');
-      await enqueueAction({ kind: 'CHECKLIST', jobId: props.job.id, itemId, action, skipReason: reason ?? undefined });
+      try {
+        await enqueueAction({ kind: 'CHECKLIST', jobId: props.job.id, itemId, action, skipReason: reason ?? undefined });
+      } catch {
+        return setError("Couldn't save this on your phone — try again, or free up some storage.");
+      }
       offline.refreshPendingCount();
       setItems((prev) => prev.map((i) => (i.id === itemId ? { ...i, status: reason ? 'SKIPPED' : 'PENDING', skipReason: reason } : i)));
     }
@@ -333,7 +369,11 @@ export default function CrewJob(props: Props) {
       if (!isNetworkError(err) || !offlineQueueSupported()) return setError('Could not finish the job.');
       // Queued behind any not-yet-synced room/photo updates, so it only
       // actually completes on the server once those land first.
-      await enqueueAction({ kind: 'JOB_STATUS', jobId: props.job.id, action: 'complete', body: {} });
+      try {
+        await enqueueAction({ kind: 'JOB_STATUS', jobId: props.job.id, action: 'complete', body: {} });
+      } catch {
+        return setError("Couldn't save this on your phone — try again, or free up some storage.");
+      }
       offline.refreshPendingCount();
       setStatus('COMPLETE');
       setFinished({ invoiceId: null });

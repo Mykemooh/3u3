@@ -4,14 +4,24 @@ import { useCallback, useEffect, useState } from 'react';
 import { listPendingForJob, removePendingAction, type PendingAction } from '@/lib/offlineQueue';
 import { uploadMedia } from '@/lib/clientUpload';
 
-/** True for an actual network failure (offline, DNS, timeout) — never for a real HTTP error response. */
+/**
+ * True for an actual network failure (offline, DNS, timeout) — never for
+ * a real HTTP error response. Covers both `fetch`'s own failure shape
+ * (a TypeError, message "Failed to fetch" / "NetworkError...") and the
+ * raw XHR path lib/clientUpload.ts uses for the upload step itself,
+ * whose onerror throws a plain Error with its own message — missing
+ * that second shape would wrongly treat a dropped connection mid-upload
+ * as a permanent failure and drop the queued photo/video for good.
+ */
 export function isNetworkError(err: unknown): boolean {
-  return err instanceof TypeError || (err instanceof Error && err.message === 'Failed to fetch');
+  if (err instanceof TypeError) return true;
+  if (!(err instanceof Error)) return false;
+  return /network error|failed to fetch|load failed/i.test(err.message);
 }
 
 type SyncHandlers = {
   onChecklistSynced: (itemId: string, data: any) => void;
-  onMediaSynced: (data: any) => void;
+  onMediaSynced: (pendingId: string, data: any) => void;
   onJobStatusSynced: (action: 'en-route' | 'start' | 'complete', data: any) => void;
   onActionFailed: (action: PendingAction, message: string) => void;
 };
@@ -59,7 +69,7 @@ export async function flushPendingForJob(jobId: string, handlers: SyncHandlers):
         const file = new File([action.fileBlob], action.fileName, { type: action.fileType });
         const data = await uploadMedia({ jobId: action.jobId, itemId: action.itemId, phase: action.phase, kind: action.mediaKind, file });
         await removePendingAction(action.id);
-        handlers.onMediaSynced(data);
+        handlers.onMediaSynced(action.id, data);
       }
     } catch (err) {
       if (isNetworkError(err)) {
