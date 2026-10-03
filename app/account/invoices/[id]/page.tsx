@@ -37,7 +37,10 @@ export default async function InvoiceView({ params, searchParams }: { params: { 
   const job = booking ? (await db.select().from(jobs).where(eq(jobs.bookingId, booking.id)).limit(1))[0] : undefined;
   const issued = invoice.sentAt ?? invoice.createdAt;
   const dueDate = new Date(issued.getTime() + 7 * 24 * 60 * 60 * 1000);
-  const subtotal = items.reduce((s, i) => s + i.amountCents, 0);
+  // The tip has its own dedicated row below — never counted in the
+  // billable subtotal/total, which stays "what the business charged".
+  const billableItems = items.filter((i) => !i.isTip);
+  const subtotal = billableItems.reduce((s, i) => s + i.amountCents, 0);
   const serviceName = service ? SERVICE_LABELS[service.key] ?? service.name : 'Cleaning service';
 
   return (
@@ -121,7 +124,7 @@ export default async function InvoiceView({ params, searchParams }: { params: { 
               </tr>
             </thead>
             <tbody>
-              {items.map((item) => (
+              {billableItems.map((item) => (
                 <tr key={item.id} className="border-b border-line">
                   <td className="py-3 pr-4">{item.description}</td>
                   <td className="py-3 text-right tabular-nums">{formatMoney(item.amountCents)}</td>

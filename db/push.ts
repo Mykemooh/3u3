@@ -579,6 +579,13 @@ async function main() {
     -- service's own default duration when null.
     ALTER TABLE addresses ADD COLUMN IF NOT EXISTS target_clean_minutes INTEGER;
 
+    -- Tips as their own invoice line item (lib/tips.ts) — shown
+    -- consistently alongside every other line, and flagged non-taxable
+    -- and excluded from invoice_items used for the billable total/
+    -- subtotal (invoices.tip_cents stays what payroll actually reads).
+    ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS taxable BOOLEAN NOT NULL DEFAULT true;
+    ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS is_tip BOOLEAN NOT NULL DEFAULT false;
+
     -- Reviews (lib/reviews.ts) — prompted once per booking on the client's
     -- before-and-after gallery; "featured" is an admin picking it for the
     -- landing page's testimonial carousel.

@@ -506,6 +506,18 @@ export const invoiceItems = pgTable('invoice_items', {
   description: text('description').notNull(),
   amountCents: integer('amount_cents').notNull(),
   sortOrder: integer('sort_order').notNull().default(0),
+  // Whichever sales/use tax is ever added (none exists yet) must sum
+  // only taxable items for its base — a tip is the employee's money,
+  // never the business's revenue, and is never itself taxed as a sale.
+  taxable: boolean('taxable').notNull().default(true),
+  // The one tip line item on this invoice (lib/tips.ts confirmTipPaid),
+  // shown separately from — and excluded from invoice.totalCents and
+  // the billable subtotal, which stay "what the business charged for
+  // the clean" only. invoices.tipCents/tipPaidOutCents (not this row)
+  // remains the source of truth payroll actually reads from; this row
+  // exists so the tip shows up consistently alongside every other line
+  // item, in exports and future tooling, not as a special case.
+  isTip: boolean('is_tip').notNull().default(false),
   ...timestamps,
 });
 

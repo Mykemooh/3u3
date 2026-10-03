@@ -105,6 +105,27 @@ async function alreadyPaidJobIds(jobIds: string[]): Promise<Set<string>> {
 export type TipClaim = { invoiceId: string; amountCents: number };
 
 /**
+ * A note on "can this be structured as a tax-free gift instead" — it was
+ * asked, and the answer is still no, for the same federal reason as
+ * before (IRS Topic 761). What *does* vary by jurisdiction, and is worth
+ * flagging if this business ever operates somewhere other than its
+ * current one (or federal/state guidance changes):
+ *   - Tip credits: some states let an employer count tips toward
+ *     minimum-wage obligations for tipped employees ("tip credit"); others
+ *     (e.g. California, Washington, several more) forbid it outright and
+ *     require full minimum wage on top of tips.
+ *   - Mandatory tip pooling/sharing rules differ — some states restrict
+ *     who may be included in a pool (e.g. excluding supervisors) or cap
+ *     employer involvement in distributing it.
+ *   - Local wage-theft statutes can impose their own penalties for
+ *     mishandled tip distribution, on top of federal rules.
+ * None of that changes what this file does today (full reported wages,
+ * no credit taken against pay rates, split across whoever worked the
+ * job) — it's only relevant if the pay rules above are ever adjusted for
+ * a new jurisdiction.
+ */
+
+/**
  * Every COMPLETE job with a tip that hasn't been fully paid out yet —
  * independent of any date range, so a tip that arrives after its job's
  * pay period already ran is still caught by the next run, never stuck.

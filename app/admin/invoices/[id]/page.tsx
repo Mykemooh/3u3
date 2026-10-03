@@ -62,7 +62,7 @@ export default async function AdminInvoiceDetail({ params }: { params: { id: str
           <div>
             <table className="w-full text-sm">
               <tbody>
-                {items.map((item) => (
+                {items.filter((item) => !item.isTip).map((item) => (
                   <tr key={item.id} className="border-b border-line">
                     <td className="py-2">{item.description}</td>
                     <td className="py-2 text-right">{formatMoney(item.amountCents)}</td>

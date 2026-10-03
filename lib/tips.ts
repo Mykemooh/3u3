@@ -1,6 +1,6 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { db } from '@/db/client';
-import { invoices } from '@/db/schema';
+import { invoices, invoiceItems } from '@/db/schema';
 import { getStripe } from '@/lib/stripe';
 import { getInvoiceWithItems, invoiceLabel } from '@/lib/invoices';
 import { appUrl } from '@/lib/url';
@@ -54,5 +54,31 @@ export async function confirmTipPaid(session: Stripe.Checkout.Session) {
 
   const invoice = (await db.select().from(invoices).where(eq(invoices.id, invoiceId)).limit(1))[0];
   if (!invoice) return;
+  // invoices.tipCents is what lib/payroll.ts actually claims tips
+  // from — this stays the source of truth and is never derived from
+  // the line item below.
   await db.update(invoices).set({ tipCents: invoice.tipCents + amountCents }).where(eq(invoices.id, invoiceId));
+
+  // Shown on the invoice as its own line, same as any other charge —
+  // but never taxable, and never added to invoice.totalCents (that
+  // stays "what the business charged for the clean"; the tip is the
+  // employee's money, not the business's revenue). A client can tip
+  // more than once on the same invoice, so this accumulates onto one
+  // row rather than adding a new one each time.
+  const existingTipItem = (
+    await db.select().from(invoiceItems).where(and(eq(invoiceItems.invoiceId, invoiceId), eq(invoiceItems.isTip, true))).limit(1)
+  )[0];
+  if (existingTipItem) {
+    await db.update(invoiceItems).set({ amountCents: existingTipItem.amountCents + amountCents }).where(eq(invoiceItems.id, existingTipItem.id));
+  } else {
+    await db.insert(invoiceItems).values({
+      id: crypto.randomUUID(),
+      invoiceId,
+      description: 'Tip for the crew',
+      amountCents,
+      sortOrder: 9999,
+      taxable: false,
+      isTip: true,
+    });
+  }
 }
