@@ -67,7 +67,13 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 border-t border-white/10 pt-6 text-xs text-white/40">
+        <div className="mt-14 border-t border-white/10 pt-10">
+          <p className="text-[2rem] font-bold leading-[0.95] tracking-[-0.02em] sm:text-[2.75rem]">
+            More time for life.
+          </p>
+        </div>
+
+        <div className="mt-10 border-t border-white/10 pt-6 text-xs text-white/40">
           © {new Date().getFullYear()} 3U3 Cleaning. All rights reserved.
         </div>
       </div>

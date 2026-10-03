@@ -19,17 +19,16 @@ export default function TestimonialCarousel({ reviews }: { reviews: Review[] }) 
 
   return (
     <section
-      className="mt-24 w-full max-w-md"
+      className="mx-auto w-full max-w-2xl text-center"
       aria-label="What our clients say"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
-      <p className="text-sm font-semibold uppercase tracking-[0.14em] text-slate">What our clients say</p>
-      <div className="relative mt-6 min-h-[140px]">
+      <div className="relative min-h-[180px] md:min-h-[160px]">
         {reviews.map((review, i) => (
           <div
             key={i}
-            className="absolute inset-0 flex flex-col items-center justify-center gap-3 transition-opacity duration-500"
+            className="absolute inset-0 flex flex-col items-center justify-center gap-4 transition-opacity duration-500"
             style={{ opacity: i === index ? 1 : 0, pointerEvents: i === index ? 'auto' : 'none' }}
             aria-hidden={i !== index}
           >
@@ -37,8 +36,12 @@ export default function TestimonialCarousel({ reviews }: { reviews: Review[] }) 
               {'★'.repeat(review.rating)}
               <span className="text-line">{'★'.repeat(5 - review.rating)}</span>
             </span>
-            {review.comment && <p className="text-lg font-medium text-ink">"{review.comment}"</p>}
-            <p className="text-sm text-slate">— {review.clientName}</p>
+            {review.comment && (
+              <p className="text-2xl font-medium tracking-[-0.01em] text-ink md:text-[1.75rem]" style={{ lineHeight: 1.25 }}>
+                "{review.comment}"
+              </p>
+            )}
+            <p className="text-sm font-medium text-slate">— {review.clientName}</p>
           </div>
         ))}
       </div>
