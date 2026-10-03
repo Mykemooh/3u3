@@ -15,13 +15,20 @@ function daysAgoISO(days: number) {
   return d.toISOString().slice(0, 10);
 }
 
+const PERIOD_PRESETS = [
+  { label: 'Weekly', days: 7 },
+  { label: 'Bi-weekly', days: 14 },
+  { label: 'Monthly', days: 30 },
+] as const;
+
 export default async function AdminPayroll({ searchParams }: { searchParams: { start?: string; end?: string } }) {
   const session = await getServerSession(authOptions);
   const user = session?.user as { tenantId?: string } | undefined;
   if (!user?.tenantId) redirect('/admin');
 
+  const today = businessTodayISO();
   const start = searchParams.start || daysAgoISO(14);
-  const end = searchParams.end || businessTodayISO();
+  const end = searchParams.end || today;
   const [preview, runs] = await Promise.all([previewPayroll(user.tenantId, start, end), listPayrollRuns(user.tenantId)]);
   const previewTotalCents = preview.reduce((sum, r) => sum + (r.payCents ?? 0) + r.tipCents, 0);
   const missingRate = preview.some((r) => r.rateCents == null);
@@ -36,6 +43,23 @@ export default async function AdminPayroll({ searchParams }: { searchParams: { s
           Preview a pay period, then create a run to lock it in for review and mark it paid. A job is never
           counted twice — once it's in a run (reviewed or paid), it won't show up again in a later one.
         </p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm font-medium text-muted">Quick period:</span>
+        {PERIOD_PRESETS.map((p) => {
+          const presetStart = daysAgoISO(p.days);
+          const active = start === presetStart && end === today;
+          return (
+            <Link
+              key={p.label}
+              href={`/admin/payroll?start=${presetStart}&end=${today}`}
+              className={`pill ${active ? 'bg-gold/15 text-bronze' : 'bg-surface text-slate hover:bg-cream'}`}
+            >
+              {p.label}
+            </Link>
+          );
+        })}
       </div>
 
       <form className="card flex flex-wrap items-end gap-3" method="get">

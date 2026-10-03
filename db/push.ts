@@ -402,6 +402,14 @@ async function main() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS pay_rate_cents_per_clean INTEGER;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS pay_rate_cents_per_day INTEGER;
 
+    -- Added a 4th pay type (percentage of job price) — widen both CHECK
+    -- constraints that were created with the old 3-value list (the
+    -- ADD COLUMN ... CHECK above only ran once, when the column didn't
+    -- exist yet, so it never picks up a later change to the list).
+    ALTER TABLE users DROP CONSTRAINT IF EXISTS users_pay_type_check;
+    ALTER TABLE users ADD CONSTRAINT users_pay_type_check CHECK (pay_type IN ('HOURLY','PER_CLEAN','DAY_RATE','PERCENTAGE'));
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS pay_rate_percent_bps INTEGER;
+
     CREATE TABLE IF NOT EXISTS payroll_runs (
       id TEXT PRIMARY KEY,
       tenant_id TEXT NOT NULL REFERENCES tenants(id),
@@ -425,6 +433,9 @@ async function main() {
       pay_cents INTEGER NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+    ALTER TABLE payroll_entries DROP CONSTRAINT IF EXISTS payroll_entries_pay_type_check;
+    ALTER TABLE payroll_entries ADD CONSTRAINT payroll_entries_pay_type_check CHECK (pay_type IN ('HOURLY','PER_CLEAN','DAY_RATE','PERCENTAGE'));
+    ALTER TABLE payroll_entries ADD COLUMN IF NOT EXISTS rate_percent_bps INTEGER;
 
     CREATE TABLE IF NOT EXISTS payroll_entry_jobs (
       id TEXT PRIMARY KEY,
@@ -551,6 +562,35 @@ async function main() {
       add_on_service_id TEXT NOT NULL REFERENCES add_on_services(id),
       name TEXT NOT NULL,
       price_cents INTEGER NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    -- Admin-configurable payroll behavior (Admin → Settings) — each
+    -- default matches what the app already did before these existed.
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS percent_pay_basis TEXT NOT NULL DEFAULT 'BASE_PRICE'
+      CHECK (percent_pay_basis IN ('BASE_PRICE','INVOICE_TOTAL'));
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS hourly_pay_model TEXT NOT NULL DEFAULT 'ACTUAL_TIME'
+      CHECK (hourly_pay_model IN ('ACTUAL_TIME','TARGET_TIME'));
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS tip_split_method TEXT NOT NULL DEFAULT 'EVEN'
+      CHECK (tip_split_method IN ('EVEN','BY_HOURS'));
+
+    -- How long this specific home should take to clean (admin-set, during
+    -- the walkthrough or on the client profile) — falls back to the
+    -- service's own default duration when null.
+    ALTER TABLE addresses ADD COLUMN IF NOT EXISTS target_clean_minutes INTEGER;
+
+    -- Light supply reporting from the crew portal (lib/supplies.ts): a
+    -- free-text product name and a status, tied to the crew/team.
+    CREATE TABLE IF NOT EXISTS supply_reports (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      crew_id TEXT NOT NULL REFERENCES crews(id),
+      reported_by_user_id TEXT NOT NULL REFERENCES users(id),
+      product_name TEXT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('LOW','OUT','DAMAGED')),
+      notes TEXT,
+      resolved BOOLEAN NOT NULL DEFAULT false,
+      resolved_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
   `);

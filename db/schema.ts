@@ -19,6 +19,21 @@ export const tenants = pgTable('tenants', {
   bronzeColor: text('bronze_color').notNull().default('#1D4ED8'),
   creamColor: text('cream_color').notNull().default('#EFF6FF'),
   serviceAreaRadiusMiles: integer('service_area_radius_miles').notNull().default(25),
+  // Payroll behavior the admin controls rather than the code deciding for
+  // them (Admin → Settings) — each defaults to the option that matches
+  // what the app already did before these existed, so adding them never
+  // silently changes anyone's pay:
+  //   percentPayBasis — what a PERCENTAGE-pay employee's cut is computed
+  //     on: just the agreed cleaning price, or the full invoice including
+  //     add-ons.
+  //   hourlyPayModel — whether an HOURLY employee is paid for actual
+  //     clocked time, or for the home's target clean time regardless of
+  //     how long it actually took (rewards speed without cutting pay).
+  //   tipSplitMethod — how a job's tip is divided across whoever was
+  //     staffed on it.
+  percentPayBasis: text('percent_pay_basis', { enum: ['BASE_PRICE', 'INVOICE_TOTAL'] }).notNull().default('BASE_PRICE'),
+  hourlyPayModel: text('hourly_pay_model', { enum: ['ACTUAL_TIME', 'TARGET_TIME'] }).notNull().default('ACTUAL_TIME'),
+  tipSplitMethod: text('tip_split_method', { enum: ['EVEN', 'BY_HOURS'] }).notNull().default('EVEN'),
   ...timestamps,
 });
 
@@ -69,18 +84,24 @@ export const users = pgTable('users', {
     .default('EMAIL'),
   // How a CLEANER is paid (Admin → Team / Add employee), and the rate for
   // whichever one applies — the input to payroll (lib/payroll.ts):
-  //   HOURLY    — actual clock-in/out time on each job (jobs.startedAt/
-  //               completedAt), times payRateCentsPerHour.
-  //   PER_CLEAN — a flat amount per job they're credited on, times
-  //               payRateCentsPerClean, regardless of how long it took or
-  //               how many others worked it too.
-  //   DAY_RATE  — a flat "full workday" amount, payRateCentsPerDay, for
-  //               each calendar day they had at least one job.
-  // All three rates are nullable until an admin sets one.
-  payType: text('pay_type', { enum: ['HOURLY', 'PER_CLEAN', 'DAY_RATE'] }).notNull().default('HOURLY'),
+  //   HOURLY     — clock-in/out time on each job (jobs.startedAt/
+  //                completedAt) — or the home's target clean time instead,
+  //                if tenants.hourlyPayModel is TARGET_TIME — times
+  //                payRateCentsPerHour.
+  //   PER_CLEAN  — a flat amount per job they're credited on ("per job"),
+  //                times payRateCentsPerClean, regardless of how long it
+  //                took or how many others worked it too.
+  //   DAY_RATE   — a flat "full workday" amount, payRateCentsPerDay, for
+  //                each calendar day they had at least one job.
+  //   PERCENTAGE — payRatePercentBps (basis points, 1500 = 15.00%) of each
+  //                job's price — the base cleaning price or the full
+  //                invoice, per tenants.percentPayBasis.
+  // All rates are nullable until an admin sets one.
+  payType: text('pay_type', { enum: ['HOURLY', 'PER_CLEAN', 'DAY_RATE', 'PERCENTAGE'] }).notNull().default('HOURLY'),
   payRateCentsPerHour: integer('pay_rate_cents_per_hour'),
   payRateCentsPerClean: integer('pay_rate_cents_per_clean'),
   payRateCentsPerDay: integer('pay_rate_cents_per_day'),
+  payRatePercentBps: integer('pay_rate_percent_bps'),
   // A CUSTOMER's one-time answer to "can we use your before/after photos
   // on social media?" (app/account/jobs/[id] — the before-and-after
   // gallery). Null = not asked yet; once set it's never asked again and
@@ -118,6 +139,12 @@ export const addresses = pgTable('addresses', {
   // checklistTemplateItems.countBy). Null/1 keeps the plain singular name.
   bedrooms: integer('bedrooms'),
   bathrooms: integer('bathrooms'),
+  // How long this specific home should take to clean, set by the admin
+  // (quote walkthrough or client profile) since home size/complexity
+  // varies even within one service type. Falls back to the service's
+  // own defaultDurationMinutes when null. Drives HOURLY pay when
+  // tenants.hourlyPayModel is TARGET_TIME (lib/payroll.ts).
+  targetCleanMinutes: integer('target_clean_minutes'),
   // Structured home profile (lib/homeProfile.ts) — set by the client, or
   // by the admin during the in-person quote walkthrough
   // (app/admin/leads/[id]/walkthrough). Per-room notes live in their own
@@ -562,8 +589,11 @@ export const payrollEntries = pgTable('payroll_entries', {
   payrollRunId: text('payroll_run_id').notNull().references(() => payrollRuns.id),
   userId: text('user_id').notNull().references(() => users.id),
   // Snapshotted from the employee at the moment the run was created.
-  payType: text('pay_type', { enum: ['HOURLY', 'PER_CLEAN', 'DAY_RATE'] }).notNull(),
+  payType: text('pay_type', { enum: ['HOURLY', 'PER_CLEAN', 'DAY_RATE', 'PERCENTAGE'] }).notNull(),
   rateCents: integer('rate_cents').notNull(),
+  // Only set (and only meaningful) for a PERCENTAGE entry — rateCents
+  // stays 0 for those, since a percentage isn't a cents rate.
+  ratePercentBps: integer('rate_percent_bps'),
   hours: real('hours').notNull().default(0),
   jobCount: integer('job_count').notNull().default(0),
   daysWorked: integer('days_worked').notNull().default(0),
@@ -665,5 +695,25 @@ export const bookingAddOns = pgTable('booking_add_ons', {
   addOnServiceId: text('add_on_service_id').notNull().references(() => addOnServices.id),
   name: text('name').notNull(),
   priceCents: integer('price_cents').notNull(),
+  ...timestamps,
+});
+
+// ---------------------------------------------------------------------------
+// Supply reports (lib/supplies.ts) — a deliberately light way for a crew
+// member to flag a product that's low, out, or damaged, from the crew
+// portal: just a product name typed in free text and a status, no catalog
+// to maintain. Tied to the crew/team (supplies are shared by a team, not
+// an individual), and notifies the owner the moment one comes in.
+// ---------------------------------------------------------------------------
+export const supplyReports = pgTable('supply_reports', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  crewId: text('crew_id').notNull().references(() => crews.id),
+  reportedByUserId: text('reported_by_user_id').notNull().references(() => users.id),
+  productName: text('product_name').notNull(),
+  status: text('status', { enum: ['LOW', 'OUT', 'DAMAGED'] }).notNull(),
+  notes: text('notes'),
+  resolved: boolean('resolved').notNull().default(false),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
   ...timestamps,
 });

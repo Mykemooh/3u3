@@ -55,7 +55,7 @@ export default async function QuoteWalkthrough({ params }: { params: { id: strin
               Drives how the cleaning checklist is built — "Bedroom 1", "Bedroom 2", etc. instead of one generic
               entry.
             </p>
-            <RoomCountForm addressId={address.id} initial={{ bedrooms: address.bedrooms, bathrooms: address.bathrooms }} />
+            <RoomCountForm addressId={address.id} initial={{ bedrooms: address.bedrooms, bathrooms: address.bathrooms, targetCleanMinutes: address.targetCleanMinutes }} />
           </div>
 
           <div className="card">

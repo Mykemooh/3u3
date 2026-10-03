@@ -3,12 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-type PayType = 'HOURLY' | 'PER_CLEAN' | 'DAY_RATE';
+type PayType = 'HOURLY' | 'PER_CLEAN' | 'DAY_RATE' | 'PERCENTAGE';
 
-const PAY_TYPE_OPTIONS: { value: PayType; label: string; rateLabel: string }[] = [
-  { value: 'HOURLY', label: 'Hourly (clock in/out)', rateLabel: 'per hour' },
-  { value: 'PER_CLEAN', label: 'Per clean (flat rate per job)', rateLabel: 'per clean' },
-  { value: 'DAY_RATE', label: 'Full workday (flat daily rate)', rateLabel: 'per day' },
+const PAY_TYPE_OPTIONS: { value: PayType; label: string; rateLabel: string; prefix: string }[] = [
+  { value: 'HOURLY', label: 'Hourly (clock in/out)', rateLabel: 'per hour', prefix: '$' },
+  { value: 'PER_CLEAN', label: 'Per job (flat rate per clean)', rateLabel: 'per clean', prefix: '$' },
+  { value: 'DAY_RATE', label: 'Full workday (flat daily rate)', rateLabel: 'per day', prefix: '$' },
+  { value: 'PERCENTAGE', label: 'Percentage of job price', rateLabel: '%', prefix: '' },
 ];
 
 export default function PayRateEditor({
@@ -18,7 +19,7 @@ export default function PayRateEditor({
 }: {
   userId: string;
   initialPayType: PayType;
-  initialRatesCents: { hourly: number | null; perClean: number | null; perDay: number | null };
+  initialRatesCents: { hourly: number | null; perClean: number | null; perDay: number | null; percentBps: number | null };
 }) {
   const router = useRouter();
   const [payType, setPayType] = useState<PayType>(initialPayType);
@@ -26,6 +27,7 @@ export default function PayRateEditor({
     HOURLY: initialRatesCents.hourly != null ? (initialRatesCents.hourly / 100).toFixed(2) : '',
     PER_CLEAN: initialRatesCents.perClean != null ? (initialRatesCents.perClean / 100).toFixed(2) : '',
     DAY_RATE: initialRatesCents.perDay != null ? (initialRatesCents.perDay / 100).toFixed(2) : '',
+    PERCENTAGE: initialRatesCents.percentBps != null ? (initialRatesCents.percentBps / 100).toFixed(2) : '',
   });
   const [busy, setBusy] = useState(false);
 
@@ -38,6 +40,7 @@ export default function PayRateEditor({
     if (effectiveType === 'HOURLY') body.payRatePerHour = rateValue;
     if (effectiveType === 'PER_CLEAN') body.payRatePerClean = rateValue;
     if (effectiveType === 'DAY_RATE') body.payRatePerDay = rateValue;
+    if (effectiveType === 'PERCENTAGE') body.payRatePercent = rateValue;
     await fetch(`/api/admin/team/employees/${userId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -67,10 +70,11 @@ export default function PayRateEditor({
           </option>
         ))}
       </select>
-      <span>$</span>
+      {meta.prefix && <span>{meta.prefix}</span>}
       <input
         type="number"
         min={0}
+        max={payType === 'PERCENTAGE' ? 100 : undefined}
         step={0.01}
         value={rates[payType]}
         disabled={busy}

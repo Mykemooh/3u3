@@ -12,6 +12,7 @@ import StartEstimateButton from '@/components/StartEstimateButton';
 import ClientInfoForm from '@/components/ClientInfoForm';
 import CloseClientButton from '@/components/CloseClientButton';
 import AddressForm from '@/components/AddressForm';
+import RoomCountForm from '@/components/admin/RoomCountForm';
 import BookingCadencePriceEditor from '@/components/BookingCadencePriceEditor';
 import HomeProfileEditor from '@/components/HomeProfileEditor';
 import { getHomeProfile } from '@/lib/homeProfile';
@@ -93,6 +94,14 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
               <li key={a.id} className="text-sm text-muted">{a.line1}, {a.city}, {a.state} {a.zip ?? ''}</li>
             ))}
           </ul>
+        )}
+        {primaryAddress && (
+          <div className="mt-3 border-t border-line pt-3">
+            <RoomCountForm
+              addressId={primaryAddress.id}
+              initial={{ bedrooms: primaryAddress.bedrooms, bathrooms: primaryAddress.bathrooms, targetCleanMinutes: primaryAddress.targetCleanMinutes }}
+            />
+          </div>
         )}
       </div>
 

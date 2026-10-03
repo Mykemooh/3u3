@@ -5,10 +5,17 @@ import { useRouter } from 'next/navigation';
 
 const OPTIONS = [1, 2, 3, 4, 5, 6];
 
-export default function RoomCountForm({ addressId, initial }: { addressId: string; initial: { bedrooms: number | null; bathrooms: number | null } }) {
+export default function RoomCountForm({
+  addressId,
+  initial,
+}: {
+  addressId: string;
+  initial: { bedrooms: number | null; bathrooms: number | null; targetCleanMinutes: number | null };
+}) {
   const router = useRouter();
   const [bedrooms, setBedrooms] = useState(initial.bedrooms ? String(initial.bedrooms) : '');
   const [bathrooms, setBathrooms] = useState(initial.bathrooms ? String(initial.bathrooms) : '');
+  const [targetMinutes, setTargetMinutes] = useState(initial.targetCleanMinutes ? String(initial.targetCleanMinutes) : '');
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   async function save() {
@@ -16,7 +23,11 @@ export default function RoomCountForm({ addressId, initial }: { addressId: strin
     const res = await fetch(`/api/admin/addresses/${addressId}/rooms`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bedrooms: bedrooms ? Number(bedrooms) : null, bathrooms: bathrooms ? Number(bathrooms) : null }),
+      body: JSON.stringify({
+        bedrooms: bedrooms ? Number(bedrooms) : null,
+        bathrooms: bathrooms ? Number(bathrooms) : null,
+        targetCleanMinutes: targetMinutes ? Number(targetMinutes) : null,
+      }),
     });
     if (res.ok) {
       setStatus('saved');
@@ -45,6 +56,18 @@ export default function RoomCountForm({ addressId, initial }: { addressId: strin
             <option key={n} value={n}>{n}{n === 6 ? '+' : ''}</option>
           ))}
         </select>
+      </div>
+      <div>
+        <label className="label">Target clean time (min)</label>
+        <input
+          className="input w-28"
+          type="number"
+          min={15}
+          step={15}
+          value={targetMinutes}
+          onChange={(e) => setTargetMinutes(e.target.value)}
+          placeholder="e.g. 120"
+        />
       </div>
       <button type="button" onClick={save} disabled={status === 'saving'} className="btn-secondary !px-4 !py-2.5 text-sm">
         {status === 'saving' ? 'Saving…' : status === 'saved' ? 'Saved ✓' : 'Save'}

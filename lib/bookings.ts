@@ -184,6 +184,26 @@ export async function createBooking(input: {
           });
         }
       }
+
+      // Each add-on the client selected gets its own checklist entry too
+      // (no templateItemId — it isn't part of the service's checklist
+      // template), so the crew gets the same before/after photo section
+      // for it as any other room, and the client sees it in their gallery.
+      const addOnItems = input.addOns ?? [];
+      const roomItemCount = template
+        ? (await tx.select({ id: jobChecklistItems.id }).from(jobChecklistItems).where(eq(jobChecklistItems.jobId, jobId))).length
+        : 0;
+      for (let i = 0; i < addOnItems.length; i += 1) {
+        await tx.insert(jobChecklistItems).values({
+          id: crypto.randomUUID(),
+          jobId,
+          templateItemId: null,
+          roomName: addOnItems[i].name,
+          taskDetail: null,
+          sortOrder: roomItemCount + i,
+          status: 'PENDING',
+        });
+      }
     }
 
     return bookingId;

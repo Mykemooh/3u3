@@ -1,6 +1,9 @@
 import { and, eq, inArray, isNotNull, desc, sql } from 'drizzle-orm';
 import { db } from '@/db/client';
-import { jobs, bookings, users, invoices, payrollRuns, payrollEntries, payrollEntryJobs, payrollEntryTips } from '@/db/schema';
+import {
+  jobs, bookings, users, invoices, addresses, serviceTypes, tenants,
+  payrollRuns, payrollEntries, payrollEntryJobs, payrollEntryTips,
+} from '@/db/schema';
 import { staffForJobs } from '@/lib/team';
 import { sendEmail } from '@/lib/email';
 import { esc } from '@/lib/email';
@@ -29,32 +32,67 @@ export class PayrollError extends Error {}
  * run.
  */
 
-export type PayType = 'HOURLY' | 'PER_CLEAN' | 'DAY_RATE';
+export type PayType = 'HOURLY' | 'PER_CLEAN' | 'DAY_RATE' | 'PERCENTAGE';
 
 export const PAY_TYPE_LABELS: Record<PayType, string> = {
   HOURLY: 'Hourly (clock in/out)',
-  PER_CLEAN: 'Per clean (flat rate per job)',
+  PER_CLEAN: 'Per job (flat rate per clean)',
   DAY_RATE: 'Full workday (flat daily rate)',
+  PERCENTAGE: 'Percentage of job price',
 };
 
 type Employee = typeof users.$inferSelect;
 
+/** The employee's configured rate — cents for the first three pay types, basis points (1500 = 15.00%) for PERCENTAGE. */
 function rateFor(employee: Employee): number | null {
   if (employee.payType === 'HOURLY') return employee.payRateCentsPerHour;
   if (employee.payType === 'PER_CLEAN') return employee.payRateCentsPerClean;
+  if (employee.payType === 'PERCENTAGE') return employee.payRatePercentBps;
   return employee.payRateCentsPerDay;
 }
 
-type CompletedJob = { job: typeof jobs.$inferSelect; booking: typeof bookings.$inferSelect };
+export type PayrollSettings = { percentPayBasis: 'BASE_PRICE' | 'INVOICE_TOTAL'; hourlyPayModel: 'ACTUAL_TIME' | 'TARGET_TIME'; tipSplitMethod: 'EVEN' | 'BY_HOURS' };
+
+/** Admin-configurable payroll behavior (Admin → Settings) — see tenants in db/schema.ts for what each controls. */
+export async function getPayrollSettings(tenantId: string): Promise<PayrollSettings> {
+  const tenant = (await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1))[0];
+  return {
+    percentPayBasis: tenant?.percentPayBasis ?? 'BASE_PRICE',
+    hourlyPayModel: tenant?.hourlyPayModel ?? 'ACTUAL_TIME',
+    tipSplitMethod: tenant?.tipSplitMethod ?? 'EVEN',
+  };
+}
+
+type CompletedJob = {
+  job: typeof jobs.$inferSelect;
+  booking: typeof bookings.$inferSelect;
+  address: typeof addresses.$inferSelect | null;
+  service: typeof serviceTypes.$inferSelect | null;
+  invoice: typeof invoices.$inferSelect | null;
+};
 
 /** Every completed job in [startDateISO, endDateISO] that hasn't already been paid out to anyone. */
 async function completedJobsInRange(tenantId: string, startDateISO: string, endDateISO: string): Promise<CompletedJob[]> {
   const rows = await db
-    .select({ job: jobs, booking: bookings })
+    .select({ job: jobs, booking: bookings, address: addresses, service: serviceTypes, invoice: invoices })
     .from(jobs)
     .innerJoin(bookings, eq(jobs.bookingId, bookings.id))
+    .leftJoin(addresses, eq(bookings.addressId, addresses.id))
+    .leftJoin(serviceTypes, eq(bookings.serviceTypeId, serviceTypes.id))
+    .leftJoin(invoices, eq(invoices.bookingId, bookings.id))
     .where(and(eq(bookings.tenantId, tenantId), eq(jobs.status, 'COMPLETE'), isNotNull(jobs.startedAt), isNotNull(jobs.completedAt)));
   return rows.filter((r) => r.booking.slotStart.slice(0, 10) >= startDateISO && r.booking.slotStart.slice(0, 10) <= endDateISO);
+}
+
+/** Minutes this job should take: the home's own target (set during the walkthrough) or the service's default duration. */
+function targetMinutesFor(r: CompletedJob): number {
+  return r.address?.targetCleanMinutes ?? r.service?.defaultDurationMinutes ?? 60;
+}
+
+/** The job's price for PERCENTAGE pay — the base cleaning price, or the full invoice (incl. add-ons), per tenant setting. */
+function priceBasisFor(r: CompletedJob, basis: PayrollSettings['percentPayBasis']): number {
+  if (basis === 'INVOICE_TOTAL' && r.invoice) return r.invoice.totalCents;
+  return r.booking.priceCents ?? 0;
 }
 
 /** Jobs already counted in some payroll entry, per employee — never double-paid, regardless of date range. */
@@ -72,12 +110,21 @@ export type TipClaim = { invoiceId: string; amountCents: number };
  * pay period already ran is still caught by the next run, never stuck.
  * invoices.tipPaidOutCents (claimed by createPayrollRun below) is what
  * makes this idempotent: a tip is claimed once, by whichever run gets to
- * it first, split evenly across whoever was staffed on that job — a
- * customer tip is taxable wages for the employee (IRS Topic 761), not a
- * gift, so it's reported as its own pay line, never silently folded into
- * hourly/per-clean/day-rate pay.
+ * it first — a customer tip is taxable wages for the employee (IRS Topic
+ * 761), not a gift, so it's reported as its own pay line, never silently
+ * folded into hourly/per-clean/day-rate/percentage pay.
+ *
+ * splitMethod EVEN divides it equally across whoever was staffed on the
+ * job; BY_HOURS weights each person's share by their time on that job.
+ * Note: today every staffer on a job shares the same single clock-in/out
+ * (there's no per-person time tracking yet), so BY_HOURS currently comes
+ * out identical to EVEN — the weighting is real and ready to differ the
+ * moment per-person job time exists, it just has nothing to differ on yet.
  */
-async function unclaimedTipsByEmployee(tenantId: string): Promise<Map<string, { cents: number; claims: TipClaim[] }>> {
+async function unclaimedTipsByEmployee(
+  tenantId: string,
+  splitMethod: PayrollSettings['tipSplitMethod'],
+): Promise<Map<string, { cents: number; claims: TipClaim[] }>> {
   const rows = await db
     .select({ job: jobs, invoice: invoices })
     .from(jobs)
@@ -94,14 +141,25 @@ async function unclaimedTipsByEmployee(tenantId: string): Promise<Map<string, { 
     const staffIds = staffMap[r.job.id] ?? [];
     if (staffIds.length === 0) continue;
     const unclaimed = r.invoice.tipCents - r.invoice.tipPaidOutCents;
-    const perPerson = Math.floor(unclaimed / staffIds.length);
-    if (perPerson <= 0) continue;
-    for (const uid of staffIds) {
+
+    // Every staffer's weight is equal under EVEN, and also under
+    // BY_HOURS today (see note above) since there's only one shared
+    // clock-in/out per job, not one per person.
+    const weights = staffIds.map(() => 1);
+    const totalWeight = weights.reduce((s, w) => s + w, 0);
+    let distributed = 0;
+    staffIds.forEach((uid, i) => {
+      const isLast = i === staffIds.length - 1;
+      // The last share absorbs the rounding remainder so the sum of
+      // shares always equals `unclaimed` exactly, never a cent short.
+      const share = isLast ? unclaimed - distributed : Math.floor((unclaimed * weights[i]) / totalWeight);
+      distributed += share;
+      if (share <= 0) return;
       const entry = result.get(uid) ?? { cents: 0, claims: [] };
-      entry.cents += perPerson;
-      entry.claims.push({ invoiceId: r.invoice.id, amountCents: perPerson });
+      entry.cents += share;
+      entry.claims.push({ invoiceId: r.invoice.id, amountCents: share });
       result.set(uid, entry);
-    }
+    });
   }
   return result;
 }
@@ -111,6 +169,7 @@ export type PayrollPreviewRow = {
   name: string;
   payType: PayType;
   rateCents: number | null;
+  ratePercentBps: number | null;
   hours: number;
   jobCount: number;
   daysWorked: number;
@@ -126,26 +185,37 @@ export type PayrollPreviewRow = {
  * shows before committing to "Create payroll run".
  */
 export async function previewPayroll(tenantId: string, startDateISO: string, endDateISO: string): Promise<PayrollPreviewRow[]> {
+  const settings = await getPayrollSettings(tenantId);
   const completed = await completedJobsInRange(tenantId, startDateISO, endDateISO);
-  const tips = await unclaimedTipsByEmployee(tenantId);
+  const tips = await unclaimedTipsByEmployee(tenantId, settings.tipSplitMethod);
   if (completed.length === 0 && tips.size === 0) return [];
 
   const staffMap = completed.length ? await staffForJobs(completed.map((r) => ({ id: r.job.id, crewId: r.job.crewId }))) : {};
   const paid = await alreadyPaidJobIds(completed.map((r) => r.job.id));
 
-  const byEmployee = new Map<string, { hours: number; jobCount: number; days: Set<string>; jobIds: string[] }>();
+  const byEmployee = new Map<string, { hours: number; jobCount: number; days: Set<string>; jobIds: string[]; percentBasisCents: number }>();
   for (const r of completed) {
     const staffIds = staffMap[r.job.id] ?? [];
-    const durationHours = (r.job.completedAt!.getTime() - r.job.startedAt!.getTime()) / 3_600_000;
+    // Actual clocked time, or the home's target time — an employee whose
+    // pay type is HOURLY and whose tenant has opted into TARGET_TIME gets
+    // paid for the target, not the clock, so finishing faster never costs
+    // them pay. Everyone else's "hours" here is just a reporting figure.
+    const durationHours =
+      settings.hourlyPayModel === 'TARGET_TIME'
+        ? targetMinutesFor(r) / 60
+        : (r.job.completedAt!.getTime() - r.job.startedAt!.getTime()) / 3_600_000;
     const perPersonHours = staffIds.length ? durationHours / staffIds.length : 0;
+    const basisCents = priceBasisFor(r, settings.percentPayBasis);
+    const perPersonBasisCents = staffIds.length ? basisCents / staffIds.length : 0;
     const date = r.booking.slotStart.slice(0, 10);
     for (const uid of staffIds) {
       if (paid.has(`${r.job.id}:${uid}`)) continue; // already in an earlier run
-      const entry = byEmployee.get(uid) ?? { hours: 0, jobCount: 0, days: new Set<string>(), jobIds: [] };
+      const entry = byEmployee.get(uid) ?? { hours: 0, jobCount: 0, days: new Set<string>(), jobIds: [], percentBasisCents: 0 };
       entry.hours += perPersonHours;
       entry.jobCount += 1;
       entry.days.add(date);
       entry.jobIds.push(r.job.id);
+      entry.percentBasisCents += perPersonBasisCents;
       byEmployee.set(uid, entry);
     }
   }
@@ -159,24 +229,29 @@ export async function previewPayroll(tenantId: string, startDateISO: string, end
 
   return employees
     .map((e) => {
-      const entry = byEmployee.get(e.id) ?? { hours: 0, jobCount: 0, days: new Set<string>(), jobIds: [] };
+      const entry = byEmployee.get(e.id) ?? { hours: 0, jobCount: 0, days: new Set<string>(), jobIds: [], percentBasisCents: 0 };
       const tip = tips.get(e.id) ?? { cents: 0, claims: [] };
       const hours = Math.round(entry.hours * 100) / 100;
       const daysWorked = entry.days.size;
-      const rateCents = rateFor(e);
+      const rate = rateFor(e);
+      const rateCents = e.payType === 'PERCENTAGE' ? null : rate;
+      const ratePercentBps = e.payType === 'PERCENTAGE' ? rate : null;
       const payCents =
-        rateCents == null
+        rate == null
           ? null
           : e.payType === 'HOURLY'
-          ? Math.round(hours * rateCents)
+          ? Math.round(hours * rate)
           : e.payType === 'PER_CLEAN'
-          ? entry.jobCount * rateCents
-          : daysWorked * rateCents;
+          ? entry.jobCount * rate
+          : e.payType === 'PERCENTAGE'
+          ? Math.round((entry.percentBasisCents * rate) / 10000)
+          : daysWorked * rate;
       return {
         employeeId: e.id,
         name: e.name,
         payType: e.payType as PayType,
         rateCents,
+        ratePercentBps,
         hours,
         jobCount: entry.jobCount,
         daysWorked,
@@ -219,6 +294,7 @@ export async function createPayrollRun(tenantId: string, input: { label: string;
       userId: row.employeeId,
       payType: row.payType,
       rateCents: row.rateCents ?? 0,
+      ratePercentBps: row.ratePercentBps,
       hours: row.hours,
       jobCount: row.jobCount,
       daysWorked: row.daysWorked,
@@ -264,6 +340,14 @@ export async function getPayrollRun(tenantId: string, runId: string) {
   return { run, rows, totalCents };
 }
 
+/** "32.00 hours" / "14 cleans" / "5 days" / "18 cleans at 15.00%" — however this entry's pay type prices it. */
+function payEntrySummary(entry: { payType: string; hours: number; jobCount: number; daysWorked: number; ratePercentBps: number | null }): string {
+  if (entry.payType === 'HOURLY') return `${entry.hours.toFixed(2)} hours`;
+  if (entry.payType === 'PER_CLEAN') return `${entry.jobCount} cleans`;
+  if (entry.payType === 'PERCENTAGE') return `${entry.jobCount} cleans at ${((entry.ratePercentBps ?? 0) / 100).toFixed(2)}%`;
+  return `${entry.daysWorked} days`;
+}
+
 /** Marks a run paid and best-effort emails each employee what they were paid. Idempotent. */
 export async function markPayrollRunPaid(tenantId: string, runId: string): Promise<void> {
   const data = await getPayrollRun(tenantId, runId);
@@ -282,7 +366,7 @@ export async function markPayrollRunPaid(tenantId: string, runId: string): Promi
           <h2 style="color:#1D4ED8;">3U3 Cleaning</h2>
           <p>Hi ${esc(row.name.split(' ')[0])},</p>
           <p>You were just paid <strong>$${((row.entry.payCents + row.entry.tipCents) / 100).toFixed(2)}</strong> for <strong>${esc(data.run.label)}</strong>
-          (${row.entry.payType === 'HOURLY' ? `${row.entry.hours.toFixed(2)} hours` : row.entry.payType === 'PER_CLEAN' ? `${row.entry.jobCount} cleans` : `${row.entry.daysWorked} days`}${row.entry.tipCents > 0 ? `, including $${(row.entry.tipCents / 100).toFixed(2)} in tips` : ''}).</p>
+          (${esc(payEntrySummary(row.entry))}${row.entry.tipCents > 0 ? `, including $${(row.entry.tipCents / 100).toFixed(2)} in tips` : ''}).</p>
           <p style="color:#6b6b6b;font-size:13px;">— 3U3 Cleaning</p>
         </div>`,
       });
@@ -319,7 +403,7 @@ export async function voidPayrollRun(tenantId: string, runId: string): Promise<v
 export function payrollRunToCsv(rows: PayrollRunRow[]): string {
   const lines = ['Name,Pay type,Hours,Jobs,Days,Rate,Pay,Tips,Total'];
   for (const r of rows) {
-    const rate = (r.entry.rateCents / 100).toFixed(2);
+    const rate = r.entry.payType === 'PERCENTAGE' ? `${((r.entry.ratePercentBps ?? 0) / 100).toFixed(2)}%` : (r.entry.rateCents / 100).toFixed(2);
     const pay = (r.entry.payCents / 100).toFixed(2);
     const tips = (r.entry.tipCents / 100).toFixed(2);
     const total = ((r.entry.payCents + r.entry.tipCents) / 100).toFixed(2);

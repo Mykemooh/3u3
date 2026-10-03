@@ -7,12 +7,15 @@ const schema = z.object({
   // null = take them off every team ("Unassigned").
   crewId: z.string().min(1).nullable().optional(),
   staffRole: z.enum(['TEAM_LEAD', 'CLEANER', 'JR_CLEANER']).optional(),
-  payType: z.enum(['HOURLY', 'PER_CLEAN', 'DAY_RATE']).optional(),
+  payType: z.enum(['HOURLY', 'PER_CLEAN', 'DAY_RATE', 'PERCENTAGE']).optional(),
   // Dollars, as typed in the admin UI; null clears that rate. Stored as
   // cents (lib/payroll.ts reads the *_Cents* columns directly).
   payRatePerHour: z.number().nonnegative().nullable().optional(),
   payRatePerClean: z.number().nonnegative().nullable().optional(),
   payRatePerDay: z.number().nonnegative().nullable().optional(),
+  // A plain percent as typed ("15" or "15.5"), null clears it. Stored as
+  // basis points (lib/payroll.ts reads payRatePercentBps directly).
+  payRatePercent: z.number().nonnegative().max(100).nullable().optional(),
 });
 
 // Drag an employee card to another team, change their role, or set their
@@ -26,11 +29,13 @@ export async function PATCH(req: Request, { params }: { params: { userId: string
     if (parsed.data.crewId !== undefined) await moveEmployee(tenantId, params.userId, parsed.data.crewId);
     if (parsed.data.staffRole) await setStaffRole(tenantId, params.userId, parsed.data.staffRole);
     const toCents = (v: number | null | undefined) => (v === undefined ? undefined : v == null ? null : Math.round(v * 100));
+    const toBps = (v: number | null | undefined) => (v === undefined ? undefined : v == null ? null : Math.round(v * 100));
     await setPayRates(tenantId, params.userId, {
       payType: parsed.data.payType,
       payRateCentsPerHour: toCents(parsed.data.payRatePerHour),
       payRateCentsPerClean: toCents(parsed.data.payRatePerClean),
       payRateCentsPerDay: toCents(parsed.data.payRatePerDay),
+      payRatePercentBps: toBps(parsed.data.payRatePercent),
     });
     return NextResponse.json({ ok: true });
   } catch (err) {

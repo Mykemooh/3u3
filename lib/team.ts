@@ -102,10 +102,11 @@ export async function setPayRates(
   tenantId: string,
   userId: string,
   input: {
-    payType?: 'HOURLY' | 'PER_CLEAN' | 'DAY_RATE';
+    payType?: 'HOURLY' | 'PER_CLEAN' | 'DAY_RATE' | 'PERCENTAGE';
     payRateCentsPerHour?: number | null;
     payRateCentsPerClean?: number | null;
     payRateCentsPerDay?: number | null;
+    payRatePercentBps?: number | null;
   },
 ) {
   await requireEmployee(tenantId, userId);
@@ -114,6 +115,7 @@ export async function setPayRates(
   if (input.payRateCentsPerHour !== undefined) set.payRateCentsPerHour = input.payRateCentsPerHour;
   if (input.payRateCentsPerClean !== undefined) set.payRateCentsPerClean = input.payRateCentsPerClean;
   if (input.payRateCentsPerDay !== undefined) set.payRateCentsPerDay = input.payRateCentsPerDay;
+  if (input.payRatePercentBps !== undefined) set.payRatePercentBps = input.payRatePercentBps;
   if (Object.keys(set).length === 0) return;
   await db.update(users).set(set).where(eq(users.id, userId));
 }

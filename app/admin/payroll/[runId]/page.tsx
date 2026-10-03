@@ -56,7 +56,9 @@ export default async function PayrollRunDetail({ params }: { params: { runId: st
                 <td className="py-3 text-right tabular-nums">{r.entry.hours.toFixed(2)}</td>
                 <td className="py-3 text-right tabular-nums">{r.entry.jobCount}</td>
                 <td className="py-3 text-right tabular-nums">{r.entry.daysWorked}</td>
-                <td className="py-3 text-right tabular-nums">{formatMoney(r.entry.rateCents)}</td>
+                <td className="py-3 text-right tabular-nums">
+                  {r.entry.payType === 'PERCENTAGE' ? `${((r.entry.ratePercentBps ?? 0) / 100).toFixed(2)}%` : formatMoney(r.entry.rateCents)}
+                </td>
                 <td className="py-3 text-right tabular-nums">{formatMoney(r.entry.payCents)}</td>
                 <td className="py-3 text-right tabular-nums">{r.entry.tipCents > 0 ? formatMoney(r.entry.tipCents) : '—'}</td>
                 <td className="py-3 text-right tabular-nums font-semibold">{formatMoney(r.entry.payCents + r.entry.tipCents)}</td>

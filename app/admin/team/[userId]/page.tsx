@@ -84,6 +84,7 @@ export default async function EmployeePage({ params, searchParams }: { params: {
               hourly: fullUser?.payRateCentsPerHour ?? null,
               perClean: fullUser?.payRateCentsPerClean ?? null,
               perDay: fullUser?.payRateCentsPerDay ?? null,
+              percentBps: fullUser?.payRatePercentBps ?? null,
             }}
           />
         </div>

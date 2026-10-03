@@ -30,6 +30,7 @@ const NAV = [
   { href: '/admin/notifications', label: 'Notifications' },
   { href: '/admin/payroll', label: 'Payroll' },
   { href: '/admin/integrations', label: 'Integrations' },
+  { href: '/admin/settings', label: 'Settings' },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

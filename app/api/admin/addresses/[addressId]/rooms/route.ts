@@ -8,6 +8,7 @@ import { addresses, users } from '@/db/schema';
 const schema = z.object({
   bedrooms: z.number().int().min(1).max(20).nullable().optional(),
   bathrooms: z.number().int().min(1).max(20).nullable().optional(),
+  targetCleanMinutes: z.number().int().min(15).max(600).nullable().optional(),
 });
 
 export async function PATCH(req: Request, { params }: { params: { addressId: string } }) {
