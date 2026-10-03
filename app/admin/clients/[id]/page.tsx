@@ -11,6 +11,9 @@ import ClientInfoForm from '@/components/ClientInfoForm';
 import CloseClientButton from '@/components/CloseClientButton';
 import AddressForm from '@/components/AddressForm';
 import BookingCadencePriceEditor from '@/components/BookingCadencePriceEditor';
+import HomeProfileEditor from '@/components/HomeProfileEditor';
+import { getHomeProfile } from '@/lib/homeProfile';
+import { encryptionConfigured } from '@/lib/encryption';
 
 const ESTIMATE_STYLE: Record<string, string> = {
   DRAFT: 'bg-surface text-slate',
@@ -43,6 +46,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
     (a, b) => b.slotStart.localeCompare(a.slotStart),
   );
   const estimates = await getEstimatesForClient(client.id);
+  const homeProfile = primaryAddress ? await getHomeProfile(primaryAddress.id) : null;
 
   return (
     <div className="space-y-8">
@@ -86,6 +90,29 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
           </ul>
         )}
       </div>
+
+      {primaryAddress && (
+        <div className="card max-w-2xl">
+          <h2 className="mb-1 font-semibold text-ink">Home profile</h2>
+          <p className="mb-4 text-sm text-slate">
+            Pets, parking, allergies, do-not-touch items, an entry code, or room-specific notes — shown to the
+            crew automatically on every visit. Fill this in during the quote walkthrough, or anytime after.
+          </p>
+          <HomeProfileEditor
+            endpoint={`/api/admin/clients/${client.id}/home-profile`}
+            entryCodeConfigured={encryptionConfigured()}
+            initial={{
+              pets: homeProfile?.pets ?? null,
+              parkingNotes: homeProfile?.parkingNotes ?? null,
+              allergyNotes: homeProfile?.allergyNotes ?? null,
+              doNotTouch: homeProfile?.doNotTouch ?? null,
+              entryCode: homeProfile?.entryCode ?? null,
+              entryCodeSet: homeProfile?.entryCodeSet ?? false,
+              roomNotes: homeProfile?.roomNotes ?? [],
+            }}
+          />
+        </div>
+      )}
 
       <div className="card max-w-2xl">
         <div className="mb-4 flex items-center justify-between">

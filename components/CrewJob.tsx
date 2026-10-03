@@ -27,14 +27,26 @@ type JobStatus = 'PENDING' | 'EN_ROUTE' | 'IN_PROGRESS' | 'COMPLETE';
 
 type PhotoPolicy = { requireBeforePhoto: boolean; noPhotosNeeded: boolean };
 
+export type CrewHomeProfile = {
+  pets: string | null;
+  parkingNotes: string | null;
+  allergyNotes: string | null;
+  doNotTouch: string | null;
+  entryCode: string | null;
+  entryCodeSet: boolean;
+  roomNotes: { id: string; roomName: string; notes: string }[];
+};
+
 type Props = {
   job: { id: string; status: JobStatus; startedLabel: string | null; completedLabel: string | null; cleanerNotesAckAt: string | null } & PhotoPolicy;
   client: { name: string; phone: string | null };
   serviceLabel: string;
   whenLabel: string;
   addressLabel: string | null;
-  /** "Cleaner needs to know" — pets, gate codes, parking, anything the crew should see before they start (components/AddressForm.tsx sets it). */
+  /** The free-text "cleaner needs to know" catch-all (components/AddressForm.tsx sets it). */
   cleanerNotes: string | null;
+  /** The structured home profile — pets, parking, allergies, do-not-touch, entry code, room notes (components/HomeProfileEditor.tsx sets it). Null when there's nothing in it. */
+  homeProfile: CrewHomeProfile | null;
   items: CrewItem[];
   media: CrewMedia[];
   perPhase: number;
@@ -59,8 +71,9 @@ export default function CrewJob(props: Props) {
   const [showDirections, setShowDirections] = useState(false);
   const [addressCopied, setAddressCopied] = useState(false);
   const [notesAcknowledged, setNotesAcknowledged] = useState(!!props.job.cleanerNotesAckAt);
-  const hasCleanerNotes = !!props.cleanerNotes?.trim();
+  const hasCleanerNotes = !!props.cleanerNotes?.trim() || !!props.homeProfile;
   const notesBlockStart = hasCleanerNotes && !notesAcknowledged;
+  const [showEntryCode, setShowEntryCode] = useState(false);
   const [policy, setPolicy] = useState<PhotoPolicy>({
     requireBeforePhoto: props.job.requireBeforePhoto,
     noPhotosNeeded: props.job.noPhotosNeeded,
@@ -347,7 +360,58 @@ export default function CrewJob(props: Props) {
             <Icon d="M12 9v4m0 4h.01M10.3 3.9 2.7 17.5a1.5 1.5 0 0 0 1.3 2.3h16a1.5 1.5 0 0 0 1.3-2.3L13.7 3.9a1.5 1.5 0 0 0-2.6 0Z" />
             <h2 className="font-bold text-ink">Cleaner needs to know</h2>
           </div>
-          <p className="whitespace-pre-wrap text-sm text-ink">{props.cleanerNotes}</p>
+          {props.cleanerNotes && <p className="whitespace-pre-wrap text-sm text-ink">{props.cleanerNotes}</p>}
+          {props.homeProfile && (
+            <dl className="grid gap-2 text-sm sm:grid-cols-2">
+              {props.homeProfile.pets && (
+                <div>
+                  <dt className="font-semibold text-bronze">Pets</dt>
+                  <dd className="text-ink">{props.homeProfile.pets}</dd>
+                </div>
+              )}
+              {props.homeProfile.parkingNotes && (
+                <div>
+                  <dt className="font-semibold text-bronze">Parking</dt>
+                  <dd className="text-ink">{props.homeProfile.parkingNotes}</dd>
+                </div>
+              )}
+              {props.homeProfile.allergyNotes && (
+                <div>
+                  <dt className="font-semibold text-bronze">Product allergies</dt>
+                  <dd className="text-ink">{props.homeProfile.allergyNotes}</dd>
+                </div>
+              )}
+              {props.homeProfile.doNotTouch && (
+                <div>
+                  <dt className="font-semibold text-bronze">Do not touch</dt>
+                  <dd className="text-ink">{props.homeProfile.doNotTouch}</dd>
+                </div>
+              )}
+              {props.homeProfile.entryCodeSet && (
+                <div>
+                  <dt className="font-semibold text-bronze">Entry / alarm code</dt>
+                  <dd className="text-ink">
+                    {props.homeProfile.entryCode ? (
+                      <span className="inline-flex items-center gap-2">
+                        <span className="font-mono">{showEntryCode ? props.homeProfile.entryCode : '••••••'}</span>
+                        <button type="button" onClick={() => setShowEntryCode((v) => !v)} className="text-xs font-semibold text-bronze underline">
+                          {showEntryCode ? 'Hide' : 'Show'}
+                        </button>
+                      </span>
+                    ) : (
+                      <span className="text-muted">On file, but couldn't be decrypted — contact the office.</span>
+                    )}
+                  </dd>
+                </div>
+              )}
+              {props.homeProfile.roomNotes.map((n) => (
+                <div key={n.id}>
+                  <dt className="font-semibold text-bronze">{n.roomName}</dt>
+                  <dd className="text-ink">{n.notes}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
           {notStarted && (
             <label className="flex items-start gap-2 text-sm font-semibold text-bronze">
               <input

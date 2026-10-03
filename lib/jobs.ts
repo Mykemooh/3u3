@@ -127,7 +127,14 @@ export async function startJob(jobId: string, viewer: Viewer | null, acknowledge
   const address = booking?.addressId
     ? (await db.select().from(addresses).where(eq(addresses.id, booking.addressId)).limit(1))[0]
     : undefined;
-  const hasNotes = !!address?.notes?.trim();
+  const hasNotes = !!(
+    address?.notes?.trim() ||
+    address?.pets?.trim() ||
+    address?.parkingNotes?.trim() ||
+    address?.allergyNotes?.trim() ||
+    address?.doNotTouch?.trim() ||
+    address?.entryCodeEncrypted
+  );
   if (hasNotes && !acknowledgedNotes) {
     throw new JobError('Please review the cleaner notes for this address before starting.', 400);
   }

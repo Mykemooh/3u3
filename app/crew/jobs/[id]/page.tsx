@@ -9,6 +9,7 @@ import { formatSlotLabel } from '@/lib/scheduling';
 import { MEDIA_LIMITS } from '@/lib/storage';
 import AppShell, { CREW_TABS } from '@/components/app/AppShell';
 import CrewJob from '@/components/CrewJob';
+import { getHomeProfile, homeProfileHasContent } from '@/lib/homeProfile';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +26,9 @@ export default async function CrewJobPage({ params }: { params: { id: string } }
   const { job, booking, client, service, address, items, media } = data;
   const isLead = await canLead(viewer, job);
   const whenLabel = `${formatSlot(booking.slotStart).split(' · ')[0]} · ${formatSlotLabel(booking.slotStart, booking.slotEnd)}`;
+  // The viewer already passed canWorkJob above (assigned crew, or admin)
+  // — that's the authorization boundary for decrypting the entry code.
+  const homeProfile = address ? await getHomeProfile(address.id) : null;
 
   return (
     <AppShell name={session?.user?.name} tabs={CREW_TABS} homeHref={viewer.role === 'ADMIN' ? '/admin' : '/crew'}>
@@ -43,6 +47,19 @@ export default async function CrewJobPage({ params }: { params: { id: string } }
         whenLabel={whenLabel}
         addressLabel={address ? `${address.line1}, ${address.city}, ${address.state}${address.zip ? ` ${address.zip}` : ''}` : null}
         cleanerNotes={address?.notes ?? null}
+        homeProfile={
+          homeProfile && homeProfileHasContent(homeProfile)
+            ? {
+                pets: homeProfile.pets,
+                parkingNotes: homeProfile.parkingNotes,
+                allergyNotes: homeProfile.allergyNotes,
+                doNotTouch: homeProfile.doNotTouch,
+                entryCode: homeProfile.entryCode,
+                entryCodeSet: homeProfile.entryCodeSet,
+                roomNotes: homeProfile.roomNotes,
+              }
+            : null
+        }
         items={items.map((i) => ({ id: i.id, roomName: i.roomName, taskDetail: i.taskDetail, status: i.status, skipReason: i.skipReason }))}
         media={media.map((m) => ({ id: m.id, itemId: m.itemId, phase: m.phase, kind: m.kind, url: m.url }))}
         perPhase={MEDIA_LIMITS.perPhase}

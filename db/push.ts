@@ -468,11 +468,79 @@ async function main() {
     -- cleaning until they change it.
     ALTER TABLE users ADD COLUMN IF NOT EXISTS social_media_consent BOOLEAN;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS social_media_consent_at TIMESTAMPTZ;
-    -- Per-bedroom checklist items: a client's bedroom count (captured at
-    -- quote time, app/new) and which template item expands per-bedroom.
+    -- Per-room-count checklist items: a client's bedroom/bathroom counts
+    -- (captured at quote time, app/new, or by the admin during a
+    -- walkthrough) and which template item expands per-room. Supersedes
+    -- the earlier boolean-only "per_bedroom" column (never shipped to
+    -- main) with a general count_by so bathrooms work the same way.
     ALTER TABLE addresses ADD COLUMN IF NOT EXISTS bedrooms INTEGER;
-    ALTER TABLE checklist_template_items ADD COLUMN IF NOT EXISTS per_bedroom BOOLEAN NOT NULL DEFAULT false;
-    UPDATE checklist_template_items SET per_bedroom = true WHERE room_name = 'Bedrooms' AND per_bedroom = false;
+    ALTER TABLE addresses ADD COLUMN IF NOT EXISTS bathrooms INTEGER;
+    ALTER TABLE checklist_template_items ADD COLUMN IF NOT EXISTS count_by TEXT CHECK (count_by IN ('BEDROOMS','BATHROOMS'));
+    UPDATE checklist_template_items SET count_by = 'BEDROOMS' WHERE room_name = 'Bedrooms' AND count_by IS NULL;
+    UPDATE checklist_template_items SET count_by = 'BATHROOMS' WHERE room_name = 'Bathrooms' AND count_by IS NULL;
+    ALTER TABLE checklist_template_items DROP COLUMN IF EXISTS per_bedroom;
+
+    -- Structured home profile (lib/homeProfile.ts): pets, parking,
+    -- allergies, do-not-touch items, and an AES-256-GCM-encrypted entry/
+    -- alarm code — set by the client or by the admin during the quote
+    -- walkthrough (app/admin/leads/[id]/walkthrough), shown to the crew
+    -- on every visit alongside the existing free-text "notes".
+    ALTER TABLE addresses ADD COLUMN IF NOT EXISTS pets TEXT;
+    ALTER TABLE addresses ADD COLUMN IF NOT EXISTS parking_notes TEXT;
+    ALTER TABLE addresses ADD COLUMN IF NOT EXISTS allergy_notes TEXT;
+    ALTER TABLE addresses ADD COLUMN IF NOT EXISTS do_not_touch TEXT;
+    ALTER TABLE addresses ADD COLUMN IF NOT EXISTS entry_code_encrypted TEXT;
+
+    CREATE TABLE IF NOT EXISTS address_room_notes (
+      id TEXT PRIMARY KEY,
+      address_id TEXT NOT NULL REFERENCES addresses(id),
+      room_name TEXT NOT NULL,
+      notes TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    -- Tip wages in payroll (lib/payroll.ts): a tip is taxable compensation
+    -- for the employee, not a gift, so it gets its own reported line
+    -- alongside hourly/per-clean/day-rate pay, not folded silently into
+    -- it. tip_paid_out_cents tracks how much of an invoice's tip has
+    -- already been claimed by a payroll run, so a tip that arrives after
+    -- a job's hours were already paid out is still caught by the next run
+    -- and never paid out twice.
+    ALTER TABLE invoices ADD COLUMN IF NOT EXISTS tip_paid_out_cents INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE payroll_entries ADD COLUMN IF NOT EXISTS tip_cents INTEGER NOT NULL DEFAULT 0;
+
+    -- Add-on services (lib/addons.ts): a tenant-wide catalog, with
+    -- optional per-client pricing set during quote/client profile setup
+    -- (mirrors client_rates), and a snapshot of what was actually picked
+    -- and charged on each booking.
+    CREATE TABLE IF NOT EXISTS add_on_services (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      name TEXT NOT NULL,
+      description TEXT,
+      default_price_cents INTEGER NOT NULL,
+      active BOOLEAN NOT NULL DEFAULT true,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS client_add_on_rates (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id),
+      add_on_service_id TEXT NOT NULL REFERENCES add_on_services(id),
+      price_cents INTEGER NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS client_add_on_rates_unique ON client_add_on_rates(user_id, add_on_service_id);
+
+    CREATE TABLE IF NOT EXISTS booking_add_ons (
+      id TEXT PRIMARY KEY,
+      booking_id TEXT NOT NULL REFERENCES bookings(id),
+      add_on_service_id TEXT NOT NULL REFERENCES add_on_services(id),
+      name TEXT NOT NULL,
+      price_cents INTEGER NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
   `);
 
   console.log('Schema pushed to Postgres.');

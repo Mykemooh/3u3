@@ -104,17 +104,47 @@ export const addresses = pgTable('addresses', {
   state: text('state').notNull().default('TX'),
   zip: text('zip'),
   isPrimary: boolean('is_primary').notNull().default(true),
-  // "Cleaner needs to know" — pets, gate/lockbox codes, parking, anything
-  // the crew should see before they start. Client-editable from My
-  // Account; shown to the crew on the job and must be acknowledged
-  // before they can start (see jobs.cleanerNotesAckAt).
+  // "Cleaner needs to know" — the free-text catch-all a client can set
+  // themselves from My Account. The structured home-profile fields below
+  // are the same idea, broken into their own fields (mainly so the entry
+  // code can be encrypted on its own, and so the admin can fill each in
+  // separately during a quote walkthrough) — both are shown to the crew
+  // together and must be acknowledged before a job can start (see
+  // jobs.cleanerNotesAckAt).
   notes: text('notes'),
   // Captured during the quote process (app/new) or set later by the admin
-  // or client — drives how many "Bedroom N" entries a job's checklist gets
-  // (lib/bookings.ts createBooking, checklistTemplateItems.perBedroom).
-  // Null/1 keeps the single generic "Bedroom" item.
+  // or client — drives how many "Bedroom N" / "Bathroom N" entries a
+  // job's checklist gets (lib/bookings.ts createBooking,
+  // checklistTemplateItems.countBy). Null/1 keeps the plain singular name.
   bedrooms: integer('bedrooms'),
+  bathrooms: integer('bathrooms'),
+  // Structured home profile (lib/homeProfile.ts) — set by the client, or
+  // by the admin during the in-person quote walkthrough
+  // (app/admin/leads/[id]/walkthrough). Per-room notes live in their own
+  // table (addressRoomNotes) since there can be any number of them.
+  pets: text('pets'),
+  parkingNotes: text('parking_notes'),
+  allergyNotes: text('allergy_notes'),
+  doNotTouch: text('do_not_touch'),
+  // AES-256-GCM ciphertext (lib/encryption.ts) — the plaintext alarm/entry
+  // code is never stored, logged, or sent anywhere unencrypted; it's
+  // decrypted only server-side, only for an admin or a crew member
+  // actually assigned to a job at this address, only to render it on that
+  // job's own page.
+  entryCodeEncrypted: text('entry_code_encrypted'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdate(() => new Date()),
+  ...timestamps,
+});
+
+// Per-room notes on a home profile — "in the primary bedroom, the rug is
+// an heirloom, vacuum only" — any number per address, each tied to a room
+// name the admin or client typed in (not the checklist's own room list,
+// since a home profile note can exist before a checklist ever has rooms).
+export const addressRoomNotes = pgTable('address_room_notes', {
+  id: id(),
+  addressId: text('address_id').notNull().references(() => addresses.id),
+  roomName: text('room_name').notNull(),
+  notes: text('notes').notNull(),
   ...timestamps,
 });
 
@@ -198,12 +228,14 @@ export const checklistTemplateItems = pgTable('checklist_template_items', {
   roomName: text('room_name').notNull(),
   taskDetail: text('task_detail'),
   sortOrder: integer('sort_order').notNull().default(0),
-  // When true (the seeded "Bedrooms" row), lib/bookings.ts createBooking
-  // expands this one template item into one job checklist item per actual
-  // bedroom at the client's address ("Bedroom 1", "Bedroom 2", ...) instead
-  // of a single generic entry — each gets its own before/after photos like
-  // any other room.
-  perBedroom: boolean('per_bedroom').notNull().default(false),
+  // When set (the seeded "Bedrooms"/"Bathrooms" rows), lib/bookings.ts
+  // createBooking expands this one template item into one job checklist
+  // item per actual room of that kind at the client's address
+  // ("Bedroom 1", "Bedroom 2", ... / "Bathroom 1", "Bathroom 2", ...)
+  // instead of a single generic entry — each gets its own before/after
+  // photos like any other room. Null for every other room, which passes
+  // through unchanged.
+  countBy: text('count_by', { enum: ['BEDROOMS', 'BATHROOMS'] }),
   ...timestamps,
 });
 
@@ -426,6 +458,11 @@ export const invoices = pgTable('invoices', {
   // already finalized at a fixed amount by the time a tip is possible) —
   // see lib/tips.ts. Counted into nothing else; purely additive.
   tipCents: integer('tip_cents').notNull().default(0),
+  // How much of tipCents has already been claimed by a payroll run
+  // (lib/payroll.ts) and paid out to the crew as reported tip wages —
+  // never the whole tipCents at once if a tip arrives in installments or
+  // after an earlier run already processed this job's hours.
+  tipPaidOutCents: integer('tip_paid_out_cents').notNull().default(0),
   // Whether this invoice was paid by autopay (client.autopayEnabled) vs.
   // the usual emailed pay-link, purely informational for the admin.
   autopayCharged: boolean('autopay_charged').notNull().default(false),
@@ -531,6 +568,12 @@ export const payrollEntries = pgTable('payroll_entries', {
   jobCount: integer('job_count').notNull().default(0),
   daysWorked: integer('days_worked').notNull().default(0),
   payCents: integer('pay_cents').notNull(),
+  // Tip wages earned on jobs in this run — a separate reported-wages line,
+  // never folded into payCents: a customer tip is taxable compensation
+  // for the employee (IRS Topic 761), not a gift, and needs its own line
+  // so it's taxed and reported the same way the rest of their pay is.
+  // Split evenly across whoever was staffed on each tipped job.
+  tipCents: integer('tip_cents').notNull().default(0),
   ...timestamps,
 });
 
@@ -573,3 +616,42 @@ export const standbyRequests = pgTable('standby_requests', {
 }, (t) => ({
   offerTokenUnique: uniqueIndex('standby_requests_offer_token_unique').on(t.offerToken),
 }));
+
+// ---------------------------------------------------------------------------
+// Add-on services (lib/addons.ts) — "Want to add a service for this
+// clean?" on the booking wizard: a non-mandatory, tenant-wide catalog
+// (admin-managed), with optional per-client pricing set during quote/
+// client profile setup — mirrors clientRates exactly, just for add-ons
+// instead of the base service. What a client actually picked is snapshot
+// onto bookingAddOns (name + price at booking time), the same reasoning
+// invoiceItems snapshots a description rather than re-deriving it later.
+// ---------------------------------------------------------------------------
+export const addOnServices = pgTable('add_on_services', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  name: text('name').notNull(),
+  description: text('description'),
+  defaultPriceCents: integer('default_price_cents').notNull(),
+  active: boolean('active').notNull().default(true),
+  sortOrder: integer('sort_order').notNull().default(0),
+  ...timestamps,
+});
+
+export const clientAddOnRates = pgTable('client_add_on_rates', {
+  id: id(),
+  userId: text('user_id').notNull().references(() => users.id),
+  addOnServiceId: text('add_on_service_id').notNull().references(() => addOnServices.id),
+  priceCents: integer('price_cents').notNull(),
+  ...timestamps,
+}, (t) => ({
+  clientAddOnUnique: uniqueIndex('client_add_on_rates_unique').on(t.userId, t.addOnServiceId),
+}));
+
+export const bookingAddOns = pgTable('booking_add_ons', {
+  id: id(),
+  bookingId: text('booking_id').notNull().references(() => bookings.id),
+  addOnServiceId: text('add_on_service_id').notNull().references(() => addOnServices.id),
+  name: text('name').notNull(),
+  priceCents: integer('price_cents').notNull(),
+  ...timestamps,
+});

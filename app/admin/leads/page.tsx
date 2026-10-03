@@ -104,6 +104,9 @@ export default async function AdminLeads() {
                     View client
                   </Link>
                 )}
+                <Link href={`/admin/leads/${lead.id}/walkthrough`} className="text-sm font-semibold text-bronze hover:underline">
+                  Walk this home →
+                </Link>
                 {client &&
                   (estimate ? (
                     <Link

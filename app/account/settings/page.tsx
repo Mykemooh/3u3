@@ -15,6 +15,9 @@ import PaymentMethodCard from '@/components/PaymentMethodCard';
 import NotificationPreferences from '@/components/NotificationPreferences';
 import PendingInvoices from '@/components/account/PendingInvoices';
 import PaymentHistoryByMonth from '@/components/account/PaymentHistoryByMonth';
+import HomeProfileEditor from '@/components/HomeProfileEditor';
+import { getHomeProfile } from '@/lib/homeProfile';
+import { encryptionConfigured } from '@/lib/encryption';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,6 +42,7 @@ export default async function AccountSettings() {
   const primaryAddress = addresses.find((a) => a.isPrimary) ?? addresses[0];
   const pending = pendingInvoicesFor(accountBookings);
   const paymentMonths = paymentHistoryByMonth(accountBookings);
+  const homeProfile = primaryAddress ? await getHomeProfile(primaryAddress.id) : null;
 
   return (
     <div className="space-y-6">
@@ -80,6 +84,29 @@ export default async function AccountSettings() {
           </div>
         </div>
       </section>
+
+      {primaryAddress && (
+        <section className="card">
+          <h2 className="mb-1 text-lg font-bold text-ink">Home profile</h2>
+          <p className="mb-4 text-sm text-slate">
+            Pets, parking, allergies, anything the crew shouldn't touch, an entry code, or notes for a specific
+            room — shown to the crew automatically on every visit.
+          </p>
+          <HomeProfileEditor
+            endpoint="/api/account/home-profile"
+            entryCodeConfigured={encryptionConfigured()}
+            initial={{
+              pets: homeProfile?.pets ?? null,
+              parkingNotes: homeProfile?.parkingNotes ?? null,
+              allergyNotes: homeProfile?.allergyNotes ?? null,
+              doNotTouch: homeProfile?.doNotTouch ?? null,
+              entryCode: homeProfile?.entryCode ?? null,
+              entryCodeSet: homeProfile?.entryCodeSet ?? false,
+              roomNotes: homeProfile?.roomNotes ?? [],
+            }}
+          />
+        </section>
+      )}
 
       <section className="card space-y-6">
         <h2 className="text-lg font-bold text-ink">Payment</h2>

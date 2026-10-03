@@ -113,7 +113,7 @@ async function main() {
           roomName: item.room,
           taskDetail: item.detail,
           sortOrder: idx,
-          perBedroom: item.room === 'Bedrooms',
+          countBy: item.room === 'Bedrooms' ? 'BEDROOMS' : item.room === 'Bathrooms' ? 'BATHROOMS' : null,
         });
       }
     }
