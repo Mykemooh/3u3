@@ -1,11 +1,14 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import JourneyRail from '@/components/app/JourneyRail';
 import { uploadMedia, type Kind, type Phase } from '@/lib/clientUpload';
 import { useLocationReporter, currentPosition } from '@/lib/useLocationReporter';
+import { useOfflineSync, registerCrewServiceWorker, isNetworkError } from '@/lib/offlineSync';
+import { enqueueAction, removePendingAction, offlineQueueSupported } from '@/lib/offlineQueue';
+import OfflineBanner from '@/components/crew/OfflineBanner';
 
 export type CrewMedia = {
   id: string;
@@ -113,6 +116,40 @@ export default function CrewJob(props: Props) {
     setItems((prev) => prev.map((i) => (i.id === updated.id ? { ...i, status: updated.status, skipReason: updated.skipReason } : i)));
   }
 
+  // Offline support: when a mutation can't reach the network, it's
+  // queued in IndexedDB (lib/offlineQueue.ts) instead of failing, the UI
+  // updates optimistically so the crew can keep working, and the queue
+  // replays itself — in order — the moment the browser comes back
+  // online (lib/offlineSync.ts). Registering the service worker here
+  // (once per job page) is what lets this page itself keep loading with
+  // no signal, not just its data mutations.
+  useEffect(() => {
+    registerCrewServiceWorker();
+  }, []);
+
+  const offline = useOfflineSync(props.job.id, {
+    onChecklistSynced: (_itemId, item) => applyItem(item),
+    onMediaSynced: (data) => {
+      if (data.media) setMedia((m) => [...m.filter((x) => !x.id.startsWith('pending:')), data.media]);
+      applyItem(data.item);
+    },
+    onJobStatusSynced: (action, data) => {
+      if (action === 'start') {
+        setStatus('IN_PROGRESS');
+        setStartedLabel(new Date(data.startedAt ?? Date.now()).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }));
+      } else if (action === 'en-route') {
+        setStatus('EN_ROUTE');
+      } else if (action === 'complete') {
+        setStatus('COMPLETE');
+        setFinished({ invoiceId: data.invoiceId ?? null });
+      }
+    },
+    onActionFailed: (action, message) => {
+      if (action.kind === 'MEDIA') setMedia((m) => m.filter((x) => x.id !== `pending:${action.id}`));
+      setError(message);
+    },
+  });
+
   // Leaving for the job: EN_ROUTE, and the client is emailed that the crew
   // is on the way. The phone's position goes with it (if it gives one in a
   // few seconds) so that email can carry an ETA.
@@ -120,33 +157,52 @@ export default function CrewJob(props: Props) {
     setBusy('drive');
     setError('');
     const at = await currentPosition();
-    const res = await fetch(`/api/crew/jobs/${props.job.id}/en-route`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(at ?? {}),
-    });
-    const data = await res.json().catch(() => ({}));
-    setBusy(null);
-    if (!res.ok) return setError(data.error || 'Could not start driving.');
-    setStatus('EN_ROUTE');
+    const body = at ?? {};
+    try {
+      const res = await fetch(`/api/crew/jobs/${props.job.id}/en-route`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      setBusy(null);
+      if (!res.ok) return setError(data.error || 'Could not start driving.');
+      setStatus('EN_ROUTE');
+    } catch (err) {
+      setBusy(null);
+      if (!isNetworkError(err) || !offlineQueueSupported()) return setError('Could not start driving.');
+      await enqueueAction({ kind: 'JOB_STATUS', jobId: props.job.id, action: 'en-route', body });
+      offline.refreshPendingCount();
+      setStatus('EN_ROUTE');
+    }
   }
 
   async function start() {
     if (notesBlockStart) return setError('Please review the cleaner notes below first.');
     setBusy('start');
     setError('');
-    const res = await fetch(`/api/crew/jobs/${props.job.id}/start`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ acknowledgedNotes: notesAcknowledged }),
-    });
-    const data = await res.json().catch(() => ({}));
-    setBusy(null);
-    if (!res.ok) return setError(data.error || 'Could not start the job.');
-    setStatus('IN_PROGRESS');
-    setStartedLabel(
-      new Date(data.startedAt ?? Date.now()).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-    );
+    const body = { acknowledgedNotes: notesAcknowledged };
+    try {
+      const res = await fetch(`/api/crew/jobs/${props.job.id}/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      setBusy(null);
+      if (!res.ok) return setError(data.error || 'Could not start the job.');
+      setStatus('IN_PROGRESS');
+      setStartedLabel(
+        new Date(data.startedAt ?? Date.now()).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      );
+    } catch (err) {
+      setBusy(null);
+      if (!isNetworkError(err) || !offlineQueueSupported()) return setError('Could not start the job.');
+      await enqueueAction({ kind: 'JOB_STATUS', jobId: props.job.id, action: 'start', body });
+      offline.refreshPendingCount();
+      setStatus('IN_PROGRESS');
+      setStartedLabel(new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }));
+    }
   }
 
   async function add(itemId: string, phase: Phase, kind: Kind, files: FileList | null) {
@@ -167,7 +223,27 @@ export default function CrewJob(props: Props) {
         if (data.media) setMedia((m) => [...m, data.media]);
         applyItem(data.item);
       } catch (err) {
-        setError((err as Error).message);
+        if (isNetworkError(err) && offlineQueueSupported()) {
+          // No signal right now — keep the file itself (not just a
+          // reference to it) in IndexedDB so it survives even if the
+          // tab is closed before the connection comes back, and show
+          // the real photo/video immediately via a local preview URL so
+          // the crew can see it was actually captured.
+          const queued = await enqueueAction({
+            kind: 'MEDIA',
+            jobId: props.job.id,
+            itemId,
+            phase,
+            mediaKind: kind,
+            fileBlob: file,
+            fileName: file.name,
+            fileType: file.type,
+          });
+          setMedia((m) => [...m, { id: `pending:${queued.id}`, itemId, phase, kind, url: URL.createObjectURL(file) }]);
+          offline.refreshPendingCount();
+        } else {
+          setError((err as Error).message);
+        }
       } finally {
         setUploads((u) => u.filter((x) => x.key !== key));
       }
@@ -176,6 +252,13 @@ export default function CrewJob(props: Props) {
 
   async function remove(m: CrewMedia) {
     if (!confirm(`Remove this ${m.kind === 'VIDEO' ? 'video' : 'photo'}?`)) return;
+    if (m.id.startsWith('pending:')) {
+      // Still queued, not yet uploaded anywhere — just drop it locally.
+      await removePendingAction(m.id.slice('pending:'.length));
+      setMedia((all) => all.filter((x) => x.id !== m.id));
+      offline.refreshPendingCount();
+      return;
+    }
     const res = await fetch(`/api/crew/jobs/${props.job.id}/media/${m.id}`, { method: 'DELETE' });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return setError(data.error || 'Could not remove it.');
@@ -199,35 +282,63 @@ export default function CrewJob(props: Props) {
   }
 
   async function markDone(itemId: string, done: boolean) {
+    const action = done ? 'done' : 'undone';
     const form = new FormData();
-    form.append('kind', done ? 'done' : 'undone');
-    const res = await fetch(`/api/crew/jobs/${props.job.id}/items/${itemId}`, { method: 'POST', body: form });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) return setError(data.error || 'Could not update the room.');
-    applyItem(data.item);
+    form.append('kind', action);
+    try {
+      const res = await fetch(`/api/crew/jobs/${props.job.id}/items/${itemId}`, { method: 'POST', body: form });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return setError(data.error || 'Could not update the room.');
+      applyItem(data.item);
+    } catch (err) {
+      if (!isNetworkError(err) || !offlineQueueSupported()) return setError('Could not update the room.');
+      await enqueueAction({ kind: 'CHECKLIST', jobId: props.job.id, itemId, action });
+      offline.refreshPendingCount();
+      setItems((prev) => prev.map((i) => (i.id === itemId ? { ...i, status: done ? 'COMPLETE' : 'PENDING' } : i)));
+    }
   }
 
   async function skip(itemId: string, reason: string | null) {
+    const action = reason ? 'skip' : 'unskip';
     const form = new FormData();
-    form.append('kind', reason ? 'skip' : 'unskip');
+    form.append('kind', action);
     if (reason) form.append('skipReason', reason);
-    const res = await fetch(`/api/crew/jobs/${props.job.id}/items/${itemId}`, { method: 'POST', body: form });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) return setError(data.error || 'Could not update the room.');
-    applyItem(data.item);
+    try {
+      const res = await fetch(`/api/crew/jobs/${props.job.id}/items/${itemId}`, { method: 'POST', body: form });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return setError(data.error || 'Could not update the room.');
+      applyItem(data.item);
+    } catch (err) {
+      if (!isNetworkError(err) || !offlineQueueSupported()) return setError('Could not update the room.');
+      await enqueueAction({ kind: 'CHECKLIST', jobId: props.job.id, itemId, action, skipReason: reason ?? undefined });
+      offline.refreshPendingCount();
+      setItems((prev) => prev.map((i) => (i.id === itemId ? { ...i, status: reason ? 'SKIPPED' : 'PENDING', skipReason: reason } : i)));
+    }
   }
 
   async function finish() {
     setBusy('finish');
     setError('');
-    const res = await fetch(`/api/crew/jobs/${props.job.id}/complete`, { method: 'POST' });
-    const data = await res.json().catch(() => ({}));
-    setBusy(null);
-    if (!res.ok) return setError(data.error || 'Could not finish the job.');
-    setStatus('COMPLETE');
-    setFinished({ invoiceId: data.invoiceId ?? null });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    router.refresh();
+    try {
+      const res = await fetch(`/api/crew/jobs/${props.job.id}/complete`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      setBusy(null);
+      if (!res.ok) return setError(data.error || 'Could not finish the job.');
+      setStatus('COMPLETE');
+      setFinished({ invoiceId: data.invoiceId ?? null });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      router.refresh();
+    } catch (err) {
+      setBusy(null);
+      if (!isNetworkError(err) || !offlineQueueSupported()) return setError('Could not finish the job.');
+      // Queued behind any not-yet-synced room/photo updates, so it only
+      // actually completes on the server once those land first.
+      await enqueueAction({ kind: 'JOB_STATUS', jobId: props.job.id, action: 'complete', body: {} });
+      offline.refreshPendingCount();
+      setStatus('COMPLETE');
+      setFinished({ invoiceId: null });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   }
 
   const address = props.addressLabel;
@@ -255,6 +366,8 @@ export default function CrewJob(props: Props) {
       <Link href="/crew" className="inline-flex items-center gap-1 text-sm font-semibold text-muted hover:text-ink">
         <span aria-hidden="true">←</span> All jobs
       </Link>
+
+      <OfflineBanner isOnline={offline.isOnline} pendingCount={offline.pendingCount} syncing={offline.syncing} onSyncNow={offline.flush} />
 
       {/* Who, where, when — with the three things a crew does from the driveway. */}
       <section className="card space-y-4">

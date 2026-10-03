@@ -11,6 +11,7 @@ import { jobIdsForEmployee } from '@/lib/team';
 import { businessTodayISO } from '@/lib/time';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 import AppShell, { CREW_TABS } from '@/components/app/AppShell';
+import ServiceWorkerRegistrar from '@/components/crew/ServiceWorkerRegistrar';
 
 // Reads the signed-in cleaner's own jobs — live data, per-session.
 export const dynamic = 'force-dynamic';
@@ -88,6 +89,7 @@ export default async function CrewHome() {
 
   return (
     <AppShell name={session.user.name} tabs={CREW_TABS} homeHref={role === 'ADMIN' ? '/admin' : '/crew'}>
+      {role === 'CLEANER' && <ServiceWorkerRegistrar />}
       <div className="space-y-8">
         <div className="flex items-start justify-between gap-4">
           <div>
