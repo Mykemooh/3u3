@@ -6,6 +6,10 @@ import { signOutLink, homeForRole } from '@/lib/nav';
 import SignOutButton from '@/components/SignOutButton';
 import Logo from '@/components/Logo';
 import AccessNotice from '@/components/AccessNotice';
+import { db } from '@/db/client';
+import { tenants } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+import { isPlatformAccessActive } from '@/lib/platform';
 
 // Every admin page reads live operational data (bookings, leads, rates,
 // crew). Setting this here cascades to all nested /admin pages, so none of
@@ -33,6 +37,7 @@ const NAV = [
   { href: '/admin/payroll', label: 'Payroll' },
   { href: '/admin/integrations', label: 'Integrations' },
   { href: '/admin/settings', label: 'Settings' },
+  { href: '/billing', label: 'Billing' },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -44,8 +49,33 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // Keeping it here means a middleware that fails open still can't let
   // anyone into the admin.
   const role = (session?.user as { role?: string } | undefined)?.role;
+  const tenantId = (session?.user as { tenantId?: string } | undefined)?.tenantId;
   if (!session?.user) redirect('/signin?next=/admin');
   if (role !== 'ADMIN') redirect(`${homeForRole(role)}?denied=1`);
+
+  // Platform access gate (lib/platform.ts) — a lapsed trial, promo code,
+  // or subscription locks the admin's own tools, not their customers'
+  // live booking/account pages, so a billing hiccup never strands a
+  // client mid-visit. Billing itself lives outside this layout
+  // (app/billing) specifically so it's never the thing this gate blocks.
+  const tenant = tenantId ? (await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1))[0] : undefined;
+  if (tenant && !isPlatformAccessActive(tenant)) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-white px-6">
+        <div className="card max-w-sm text-center">
+          <p className="mb-2 text-2xl">🔒</p>
+          <h1 className="mb-2 text-lg font-bold text-ink">Your platform access has lapsed</h1>
+          <p className="mb-5 text-sm text-slate">
+            Your free trial or subscription has ended. Renew or redeem a code to get back into your admin tools —
+            your clients can still book and view their account in the meantime.
+          </p>
+          <Link href="/billing" className="btn-primary w-full">
+            Go to Billing
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">

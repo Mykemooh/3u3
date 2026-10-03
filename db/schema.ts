@@ -6,9 +6,16 @@ const timestamps = {
 };
 
 // ---------------------------------------------------------------------------
-// Tenant (business) — V1 has exactly one row (3U3 Cleaning), but every
-// customer-facing / operational entity is scoped to a tenant so the app is
-// white-label-ready per PRD section 6.8.
+// Tenant (business) — originally a single row (3U3 Cleaning itself); now
+// a real multi-tenant platform (lib/platform.ts, lib/tenantProvisioning.ts):
+// a SUPER_ADMIN (platform owner, not a tenant's own ADMIN) creates a new
+// company's tenant row from Admin → Platform, which provisions its whole
+// starting stack (service types, checklist templates, a default crew, its
+// first ADMIN user) the same way db/seed.ts always has for this one.
+//
+// One special row — isPlatform true — isn't a real cleaning business at
+// all; it's just a home for SUPER_ADMIN users, who aren't scoped to any
+// one tenant's operations.
 // ---------------------------------------------------------------------------
 export const tenants = pgTable('tenants', {
   id: id(),
@@ -18,7 +25,26 @@ export const tenants = pgTable('tenants', {
   inkColor: text('ink_color').notNull().default('#0B1F3B'),
   bronzeColor: text('bronze_color').notNull().default('#1D4ED8'),
   creamColor: text('cream_color').notNull().default('#EFF6FF'),
+  logoUrl: text('logo_url'),
   serviceAreaRadiusMiles: integer('service_area_radius_miles').notNull().default(25),
+  // Which subdomain (slug.<platform base domain>) or fully custom domain
+  // resolves to this tenant for a signed-out visitor (lib/tenantResolution.ts)
+  // — a signed-in user's own session.tenantId always wins over either.
+  slug: text('slug').notNull(),
+  customDomain: text('custom_domain'),
+  // Marks the one non-business row SUPER_ADMIN users live under — never
+  // shown in any company list, never billed, never access-gated.
+  isPlatform: boolean('is_platform').notNull().default(false),
+  // Platform billing (what this COMPANY pays 3U3 for platform access —
+  // unrelated to anything this company bills its own clients). TRIALING/
+  // ACTIVE with accessExpiresAt null means unlimited (a paid subscription
+  // in good standing, or a "forever" promo code); a non-null
+  // accessExpiresAt in the past means access has lapsed — see
+  // lib/platform.ts isPlatformAccessActive, enforced in app/admin/layout.tsx.
+  planStatus: text('plan_status', { enum: ['TRIALING', 'ACTIVE', 'PAST_DUE', 'CANCELED'] }).notNull().default('TRIALING'),
+  accessExpiresAt: timestamp('access_expires_at', { withTimezone: true }),
+  platformStripeCustomerId: text('platform_stripe_customer_id'),
+  platformStripeSubscriptionId: text('platform_stripe_subscription_id'),
   // Payroll behavior the admin controls rather than the code deciding for
   // them (Admin → Settings) — each defaults to the option that matches
   // what the app already did before these existed, so adding them never
@@ -35,7 +61,10 @@ export const tenants = pgTable('tenants', {
   hourlyPayModel: text('hourly_pay_model', { enum: ['ACTUAL_TIME', 'TARGET_TIME'] }).notNull().default('ACTUAL_TIME'),
   tipSplitMethod: text('tip_split_method', { enum: ['EVEN', 'BY_HOURS'] }).notNull().default('EVEN'),
   ...timestamps,
-});
+}, (t) => ({
+  slugUnique: uniqueIndex('tenants_slug_unique').on(t.slug),
+  customDomainUnique: uniqueIndex('tenants_custom_domain_unique').on(t.customDomain),
+}));
 
 // ---------------------------------------------------------------------------
 // Users — one table for customers, cleaners, and admins, distinguished by
@@ -45,7 +74,9 @@ export const tenants = pgTable('tenants', {
 export const users = pgTable('users', {
   id: id(),
   tenantId: text('tenant_id').notNull().references(() => tenants.id),
-  role: text('role', { enum: ['CUSTOMER', 'CLEANER', 'ADMIN'] }).notNull(),
+  // SUPER_ADMIN is the platform owner (Admin → Platform) — distinct from
+  // a tenant's own ADMIN, which only ever manages its own company.
+  role: text('role', { enum: ['CUSTOMER', 'CLEANER', 'ADMIN', 'SUPER_ADMIN'] }).notNull(),
   // Job title for CLEANER users. A Team Lead is the one who starts the
   // trip and finishes the job (lib/team.ts canLeadJob); the others open
   // jobs and document rooms. Null for customers and admins.
@@ -749,3 +780,36 @@ export const supplyReports = pgTable('supply_reports', {
   resolvedAt: timestamp('resolved_at', { withTimezone: true }),
   ...timestamps,
 });
+
+// ---------------------------------------------------------------------------
+// Platform promo codes (lib/platform.ts) — SUPER_ADMIN-managed codes a new
+// company can redeem for free platform access instead of paying: a fixed
+// trial length (1 or 3 months) or FOREVER (never expires). Each code can
+// cap how many different companies may redeem it; a given company can
+// never redeem the same code twice (promoCodeRedemptions' unique index).
+// ---------------------------------------------------------------------------
+export const promoCodes = pgTable('promo_codes', {
+  id: id(),
+  code: text('code').notNull(),
+  tier: text('tier', { enum: ['TRIAL_1MO', 'TRIAL_3MO', 'FOREVER'] }).notNull(),
+  // Redundant with `tier` but kept explicit rather than re-deriving it at
+  // redemption time, so changing what "1 month" means later never
+  // silently reinterprets an already-issued code.
+  durationDays: integer('duration_days'),
+  maxRedemptions: integer('max_redemptions'),
+  redemptionCount: integer('redemption_count').notNull().default(0),
+  active: boolean('active').notNull().default(true),
+  createdByUserId: text('created_by_user_id').notNull().references(() => users.id),
+  ...timestamps,
+}, (t) => ({
+  codeUnique: uniqueIndex('promo_codes_code_unique').on(t.code),
+}));
+
+export const promoCodeRedemptions = pgTable('promo_code_redemptions', {
+  id: id(),
+  promoCodeId: text('promo_code_id').notNull().references(() => promoCodes.id),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  redeemedAt: timestamp('redeemed_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  oncePerTenant: uniqueIndex('promo_code_redemptions_unique').on(t.promoCodeId, t.tenantId),
+}));

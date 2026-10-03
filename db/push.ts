@@ -615,6 +615,56 @@ async function main() {
       resolved_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+
+    -- Multi-tenant platform (lib/platform.ts, lib/tenantProvisioning.ts):
+    -- SUPER_ADMIN, separate from a tenant's own ADMIN.
+    ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
+    ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('CUSTOMER','CLEANER','ADMIN','SUPER_ADMIN'));
+
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS logo_url TEXT;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS slug TEXT;
+    -- Backfill any tenant that predates slugs (every tenant seeded before
+    -- today, including 3U3 itself) from its name, before making the
+    -- column required — a plain NOT NULL add would fail on those rows.
+    UPDATE tenants SET slug = lower(regexp_replace(regexp_replace(name, '[^a-zA-Z0-9]+', '-', 'g'), '(^-|-$)', '', 'g')) || '-' || substr(id, 1, 6)
+      WHERE slug IS NULL;
+    ALTER TABLE tenants ALTER COLUMN slug SET NOT NULL;
+    CREATE UNIQUE INDEX IF NOT EXISTS tenants_slug_unique ON tenants(slug);
+
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS custom_domain TEXT;
+    CREATE UNIQUE INDEX IF NOT EXISTS tenants_custom_domain_unique ON tenants(custom_domain);
+
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS is_platform BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS plan_status TEXT NOT NULL DEFAULT 'TRIALING'
+      CHECK (plan_status IN ('TRIALING','ACTIVE','PAST_DUE','CANCELED'));
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS access_expires_at TIMESTAMPTZ;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS platform_stripe_customer_id TEXT;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS platform_stripe_subscription_id TEXT;
+    -- Every tenant that existed before the platform billing model (3U3
+    -- itself, today) keeps working with no interruption — unlimited
+    -- access, never gated, until a SUPER_ADMIN deliberately changes it.
+    UPDATE tenants SET plan_status = 'ACTIVE', access_expires_at = NULL WHERE is_platform = false;
+
+    CREATE TABLE IF NOT EXISTS promo_codes (
+      id TEXT PRIMARY KEY,
+      code TEXT NOT NULL,
+      tier TEXT NOT NULL CHECK (tier IN ('TRIAL_1MO','TRIAL_3MO','FOREVER')),
+      duration_days INTEGER,
+      max_redemptions INTEGER,
+      redemption_count INTEGER NOT NULL DEFAULT 0,
+      active BOOLEAN NOT NULL DEFAULT true,
+      created_by_user_id TEXT NOT NULL REFERENCES users(id),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS promo_codes_code_unique ON promo_codes(code);
+
+    CREATE TABLE IF NOT EXISTS promo_code_redemptions (
+      id TEXT PRIMARY KEY,
+      promo_code_id TEXT NOT NULL REFERENCES promo_codes(id),
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      redeemed_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS promo_code_redemptions_unique ON promo_code_redemptions(promo_code_id, tenant_id);
   `);
 
   console.log('Schema pushed to Postgres.');

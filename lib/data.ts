@@ -4,9 +4,48 @@ import {
   jobs, jobChecklistItems, crewMembers, notificationLog, invoices,
 } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
+import { getServerSession } from 'next-auth';
+import { headers } from 'next/headers';
+import { authOptions } from '@/lib/auth';
 
+/**
+ * Resolves "which company's site/data is this request for" — the one
+ * thing every page in a multi-tenant platform needs, that a single-
+ * tenant app never had to ask. In order:
+ *   1. A signed-in session's own tenantId (covers every admin/crew/
+ *      account page correctly, scoped per-request, not globally).
+ *   2. A signed-out visitor's Host header — the subdomain
+ *      (acme.<platform base domain>) or a tenant's own custom domain.
+ *   3. Falls back to the first non-platform tenant — exactly today's
+ *      pre-multi-tenant behavior, so local dev and a deployment with no
+ *      subdomain/custom-domain set up yet (the current production
+ *      3u3-fm98.vercel.app address, until a real domain is attached)
+ *      keep working unchanged.
+ * This is the only place that fallback lives — every one of this app's
+ * existing getTenant() call sites (admin/crew/account pages) keeps
+ * working with no changes, and now resolves correctly per request.
+ */
 export async function getTenant() {
-  const rows = await db.select().from(tenants).limit(1);
+  const session = await getServerSession(authOptions).catch(() => null);
+  const sessionTenantId = (session?.user as { tenantId?: string } | undefined)?.tenantId;
+  if (sessionTenantId) {
+    const row = (await db.select().from(tenants).where(eq(tenants.id, sessionTenantId)).limit(1))[0];
+    if (row) return row;
+  }
+
+  const host = headers().get('host')?.split(':')[0]?.toLowerCase();
+  if (host) {
+    const byDomain = (await db.select().from(tenants).where(eq(tenants.customDomain, host)).limit(1))[0];
+    if (byDomain) return byDomain;
+
+    const subdomain = host.split('.')[0];
+    if (subdomain && subdomain !== host) {
+      const bySlug = (await db.select().from(tenants).where(eq(tenants.slug, subdomain)).limit(1))[0];
+      if (bySlug) return bySlug;
+    }
+  }
+
+  const rows = await db.select().from(tenants).where(eq(tenants.isPlatform, false)).limit(1);
   return rows[0];
 }
 

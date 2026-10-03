@@ -66,12 +66,14 @@ async function main() {
     await db.insert(tenants).values({
       id: tenantId,
       name: '3U3 Cleaning',
+      slug: '3u3-cleaning',
       tagline: 'Family Owned by Parents of Three boys, Built in Texas',
       primaryColor: '#2563EB',
       inkColor: '#0B1F3B',
       bronzeColor: '#1D4ED8',
       creamColor: '#EFF6FF',
       serviceAreaRadiusMiles: 25,
+      planStatus: 'ACTIVE',
     });
     tenant = (await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1))[0]!;
   }

@@ -10,6 +10,7 @@
     "db:push": "tsx --env-file=.env.local db/push.ts",
     "db:seed": "tsx --env-file=.env.local db/seed.ts",
     "setup": "npm run db:push && npm run db:seed",
+    "bootstrap:platform": "tsx --env-file=.env.local scripts/bootstrap-platform.ts",
     "verify:storage": "tsx scripts/verify-sigv4.ts"
   },
   "dependencies": {
