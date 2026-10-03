@@ -10,7 +10,7 @@ import {
 } from '@/lib/turnByTurn';
 
 type LngLat = { lat: number; lng: number };
-const ROUTE_COLOR = '#2563EB';
+const ROUTE_COLOR = '#016AEE'; // brand vivid blue — matches gold.DEFAULT in tailwind.config.ts
 const ARRIVAL_RADIUS_M = 40;
 const STEP_ADVANCE_RADIUS_M = 25;
 const OFF_ROUTE_M = 100;
@@ -177,7 +177,7 @@ export default function CrewDirectionsMap({ jobId, addressLabel: fallbackAddress
       else crewMarker.current = new mapboxgl.Marker({ color: ROUTE_COLOR }).setLngLat(crew).addTo(m);
     }
     if (destination && !destMarker.current) {
-      destMarker.current = new mapboxgl.Marker({ color: '#0B1F3B' }).setLngLat(destination).addTo(m);
+      destMarker.current = new mapboxgl.Marker({ color: '#041730' }).setLngLat(destination).addTo(m);
     }
   }
 

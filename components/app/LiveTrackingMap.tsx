@@ -10,7 +10,7 @@ type EnRoute = Extract<TrackingState, { status: 'EN_ROUTE' }>;
 type Coord = [number, number];
 
 const POLL_MS = 15_000;
-const ROUTE_COLOR = '#2563EB';
+const ROUTE_COLOR = '#016AEE'; // brand vivid blue — matches gold.DEFAULT in tailwind.config.ts
 // A position older than this is shown as "last updated …" rather than live.
 const STALE_MS = 2 * 60_000;
 
@@ -238,13 +238,13 @@ function glide(marker: Marker, to: Coord) {
 function crewDot() {
   const el = document.createElement('div');
   el.setAttribute('aria-label', 'Your crew');
-  el.style.cssText = `width:22px;height:22px;border-radius:9999px;background:${ROUTE_COLOR};border:4px solid #fff;box-shadow:0 0 0 6px rgba(37,99,235,.25),0 2px 6px rgba(0,0,0,.3);`;
+  el.style.cssText = `width:22px;height:22px;border-radius:9999px;background:${ROUTE_COLOR};border:4px solid #fff;box-shadow:0 0 0 6px rgba(1,106,238,.25),0 2px 6px rgba(0,0,0,.3);`;
   return el;
 }
 
 function homePin() {
   const el = document.createElement('div');
   el.setAttribute('aria-label', 'Your home');
-  el.innerHTML = `<svg width="34" height="42" viewBox="0 0 34 42" aria-hidden="true"><path d="M17 41s15-13.2 15-24A15 15 0 0 0 2 17c0 10.8 15 24 15 24Z" fill="#0B1F3B" stroke="#fff" stroke-width="2"/><path d="M10 18.5 17 12l7 6.5V25h-4.5v-4h-5v4H10z" fill="#fff"/></svg>`;
+  el.innerHTML = `<svg width="34" height="42" viewBox="0 0 34 42" aria-hidden="true"><path d="M17 41s15-13.2 15-24A15 15 0 0 0 2 17c0 10.8 15 24 15 24Z" fill="#041730" stroke="#fff" stroke-width="2"/><path d="M10 18.5 17 12l7 6.5V25h-4.5v-4h-5v4H10z" fill="#fff"/></svg>`;
   return el;
 }

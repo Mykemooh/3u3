@@ -44,7 +44,7 @@ Family-owned (not a franchise or a route-based service): the founders (Betty & M
 - Tagline family: "Clean spaces. Brighter days." / "More time for life."
 - Three Pillars (stated company values, each written as a checkable promise rather than an adjective): **Faith** ("price at your door instead of guessing from a form," "we don't take a cent before we've earned it"), **Family** ("nobody joins this crew we wouldn't hand our own front-door key to"), **Future** ("a business our boys could take over one day").
 - Voice: warm, plain-spoken, promise-driven, allergic to vague marketing claims — copy favors specific, checkable statements ("The baseboard nobody checks") over adjectives.
-- Current visual system: a premium consumer-tech palette established today (green-led token system, Inter typeface) — treat as the confirmed, binding palette unless the user changes it.
+- Current visual system: the company's own brand book (`docs/brand/brand-board.png`) — deep navy `#041730`, vivid blue `#016AEE`, aqua/teal `#18AA9D`, fresh green `#2DBD91`, near-white `#F7F9FB`, signature `#016AEE → #2DBD91` gradient on the primary CTA only; Plus Jakarta Sans for headings/display, Inter for body/UI; full pill buttons, 16px card radius. This is the binding palette — treat it as ground truth over any prior in-session palette experiments, and check `docs/brand/brand-board.png` before making color/type/component decisions.
 
 ## Evidence on Hand
 

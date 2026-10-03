@@ -50,7 +50,7 @@ export default function FamilyPortrait({ className = '' }: { className?: string 
         className="relative flex aspect-[4/5] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gold/45 px-8 text-center"
         style={{
           background:
-            'radial-gradient(ellipse at 30% 20%, rgba(210,150,30,0.12), transparent 60%), radial-gradient(ellipse at 75% 85%, rgba(138,109,29,0.10), transparent 60%), #F7F8FA',
+            'radial-gradient(ellipse at 30% 20%, rgba(1,106,238,0.10), transparent 60%), radial-gradient(ellipse at 75% 85%, rgba(24,170,157,0.10), transparent 60%), #F1F5F8',
         }}
       >
         <svg

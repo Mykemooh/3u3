@@ -1,20 +1,25 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import Providers from './providers';
 import BrandWatermark from '@/components/BrandWatermark';
 
 /**
- * Inter, not the system-UI stack this used to resolve to. next/font
- * self-hosts the font files at build time and serves them from this same
- * domain — the two things the old system-stack choice was specifically
- * avoiding (a font-CDN dependency at request time, and layout shift from
- * a webfont swapping in late) don't actually apply to next/font, since it
- * downloads once at build and ships a size-adjusted fallback for the gap
- * before the real font paints. --font-sans now resolves to Inter first,
- * falling back to the same system stack if it somehow fails to load.
+ * Two faces, per the brand book: Inter for body/UI text, Plus Jakarta Sans
+ * for headings and display type (its rounded, geometric letterforms are
+ * the brand's "Bold / Rounded / Modern" heading spec — Inter reads more
+ * neutral at display sizes). next/font self-hosts both at build time, so
+ * neither costs a font-CDN request or late-swapping layout shift.
+ * --font-sans is Inter; --font-display is Plus Jakarta Sans, falling back
+ * to --font-sans if it somehow fails to load.
  */
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  weight: ['600', '700', '800'],
+  variable: '--font-display',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: '3U3 Cleaning — House cleaning in Katy & Houston',
@@ -24,7 +29,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={inter.variable}>
+    <html lang="en" className={`${inter.variable} ${jakarta.variable}`}>
       <body>
         <BrandWatermark />
         <div className="relative z-10">
