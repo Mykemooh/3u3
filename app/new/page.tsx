@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import LogoBadge from '@/components/LogoBadge';
 import AddressInput, { type PickedAddress } from '@/components/AddressInput';
+import PhoneInput from '@/components/PhoneInput';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 
 type Slot = { start: string; end: string; available: boolean };
@@ -160,14 +161,7 @@ export default function NewCustomerPage() {
             </div>
             <div>
               <label className="label">Phone number</label>
-              <input
-                className="input"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+1 (281) 555-0100"
-                required
-              />
+              <PhoneInput value={phone} onChange={setPhone} required />
             </div>
             <div>
               <label className="label">Email</label>

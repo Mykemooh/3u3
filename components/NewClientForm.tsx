@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AddressInput, { type PickedAddress } from '@/components/AddressInput';
+import PhoneInput from '@/components/PhoneInput';
 
 export default function NewClientForm() {
   const router = useRouter();
@@ -50,7 +51,7 @@ export default function NewClientForm() {
       </div>
       <div>
         <label className="label">Phone number</label>
-        <input className="input" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+        <PhoneInput value={phone} onChange={setPhone} required />
       </div>
       <div>
         <label className="label">Email (optional)</label>

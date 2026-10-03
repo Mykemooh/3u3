@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import PhoneInput from '@/components/PhoneInput';
 
 export default function RateForm({ services }: { services: { id: string; name: string }[] }) {
   const router = useRouter();
@@ -10,6 +11,9 @@ export default function RateForm({ services }: { services: { id: string; name: s
   const [serviceTypeId, setServiceTypeId] = useState(services[0]?.id ?? '');
   const [rateDollars, setRateDollars] = useState('');
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  // PhoneInput keeps its own local state after mount, so clearing
+  // clientPhone alone wouldn't clear what it displays — remount it instead.
+  const [phoneFieldKey, setPhoneFieldKey] = useState(0);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -28,6 +32,7 @@ export default function RateForm({ services }: { services: { id: string; name: s
       setStatus('saved');
       setClientName('');
       setClientPhone('');
+      setPhoneFieldKey((k) => k + 1);
       setRateDollars('');
       router.refresh();
     } else {
@@ -43,14 +48,7 @@ export default function RateForm({ services }: { services: { id: string; name: s
       </div>
       <div>
         <label className="label">Client phone</label>
-        <input
-          className="input"
-          type="tel"
-          value={clientPhone}
-          onChange={(e) => setClientPhone(e.target.value)}
-          placeholder="+1 (281) 555-0100"
-          required
-        />
+        <PhoneInput key={phoneFieldKey} value={clientPhone} onChange={setClientPhone} required />
       </div>
       <div>
         <label className="label">Service</label>

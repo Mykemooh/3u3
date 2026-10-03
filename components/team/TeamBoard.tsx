@@ -16,6 +16,7 @@ import {
 } from '@dnd-kit/core';
 import { boardCollision } from '@/lib/dndCollision';
 import CrewSettingsForm from '@/components/CrewSettingsForm';
+import PhoneInput from '@/components/PhoneInput';
 
 type StaffRole = 'TEAM_LEAD' | 'CLEANER' | 'JR_CLEANER';
 
@@ -364,7 +365,7 @@ function AddEmployeeForm({ teams, onDone }: { teams: BoardTeam[]; onDone: () => 
       </div>
       <div>
         <label className="label">Phone (optional)</label>
-        <input className="input" type="tel" value={form.phone} onChange={set('phone')} />
+        <PhoneInput value={form.phone} onChange={(phone) => setForm((f) => ({ ...f, phone }))} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>

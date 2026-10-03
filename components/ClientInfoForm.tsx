@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import PhoneInput from '@/components/PhoneInput';
 
 export default function ClientInfoForm({
   clientId,
@@ -44,7 +45,7 @@ export default function ClientInfoForm({
       </div>
       <div>
         <label className="label">Phone</label>
-        <input className="input" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+        <PhoneInput value={phone} onChange={setPhone} />
       </div>
       <div>
         <label className="label">Email</label>
