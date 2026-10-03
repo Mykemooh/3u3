@@ -1,23 +1,21 @@
 import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
 import './globals.css';
 import Providers from './providers';
 import BrandWatermark from '@/components/BrandWatermark';
 
 /**
- * The whole site used to render in Times New Roman. tailwind.config.ts asked
- * for `var(--font-sans)`, nothing ever defined it, and an undefined custom
- * property makes the entire font-family declaration invalid at computed-value
- * time — so the browser fell back to its default serif rather than to the
- * `system-ui, sans-serif` written right beside it. --font-sans is now defined
- * in globals.css.
- *
- * It resolves to a system stack rather than a downloaded webfont on purpose:
- * no build-time dependency on a font CDN (a fetch failure there fails the
- * whole deploy), no flash of unstyled text, nothing extra for a phone on
- * cellular to download, and on Apple devices it renders as SF Pro. If a
- * distinctive brand typeface is wanted later, self-host the files and change
- * the one variable.
+ * Inter, not the system-UI stack this used to resolve to. next/font
+ * self-hosts the font files at build time and serves them from this same
+ * domain — the two things the old system-stack choice was specifically
+ * avoiding (a font-CDN dependency at request time, and layout shift from
+ * a webfont swapping in late) don't actually apply to next/font, since it
+ * downloads once at build and ships a size-adjusted fallback for the gap
+ * before the real font paints. --font-sans now resolves to Inter first,
+ * falling back to the same system stack if it somehow fails to load.
  */
+const inter = Inter({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
+
 export const metadata: Metadata = {
   title: '3U3 Cleaning — House cleaning in Katy & Houston',
   description:
@@ -26,7 +24,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={inter.variable}>
       <body>
         <BrandWatermark />
         <div className="relative z-10">

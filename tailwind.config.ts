@@ -9,15 +9,16 @@ import type { Config } from 'tailwindcss';
  * looked faded. `slate` and `muted` below are picked to clear that bar.
  *
  * ---------------------------------------------------------------------------
- * 2026 rebrand: navy / blue / green, replacing the original gold/dark-ink
- * theme. The token *names* below (gold, bronze, ink, cream, green) are kept
- * as-is on purpose — every component in the app references these names, so
- * recoloring them here is what makes the rebrand apply everywhere without
- * hunting down every `bg-gold`/`text-bronze`/`bg-ink` call site. `gold` now
- * holds the brand's blue (the "Reliability" swatch) since it's still the one
- * color used for every primary CTA; `green` holds the brand's actual green
- * ("Freshness") but deepened enough to clear 4.5:1 on white, since it's used
- * as real text in a few status pills, not just decoration.
+ * 2026 rebrand #2: premium consumer-tech (Apple/Linear/Stripe-inspired) —
+ * warm near-black ink, warm neutrals, and a single green accent, replacing
+ * the navy/blue/green theme before it. Token *names* are kept as-is again,
+ * same reasoning as last time: every component already references
+ * `bg-gold`/`text-bronze`/`bg-ink`/etc., so recoloring here is what makes
+ * this apply everywhere without a repo-wide rename. `gold` now holds the
+ * one brand green (there is no literal gold or blue left anywhere) for
+ * every primary button, focus ring and accent; `bronze` is the same green
+ * deepened for AA text contrast (links, labels) the same way it held a
+ * deepened blue before.
  * ---------------------------------------------------------------------------
  */
 const config: Config = {
@@ -26,35 +27,36 @@ const config: Config = {
     extend: {
       colors: {
         gold: {
-          // The brand's "Reliability" blue — every primary button and accent.
-          DEFAULT: '#2563EB',
-          light: '#3B82F6',
+          // The one brand accent — every primary button, focus ring, selected control.
+          DEFAULT: '#1E8E55',
+          light: '#34A871',
         },
-        ink: '#0B1F3B',        // headings, dark bands — the brand's "Trust" navy
-        slate: '#454C57',      // body copy         —  8.9:1
-        muted: '#6B727E',      // meta, timestamps  —  4.9:1
-        line: '#E3E6EB',       // borders, dividers — decorative only
-        surface: '#E8EEF5',    // section fills — the brand's "Cleanliness" swatch
-        bronze: '#1D4ED8',     // links on white    —  6.3:1
+        ink: '#101418',        // headings, dark bands — warm near-black, not navy
+        'ink-soft': '#252A2F', // one step lighter than ink — dark-section hover states
+        slate: '#252A2F',      // body copy         — ~15:1
+        muted: '#68706B',      // meta, timestamps  —  ~4.8:1
+        line: '#D9DBD7',       // borders, dividers — decorative only
+        surface: '#F1F1ED',    // section fills — warm neutral, not a colour tint
+        bronze: '#176B42',     // links on white    —  ~6:1
         green: {
-          // The brand's "Freshness" green, deepened for the ~5:1 contrast
-          // text needs; `light` is the true brand green, for decoration only
-          // (underlines, the gradient line on dark bands) where contrast
-          // doesn't apply.
-          DEFAULT: '#047857',
-          light: '#10B981',
+          // Same hue as `gold`, used where the codebase wants "the brand
+          // green" as its own concept (status pills) rather than "the
+          // primary action colour" — DEFAULT matches gold.DEFAULT on
+          // purpose; `light` is a paler tint for soft fills/backgrounds.
+          DEFAULT: '#1E8E55',
+          light: '#EAF5EE',
         },
-        cream: '#EFF6FF',      // soft accent fills — was warm, now a pale blue tint
-        charcoal: '#242220',
+        cream: '#F7F7F4',      // warm white — actually cream now, not a pale blue tint
+        charcoal: '#252A2F',
       },
       fontFamily: {
         sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
-        card: '0 1px 2px rgba(22,24,27,0.04), 0 8px 24px -12px rgba(22,24,27,0.12)',
-        'card-lg': '0 2px 4px rgba(22,24,27,0.04), 0 18px 40px -16px rgba(22,24,27,0.18)',
-        gold: '0 2px 6px rgba(37,99,235,0.24), 0 10px 24px -10px rgba(37,99,235,0.45)',
-        'gold-lg': '0 4px 10px rgba(37,99,235,0.28), 0 16px 32px -12px rgba(37,99,235,0.5)',
+        card: '0 8px 30px rgba(16,20,24,0.06)',
+        'card-lg': '0 16px 50px rgba(16,20,24,0.09)',
+        gold: '0 2px 6px rgba(30,142,85,0.24), 0 10px 24px -10px rgba(30,142,85,0.45)',
+        'gold-lg': '0 4px 10px rgba(30,142,85,0.28), 0 16px 32px -12px rgba(30,142,85,0.5)',
       },
     },
   },

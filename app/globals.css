@@ -3,15 +3,19 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    /* The variable tailwind.config.ts has always referenced and nothing ever
-       defined — which is why every screen rendered in Times. */
+  /* --font-sans itself comes from next/font (app/layout.tsx's Inter() call,
+     applied via its `variable` class on <html>) — a *class* selector, so
+     it always wins over this plain *element* selector regardless of
+     stylesheet order. This is only the safety net for the (normally
+     unreachable) case where that class is somehow missing — matching the
+     system stack this app relied on before Inter, rather than leaving
+     --font-sans undefined and silently invalidating font-family again
+     (see git history: that exact bug once rendered the whole site in
+     Times New Roman). */
+  html {
     --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
       'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji',
       'Segoe UI Emoji';
-  }
-
-  html {
     -webkit-tap-highlight-color: transparent;
     scroll-behavior: smooth;
   }
@@ -39,13 +43,16 @@
 
 @layer components {
   /* ---- Type scale ------------------------------------------------------
-     Previously the page jumped from a 48px headline straight to 14px body
-     with nothing in between, which is most of why it read as unfinished.  */
+     A brand-statement headline, not a page title: big enough that it has
+     to be short, with negative tracking and a line-height tight enough
+     that two lines read as one composed block.                          */
   .display {
-    @apply text-[2.5rem] font-extrabold md:text-[3.5rem];
+    @apply text-[2.75rem] font-bold tracking-[-0.03em] md:text-[4rem] lg:text-[5.25rem];
+    line-height: 0.98;
   }
   .h2 {
-    @apply text-[2rem] font-bold md:text-[2.5rem];
+    @apply text-[2rem] font-bold tracking-[-0.025em] md:text-[2.75rem];
+    line-height: 1.05;
   }
   .h3 {
     @apply text-xl font-bold md:text-2xl;
@@ -66,30 +73,40 @@
   }
 
   /* ---- Buttons ----------------------------------------------------------
-     Pill-shaped with the brand's green-to-blue gradient (the same gradient
-     as the logo's U, run in reverse) — matching the exported "Book Now"
-     button reference. One gradient, used the same way everywhere.        */
+     One solid colour, used the same way everywhere — no gradient. The
+     light sweep on hover is the one flourish; everything else (a 10-12px
+     radius instead of a pill, a dark-green hover instead of a lift) is
+     restraint on purpose. `.btn-arrow` is an optional trailing glyph
+     (usually "→") that nudges forward on hover/focus — wrap it around the
+     arrow inside a button, not the whole label.                          */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-green-light to-gold px-7 py-3.5 text-base font-semibold text-white
-      shadow-gold transition-all hover:-translate-y-0.5 hover:brightness-110 hover:shadow-gold-lg
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gold px-7 py-3.5 text-base font-semibold text-white
+      shadow-gold transition-colors hover:bg-bronze
       focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bronze
-      active:translate-y-0 disabled:pointer-events-none disabled:opacity-50;
+      active:translate-y-px disabled:pointer-events-none disabled:opacity-50;
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full border border-line bg-white px-7 py-3.5 text-base
-      font-semibold text-ink transition-all duration-200 hover:-translate-y-0.5 hover:border-transparent
-      hover:bg-gradient-to-r hover:from-green-light hover:to-gold hover:text-white hover:shadow-gold
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-white px-7 py-3.5 text-base
+      font-semibold text-ink transition-colors duration-200 hover:border-gold hover:text-bronze
       focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bronze
-      active:translate-y-0 disabled:pointer-events-none disabled:opacity-50;
+      active:translate-y-px disabled:pointer-events-none disabled:opacity-50;
   }
   .btn-dark {
-    @apply inline-flex items-center justify-center gap-2 rounded-full bg-ink px-7 py-3.5 text-base font-semibold text-white
-      transition-all duration-200 hover:-translate-y-0.5 hover:bg-gradient-to-r hover:from-green-light hover:to-gold hover:shadow-gold
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-ink px-7 py-3.5 text-base font-semibold text-white
+      transition-colors duration-200 hover:bg-ink-soft
       focus-visible:outline focus-visible:outline-2
-      focus-visible:outline-offset-2 focus-visible:outline-gold active:translate-y-0 disabled:opacity-50;
+      focus-visible:outline-offset-2 focus-visible:outline-gold active:translate-y-px disabled:opacity-50;
   }
   .btn-sm {
     @apply px-4 py-2 text-sm;
+  }
+  .btn-arrow {
+    @apply inline-block transition-transform duration-200;
+  }
+  .btn-primary:hover .btn-arrow,
+  .btn-secondary:hover .btn-arrow,
+  .btn-dark:hover .btn-arrow {
+    transform: translateX(4px);
   }
 
   /* ---- Surfaces --------------------------------------------------------
@@ -107,8 +124,8 @@
 
   /* ---- Forms ------------------------------------------------------------ */
   .input {
-    @apply w-full rounded-xl border border-line bg-white px-4 py-3 text-ink transition
-      placeholder:text-muted focus:border-gold focus:outline-none focus:ring-4 focus:ring-gold/15;
+    @apply w-full rounded-xl border border-line bg-white px-4 py-3.5 text-ink transition
+      placeholder:text-muted focus:border-gold focus:outline-none focus:ring-4 focus:ring-gold/10;
   }
   .label {
     @apply mb-1.5 block text-sm font-semibold text-ink;
@@ -278,22 +295,22 @@
   .flow-line {
     height: 6px;
     background:
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 6' preserveAspectRatio='none'%3E%3Cpath d='M0 3 Q15 0 30 3 T60 3 T90 3 T120 3' fill='none' stroke='%232563EB' stroke-width='1.6'/%3E%3C/svg%3E")
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 6' preserveAspectRatio='none'%3E%3Cpath d='M0 3 Q15 0 30 3 T60 3 T90 3 T120 3' fill='none' stroke='%231E8E55' stroke-width='1.6'/%3E%3C/svg%3E")
       repeat-x center / 120px 6px,
-      #0B1F3B;
+      #101418;
     opacity: 0.9;
   }
   .journey-fill {
     transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1);
   }
   .journey-pulse {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45);
+    box-shadow: 0 0 0 0 rgba(30, 142, 85, 0.45);
     animation: journey-pulse 2.2s ease-out infinite;
   }
   @keyframes journey-pulse {
-    0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45); }
-    70% { box-shadow: 0 0 0 10px rgba(37, 99, 235, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+    0% { box-shadow: 0 0 0 0 rgba(30, 142, 85, 0.45); }
+    70% { box-shadow: 0 0 0 10px rgba(30, 142, 85, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(30, 142, 85, 0); }
   }
 }
 
@@ -333,7 +350,7 @@
    color can't animate on its own, a CSS gradient behind a mask can.     */
 @layer components {
   .u-gradient-mask {
-    background: linear-gradient(120deg, #2563eb 0%, #10b981 35%, #2563eb 70%, #10b981 100%);
+    background: linear-gradient(120deg, #1e8e55 0%, #34a871 35%, #176b42 70%, #34a871 100%);
     background-size: 300% 300%;
     -webkit-mask-image: url('/brand/mark-u-mask.png');
     mask-image: url('/brand/mark-u-mask.png');
