@@ -587,6 +587,18 @@ export const payrollEntryJobs = pgTable('payroll_entry_jobs', {
   jobUserUnique: uniqueIndex('payroll_entry_jobs_job_user_unique').on(t.jobId, t.userId),
 }));
 
+// Exactly which invoice(s) a payroll entry's tipCents came from, and how
+// much of each — so voidPayrollRun can precisely give the claimed amount
+// back to invoices.tipPaidOutCents instead of just deleting the entry and
+// losing track of it (payroll_entry_jobs is the same pattern, for hours).
+export const payrollEntryTips = pgTable('payroll_entry_tips', {
+  id: id(),
+  payrollEntryId: text('payroll_entry_id').notNull().references(() => payrollEntries.id),
+  invoiceId: text('invoice_id').notNull().references(() => invoices.id),
+  amountCents: integer('amount_cents').notNull(),
+  ...timestamps,
+});
+
 // ---------------------------------------------------------------------------
 // Standby requests (lib/standby.ts) — "I'd rather have this day; hold my
 // spot and tell me if it opens up." Created from the booking wizard when a

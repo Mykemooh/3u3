@@ -23,7 +23,7 @@ export default async function AdminPayroll({ searchParams }: { searchParams: { s
   const start = searchParams.start || daysAgoISO(14);
   const end = searchParams.end || businessTodayISO();
   const [preview, runs] = await Promise.all([previewPayroll(user.tenantId, start, end), listPayrollRuns(user.tenantId)]);
-  const previewTotalCents = preview.reduce((sum, r) => sum + (r.payCents ?? 0), 0);
+  const previewTotalCents = preview.reduce((sum, r) => sum + (r.payCents ?? 0) + r.tipCents, 0);
   const missingRate = preview.some((r) => r.rateCents == null);
   const payable = preview.filter((r) => r.rateCents != null);
 
@@ -72,6 +72,8 @@ export default async function AdminPayroll({ searchParams }: { searchParams: { s
               <th className="pb-2 text-right font-bold">Jobs</th>
               <th className="pb-2 text-right font-bold">Days</th>
               <th className="pb-2 text-right font-bold">Pay</th>
+              <th className="pb-2 text-right font-bold">Tips</th>
+              <th className="pb-2 text-right font-bold">Total</th>
             </tr>
           </thead>
           <tbody>
@@ -83,11 +85,13 @@ export default async function AdminPayroll({ searchParams }: { searchParams: { s
                 <td className="py-3 text-right tabular-nums">{r.jobCount}</td>
                 <td className="py-3 text-right tabular-nums">{r.daysWorked}</td>
                 <td className="py-3 text-right tabular-nums">{r.payCents != null ? formatMoney(r.payCents) : '— no rate set'}</td>
+                <td className="py-3 text-right tabular-nums">{r.tipCents > 0 ? formatMoney(r.tipCents) : '—'}</td>
+                <td className="py-3 text-right tabular-nums font-semibold">{formatMoney((r.payCents ?? 0) + r.tipCents)}</td>
               </tr>
             ))}
             {preview.length === 0 && (
               <tr>
-                <td colSpan={6} className="py-6 text-center text-muted">
+                <td colSpan={8} className="py-6 text-center text-muted">
                   No unpaid completed jobs in this range.
                 </td>
               </tr>
@@ -96,7 +100,7 @@ export default async function AdminPayroll({ searchParams }: { searchParams: { s
           {payable.length > 0 && (
             <tfoot>
               <tr>
-                <td colSpan={5} className="pt-3 text-right text-lg font-bold">
+                <td colSpan={7} className="pt-3 text-right text-lg font-bold">
                   Total
                 </td>
                 <td className="pt-3 text-right text-lg font-bold tabular-nums">{formatMoney(previewTotalCents)}</td>

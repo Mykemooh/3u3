@@ -1,6 +1,6 @@
-import { and, eq, inArray, isNotNull, desc } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, desc, sql } from 'drizzle-orm';
 import { db } from '@/db/client';
-import { jobs, bookings, users, payrollRuns, payrollEntries, payrollEntryJobs } from '@/db/schema';
+import { jobs, bookings, users, invoices, payrollRuns, payrollEntries, payrollEntryJobs, payrollEntryTips } from '@/db/schema';
 import { staffForJobs } from '@/lib/team';
 import { sendEmail } from '@/lib/email';
 import { esc } from '@/lib/email';
@@ -64,6 +64,48 @@ async function alreadyPaidJobIds(jobIds: string[]): Promise<Set<string>> {
   return new Set(rows.map((r) => `${r.jobId}:${r.userId}`));
 }
 
+export type TipClaim = { invoiceId: string; amountCents: number };
+
+/**
+ * Every COMPLETE job with a tip that hasn't been fully paid out yet —
+ * independent of any date range, so a tip that arrives after its job's
+ * pay period already ran is still caught by the next run, never stuck.
+ * invoices.tipPaidOutCents (claimed by createPayrollRun below) is what
+ * makes this idempotent: a tip is claimed once, by whichever run gets to
+ * it first, split evenly across whoever was staffed on that job — a
+ * customer tip is taxable wages for the employee (IRS Topic 761), not a
+ * gift, so it's reported as its own pay line, never silently folded into
+ * hourly/per-clean/day-rate pay.
+ */
+async function unclaimedTipsByEmployee(tenantId: string): Promise<Map<string, { cents: number; claims: TipClaim[] }>> {
+  const rows = await db
+    .select({ job: jobs, invoice: invoices })
+    .from(jobs)
+    .innerJoin(bookings, eq(jobs.bookingId, bookings.id))
+    .innerJoin(invoices, eq(invoices.bookingId, bookings.id))
+    .where(and(eq(bookings.tenantId, tenantId), eq(jobs.status, 'COMPLETE'), isNotNull(jobs.startedAt)));
+
+  const tipped = rows.filter((r) => r.invoice.tipCents > r.invoice.tipPaidOutCents);
+  if (tipped.length === 0) return new Map();
+
+  const staffMap = await staffForJobs(tipped.map((r) => ({ id: r.job.id, crewId: r.job.crewId })));
+  const result = new Map<string, { cents: number; claims: TipClaim[] }>();
+  for (const r of tipped) {
+    const staffIds = staffMap[r.job.id] ?? [];
+    if (staffIds.length === 0) continue;
+    const unclaimed = r.invoice.tipCents - r.invoice.tipPaidOutCents;
+    const perPerson = Math.floor(unclaimed / staffIds.length);
+    if (perPerson <= 0) continue;
+    for (const uid of staffIds) {
+      const entry = result.get(uid) ?? { cents: 0, claims: [] };
+      entry.cents += perPerson;
+      entry.claims.push({ invoiceId: r.invoice.id, amountCents: perPerson });
+      result.set(uid, entry);
+    }
+  }
+  return result;
+}
+
 export type PayrollPreviewRow = {
   employeeId: string;
   name: string;
@@ -73,6 +115,8 @@ export type PayrollPreviewRow = {
   jobCount: number;
   daysWorked: number;
   payCents: number | null;
+  tipCents: number;
+  tipClaims: TipClaim[];
   jobIds: string[];
 };
 
@@ -83,9 +127,10 @@ export type PayrollPreviewRow = {
  */
 export async function previewPayroll(tenantId: string, startDateISO: string, endDateISO: string): Promise<PayrollPreviewRow[]> {
   const completed = await completedJobsInRange(tenantId, startDateISO, endDateISO);
-  if (completed.length === 0) return [];
+  const tips = await unclaimedTipsByEmployee(tenantId);
+  if (completed.length === 0 && tips.size === 0) return [];
 
-  const staffMap = await staffForJobs(completed.map((r) => ({ id: r.job.id, crewId: r.job.crewId })));
+  const staffMap = completed.length ? await staffForJobs(completed.map((r) => ({ id: r.job.id, crewId: r.job.crewId }))) : {};
   const paid = await alreadyPaidJobIds(completed.map((r) => r.job.id));
 
   const byEmployee = new Map<string, { hours: number; jobCount: number; days: Set<string>; jobIds: string[] }>();
@@ -105,13 +150,17 @@ export async function previewPayroll(tenantId: string, startDateISO: string, end
     }
   }
 
-  const employeeIds = [...byEmployee.keys()];
+  // Tips are swept independent of the date range (unclaimedTipsByEmployee
+  // above), so an employee can show up here purely for a tip even with
+  // zero hours in this period.
+  const employeeIds = [...new Set([...byEmployee.keys(), ...tips.keys()])];
   if (employeeIds.length === 0) return [];
   const employees = await db.select().from(users).where(inArray(users.id, employeeIds));
 
   return employees
     .map((e) => {
-      const entry = byEmployee.get(e.id)!;
+      const entry = byEmployee.get(e.id) ?? { hours: 0, jobCount: 0, days: new Set<string>(), jobIds: [] };
+      const tip = tips.get(e.id) ?? { cents: 0, claims: [] };
       const hours = Math.round(entry.hours * 100) / 100;
       const daysWorked = entry.days.size;
       const rateCents = rateFor(e);
@@ -132,16 +181,24 @@ export async function previewPayroll(tenantId: string, startDateISO: string, end
         jobCount: entry.jobCount,
         daysWorked,
         payCents,
+        tipCents: tip.cents,
+        tipClaims: tip.claims,
         jobIds: entry.jobIds,
       };
     })
     .sort((a, b) => b.hours - a.hours || a.name.localeCompare(b.name));
 }
 
-/** Turns a preview into a persisted, reviewable run — entries with no rate set are skipped (nothing to pay). */
+/**
+ * Turns a preview into a persisted, reviewable run. Includes a row the
+ * moment it has either real hours/clean/day pay OR a tip to claim — an
+ * employee with a tip but no rate configured (or no hours this period)
+ * still gets an entry, just with payCents 0, so the tip is never stuck
+ * waiting on an unrelated rate being set.
+ */
 export async function createPayrollRun(tenantId: string, input: { label: string; periodStart: string; periodEnd: string }): Promise<string> {
   const preview = await previewPayroll(tenantId, input.periodStart, input.periodEnd);
-  const payable = preview.filter((r) => r.rateCents != null && r.payCents != null);
+  const payable = preview.filter((r) => (r.payCents ?? 0) > 0 || r.tipCents > 0);
   if (payable.length === 0) throw new PayrollError('Nothing to pay for this period — check date range and pay rates.');
 
   const runId = crypto.randomUUID();
@@ -161,14 +218,28 @@ export async function createPayrollRun(tenantId: string, input: { label: string;
       payrollRunId: runId,
       userId: row.employeeId,
       payType: row.payType,
-      rateCents: row.rateCents!,
+      rateCents: row.rateCents ?? 0,
       hours: row.hours,
       jobCount: row.jobCount,
       daysWorked: row.daysWorked,
-      payCents: row.payCents!,
+      payCents: row.payCents ?? 0,
+      tipCents: row.tipCents,
     });
     for (const jobId of row.jobIds) {
       await db.insert(payrollEntryJobs).values({ id: crypto.randomUUID(), payrollEntryId: entryId, jobId, userId: row.employeeId });
+    }
+    // Claim each tip atomically (column-relative increment, not a
+    // read-then-write) so two runs created back to back can never both
+    // claim the same tip money. The payrollEntryTips row is what lets
+    // voidPayrollRun give this exact amount back later — without it,
+    // voiding a run would have no way to know which invoice(s) this
+    // entry's tipCents came from.
+    for (const claim of row.tipClaims) {
+      await db.insert(payrollEntryTips).values({ id: crypto.randomUUID(), payrollEntryId: entryId, invoiceId: claim.invoiceId, amountCents: claim.amountCents });
+      await db
+        .update(invoices)
+        .set({ tipPaidOutCents: sql`${invoices.tipPaidOutCents} + ${claim.amountCents}` })
+        .where(eq(invoices.id, claim.invoiceId));
     }
   }
 
@@ -189,7 +260,7 @@ export async function getPayrollRun(tenantId: string, runId: string) {
   const rows: PayrollRunRow[] = entries
     .map((e) => ({ entry: e, name: employees.find((u) => u.id === e.userId)?.name ?? 'Former employee', email: employees.find((u) => u.id === e.userId)?.email ?? null }))
     .sort((a, b) => a.name.localeCompare(b.name));
-  const totalCents = entries.reduce((sum, e) => sum + e.payCents, 0);
+  const totalCents = entries.reduce((sum, e) => sum + e.payCents + e.tipCents, 0);
   return { run, rows, totalCents };
 }
 
@@ -210,8 +281,8 @@ export async function markPayrollRunPaid(tenantId: string, runId: string): Promi
         html: `<div style="font-family:sans-serif;color:#0B1F3B;max-width:480px;margin:0 auto;">
           <h2 style="color:#1D4ED8;">3U3 Cleaning</h2>
           <p>Hi ${esc(row.name.split(' ')[0])},</p>
-          <p>You were just paid <strong>$${(row.entry.payCents / 100).toFixed(2)}</strong> for <strong>${esc(data.run.label)}</strong>
-          (${row.entry.payType === 'HOURLY' ? `${row.entry.hours.toFixed(2)} hours` : row.entry.payType === 'PER_CLEAN' ? `${row.entry.jobCount} cleans` : `${row.entry.daysWorked} days`}).</p>
+          <p>You were just paid <strong>$${((row.entry.payCents + row.entry.tipCents) / 100).toFixed(2)}</strong> for <strong>${esc(data.run.label)}</strong>
+          (${row.entry.payType === 'HOURLY' ? `${row.entry.hours.toFixed(2)} hours` : row.entry.payType === 'PER_CLEAN' ? `${row.entry.jobCount} cleans` : `${row.entry.daysWorked} days`}${row.entry.tipCents > 0 ? `, including $${(row.entry.tipCents / 100).toFixed(2)} in tips` : ''}).</p>
           <p style="color:#6b6b6b;font-size:13px;">— 3U3 Cleaning</p>
         </div>`,
       });
@@ -229,6 +300,16 @@ export async function voidPayrollRun(tenantId: string, runId: string): Promise<v
 
   const entries = await db.select({ id: payrollEntries.id }).from(payrollEntries).where(eq(payrollEntries.payrollRunId, runId));
   for (const e of entries) {
+    // Give any claimed tip money back to its invoice(s) before losing
+    // track of which invoice(s) this entry's tipCents came from.
+    const tipClaims = await db.select().from(payrollEntryTips).where(eq(payrollEntryTips.payrollEntryId, e.id));
+    for (const claim of tipClaims) {
+      await db
+        .update(invoices)
+        .set({ tipPaidOutCents: sql`${invoices.tipPaidOutCents} - ${claim.amountCents}` })
+        .where(eq(invoices.id, claim.invoiceId));
+    }
+    await db.delete(payrollEntryTips).where(eq(payrollEntryTips.payrollEntryId, e.id));
     await db.delete(payrollEntryJobs).where(eq(payrollEntryJobs.payrollEntryId, e.id));
   }
   await db.delete(payrollEntries).where(eq(payrollEntries.payrollRunId, runId));
@@ -236,12 +317,14 @@ export async function voidPayrollRun(tenantId: string, runId: string): Promise<v
 }
 
 export function payrollRunToCsv(rows: PayrollRunRow[]): string {
-  const lines = ['Name,Pay type,Hours,Jobs,Days,Rate,Pay'];
+  const lines = ['Name,Pay type,Hours,Jobs,Days,Rate,Pay,Tips,Total'];
   for (const r of rows) {
     const rate = (r.entry.rateCents / 100).toFixed(2);
     const pay = (r.entry.payCents / 100).toFixed(2);
+    const tips = (r.entry.tipCents / 100).toFixed(2);
+    const total = ((r.entry.payCents + r.entry.tipCents) / 100).toFixed(2);
     lines.push(
-      [`"${r.name.replace(/"/g, '""')}"`, PAY_TYPE_LABELS[r.entry.payType as PayType], r.entry.hours.toFixed(2), r.entry.jobCount, r.entry.daysWorked, rate, pay].join(','),
+      [`"${r.name.replace(/"/g, '""')}"`, PAY_TYPE_LABELS[r.entry.payType as PayType], r.entry.hours.toFixed(2), r.entry.jobCount, r.entry.daysWorked, rate, pay, tips, total].join(','),
     );
   }
   return lines.join('\n');

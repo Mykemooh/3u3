@@ -509,6 +509,18 @@ async function main() {
     ALTER TABLE invoices ADD COLUMN IF NOT EXISTS tip_paid_out_cents INTEGER NOT NULL DEFAULT 0;
     ALTER TABLE payroll_entries ADD COLUMN IF NOT EXISTS tip_cents INTEGER NOT NULL DEFAULT 0;
 
+    -- Exactly which invoice(s) a payroll entry's tip_cents came from, and
+    -- how much of each — so voidPayrollRun can precisely give the claimed
+    -- amount back to invoices.tip_paid_out_cents instead of losing track
+    -- of it (payroll_entry_jobs is the same pattern, for hours).
+    CREATE TABLE IF NOT EXISTS payroll_entry_tips (
+      id TEXT PRIMARY KEY,
+      payroll_entry_id TEXT NOT NULL REFERENCES payroll_entries(id),
+      invoice_id TEXT NOT NULL REFERENCES invoices(id),
+      amount_cents INTEGER NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
     -- Add-on services (lib/addons.ts): a tenant-wide catalog, with
     -- optional per-client pricing set during quote/client profile setup
     -- (mirrors client_rates), and a snapshot of what was actually picked

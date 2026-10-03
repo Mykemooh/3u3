@@ -44,6 +44,8 @@ export default async function PayrollRunDetail({ params }: { params: { runId: st
               <th className="pb-2 text-right font-bold">Days</th>
               <th className="pb-2 text-right font-bold">Rate</th>
               <th className="pb-2 text-right font-bold">Pay</th>
+              <th className="pb-2 text-right font-bold">Tips</th>
+              <th className="pb-2 text-right font-bold">Total</th>
             </tr>
           </thead>
           <tbody>
@@ -56,12 +58,14 @@ export default async function PayrollRunDetail({ params }: { params: { runId: st
                 <td className="py-3 text-right tabular-nums">{r.entry.daysWorked}</td>
                 <td className="py-3 text-right tabular-nums">{formatMoney(r.entry.rateCents)}</td>
                 <td className="py-3 text-right tabular-nums">{formatMoney(r.entry.payCents)}</td>
+                <td className="py-3 text-right tabular-nums">{r.entry.tipCents > 0 ? formatMoney(r.entry.tipCents) : '—'}</td>
+                <td className="py-3 text-right tabular-nums font-semibold">{formatMoney(r.entry.payCents + r.entry.tipCents)}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={6} className="pt-3 text-right text-lg font-bold">
+              <td colSpan={8} className="pt-3 text-right text-lg font-bold">
                 Total
               </td>
               <td className="pt-3 text-right text-lg font-bold tabular-nums">{formatMoney(totalCents)}</td>
