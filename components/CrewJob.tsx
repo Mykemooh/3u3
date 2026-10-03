@@ -714,7 +714,7 @@ export default function CrewJob(props: Props) {
             <div className="mt-3">
               <CrewDirectionsMap jobId={props.job.id} addressLabel={address} />
             </div>
-            <p className="mb-2 mt-4 text-xs font-bold uppercase tracking-wide text-muted">Start navigation</p>
+            <p className="mb-2 mt-4 text-xs font-bold uppercase tracking-wide text-muted">Or open in your phone's maps app</p>
             <div className="space-y-2">
               {directionLinks.map((link) => (
                 <a
