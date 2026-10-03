@@ -20,3 +20,10 @@ public/uploads/jobs/*
 # Job media written by local dev (production uses R2 / Blob)
 public/uploads/photos/
 public/uploads/videos/
+
+# Claude Code: personal/machine settings, never shared via git.
+.claude/settings.local.json
+
+# Impeccable design skill's compiled engine binary — platform-specific,
+# ~14MB, and reinstalled per machine with `npx impeccable install`.
+.claude/skills/impeccable/scripts/bin/
