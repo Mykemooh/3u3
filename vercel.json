@@ -1,6 +1,7 @@
 {
   "crons": [
     { "path": "/api/cron/media-cleanup", "schedule": "0 9 * * *" },
-    { "path": "/api/cron/reminders", "schedule": "0 13 * * *" }
+    { "path": "/api/cron/reminders", "schedule": "0 13 * * *" },
+    { "path": "/api/cron/monthly-billing", "schedule": "0 10 * * *" }
   ]
 }

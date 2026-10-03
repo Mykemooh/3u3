@@ -11,7 +11,7 @@ import { pushPaidInvoice } from '@/lib/quickbooks';
 import type Stripe from 'stripe';
 
 /** This tenant's own name/colors/logo for the invoice and payment emails — never 3U3's, once this is a different company's booking. */
-async function brandFor(tenantId: string): Promise<EmailBrand> {
+export async function brandFor(tenantId: string): Promise<EmailBrand> {
   const tenant = (await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1))[0];
   return {
     name: tenant?.name ?? '3U3 Cleaning',
@@ -158,7 +158,7 @@ export async function replaceInvoiceItems(
 }
 
 /** Reuses a client's Stripe Customer if we already made one; creates and persists one otherwise. */
-async function getOrCreateStripeCustomer(clientId: string): Promise<string> {
+export async function getOrCreateStripeCustomer(clientId: string): Promise<string> {
   const client = (await db.select().from(users).where(eq(users.id, clientId)).limit(1))[0];
   if (!client) throw new InvoiceError('Client not found');
   if (client.stripeCustomerId) return client.stripeCustomerId;

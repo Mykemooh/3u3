@@ -673,6 +673,31 @@ async function main() {
     -- Service-area check, snapshotted once per lead (lib/serviceArea.ts).
     ALTER TABLE bookings ADD COLUMN IF NOT EXISTS outside_service_area BOOLEAN;
     ALTER TABLE bookings ADD COLUMN IF NOT EXISTS service_area_distance_miles DOUBLE PRECISION;
+
+    -- Monthly billing batches (lib/monthlyBilling.ts).
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS billing_mode TEXT NOT NULL DEFAULT 'PER_CLEAN'
+      CHECK (billing_mode IN ('PER_CLEAN','MONTHLY_BATCH'));
+
+    CREATE TABLE IF NOT EXISTS monthly_billing_batches (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      client_id TEXT NOT NULL REFERENCES users(id),
+      period_start TEXT NOT NULL,
+      period_end TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN','INVOICED','PAID','FAILED')),
+      total_cents INTEGER NOT NULL DEFAULT 0,
+      stripe_invoice_id TEXT,
+      hosted_invoice_url TEXT,
+      invoice_pdf_url TEXT,
+      receipt_url TEXT,
+      autopay_charged BOOLEAN NOT NULL DEFAULT false,
+      invoiced_at TIMESTAMPTZ,
+      paid_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS monthly_billing_batches_client_period_unique ON monthly_billing_batches(client_id, period_start);
+
+    ALTER TABLE invoices ADD COLUMN IF NOT EXISTS batch_id TEXT REFERENCES monthly_billing_batches(id);
   `);
 
   console.log('Schema pushed to Postgres.');

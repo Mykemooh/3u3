@@ -18,6 +18,8 @@ import HomeProfileEditor from '@/components/HomeProfileEditor';
 import { getHomeProfile } from '@/lib/homeProfile';
 import { encryptionConfigured } from '@/lib/encryption';
 import { getAddOnCatalog, getClientAddOnRates } from '@/lib/addons';
+import { getMonthlyBatchesForClient } from '@/lib/monthlyBilling';
+import BillingModeForm from '@/components/admin/BillingModeForm';
 
 const ESTIMATE_STYLE: Record<string, string> = {
   DRAFT: 'bg-surface text-slate',
@@ -53,6 +55,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
   const homeProfile = primaryAddress ? await getHomeProfile(primaryAddress.id) : null;
   const addOnCatalog = await getAddOnCatalog(tenant.id);
   const addOnOverrides = await getClientAddOnRates(client.id);
+  const monthlyBatches = (await getMonthlyBatchesForClient(client.id)).slice(0, 6);
 
   return (
     <div className="space-y-8">
@@ -157,6 +160,26 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
             <p className="text-sm text-muted">No estimates yet for this client.</p>
           )}
         </div>
+      </div>
+
+      <div className="card max-w-2xl">
+        <h2 className="mb-1 font-semibold text-ink">Billing</h2>
+        <p className="mb-3 text-sm text-slate">How this client's invoices are sent and charged.</p>
+        <BillingModeForm clientId={client.id} initialMode={client.billingMode} />
+        {monthlyBatches.length > 0 && (
+          <div className="mt-4 space-y-2 border-t border-line pt-4">
+            <p className="text-xs font-bold uppercase tracking-wide text-muted">Monthly statements</p>
+            {monthlyBatches.map((b) => (
+              <div key={b.id} className="flex items-center justify-between border-b border-line py-2 text-sm last:border-0">
+                <span>{b.periodStart} to {b.periodEnd}</span>
+                <span className={`pill ${b.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' : b.status === 'FAILED' ? 'bg-red-100 text-red-700' : b.status === 'INVOICED' ? 'bg-amber-100 text-amber-700' : 'bg-line text-muted'}`}>
+                  {b.status === 'OPEN' ? 'Accumulating' : b.status}
+                </span>
+                <span className="font-semibold text-bronze">{formatMoney(b.totalCents)}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="card max-w-2xl">

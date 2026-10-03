@@ -6,6 +6,7 @@ import { getAccountBookings } from '@/lib/account';
 import { formatMoney, SERVICE_LABELS } from '@/lib/data';
 import { formatDateLabel } from '@/lib/scheduling';
 import { invoiceLabel } from '@/lib/invoices';
+import { getMonthlyBatchesForClient } from '@/lib/monthlyBilling';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,8 +15,13 @@ export default async function AccountInvoices() {
   const user = session?.user as { id: string; role?: string };
   if (user.role === 'ADMIN') redirect('/admin/invoices');
 
-  const rows = (await getAccountBookings(user.id)).filter((r) => r.invoice).reverse();
+  // A monthly-batch client's per-visit invoice stays DRAFT (never
+  // individually due) while its month is still accumulating — only
+  // show one here once it's actually been sent or paid, as part of
+  // that month's one combined statement below.
+  const rows = (await getAccountBookings(user.id)).filter((r) => r.invoice && r.invoice.status !== 'DRAFT').reverse();
   const due = rows.filter((r) => r.invoice!.status === 'SENT');
+  const batches = await getMonthlyBatchesForClient(user.id);
 
   return (
     <div className="space-y-6">
@@ -28,26 +34,57 @@ export default async function AccountInvoices() {
           </p>
         )}
       </div>
-      {rows.length === 0 ? (
+
+      {batches.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-muted">Monthly statements</h2>
+          {batches.map((b) =>
+            b.status === 'OPEN' ? (
+              <div key={b.id} className="card flex items-center justify-between gap-4 p-5 opacity-70">
+                <div>
+                  <p className="font-semibold">{b.periodStart} to {b.periodEnd}</p>
+                  <p className="text-sm text-slate">Accumulating — billed at month end</p>
+                </div>
+                <span className="font-semibold text-bronze">{formatMoney(b.totalCents)}</span>
+              </div>
+            ) : (
+              <Link key={b.id} href={`/account/billing-statements/${b.id}`} className="card-interactive flex items-center justify-between gap-4 p-5">
+                <div>
+                  <p className="font-semibold">{b.periodStart} to {b.periodEnd}</p>
+                  <p className="text-sm text-slate">Monthly statement</p>
+                </div>
+                <span className={`pill ${b.status === 'PAID' ? 'bg-emerald-100 text-green' : b.status === 'FAILED' ? 'bg-red-100 text-red-700' : 'bg-gold/20 text-bronze'}`}>
+                  {b.status === 'PAID' ? 'Paid' : b.status === 'FAILED' ? 'Payment issue' : 'Due'}
+                </span>
+              </Link>
+            ),
+          )}
+        </div>
+      )}
+
+      {rows.length === 0 && batches.length === 0 ? (
         <p className="card text-slate">No invoices yet. After each cleaning, your invoice will appear here.</p>
       ) : (
-        <div className="space-y-3">
-          {rows.map(({ invoice, booking, service }) => (
-            <Link key={invoice!.id} href={`/account/invoices/${invoice!.id}`} className="card-interactive flex items-center justify-between gap-4 p-5">
-              <div>
-                <p className="font-semibold">
-                  {invoiceLabel(invoice!)} · {formatMoney(invoice!.totalCents)}
-                </p>
-                <p className="text-sm text-slate">
-                  {service ? SERVICE_LABELS[service.key] ?? service.name : 'Cleaning'} · {formatDateLabel(booking.slotStart.slice(0, 10))}
-                </p>
-              </div>
-              <span className={`pill ${invoice!.status === 'PAID' ? 'bg-emerald-100 text-green' : 'bg-gold/20 text-bronze'}`}>
-                {invoice!.status === 'PAID' ? 'Paid' : 'Due'}
-              </span>
-            </Link>
-          ))}
-        </div>
+        rows.length > 0 && (
+          <div className="space-y-3">
+            {batches.length > 0 && <h2 className="text-sm font-bold uppercase tracking-wide text-muted">Per-visit invoices</h2>}
+            {rows.map(({ invoice, booking, service }) => (
+              <Link key={invoice!.id} href={`/account/invoices/${invoice!.id}`} className="card-interactive flex items-center justify-between gap-4 p-5">
+                <div>
+                  <p className="font-semibold">
+                    {invoiceLabel(invoice!)} · {formatMoney(invoice!.totalCents)}
+                  </p>
+                  <p className="text-sm text-slate">
+                    {service ? SERVICE_LABELS[service.key] ?? service.name : 'Cleaning'} · {formatDateLabel(booking.slotStart.slice(0, 10))}
+                  </p>
+                </div>
+                <span className={`pill ${invoice!.status === 'PAID' ? 'bg-emerald-100 text-green' : 'bg-gold/20 text-bronze'}`}>
+                  {invoice!.status === 'PAID' ? 'Paid' : 'Due'}
+                </span>
+              </Link>
+            ))}
+          </div>
+        )
       )}
     </div>
   );

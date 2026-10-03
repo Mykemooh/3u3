@@ -117,6 +117,13 @@ export const users = pgTable('users', {
   paymentMethodExpMonth: integer('payment_method_exp_month'),
   paymentMethodExpYear: integer('payment_method_exp_year'),
   autopayEnabled: boolean('autopay_enabled').notNull().default(false),
+  // PER_CLEAN (default): each visit is its own invoice, charged on its
+  // own per the autopay rule above. MONTHLY_BATCH (lib/monthlyBilling.ts):
+  // for a client with multiple cleanings a month (e.g. biweekly), every
+  // visit's invoice is held instead of sent individually, and rolled
+  // into one invoice/charge at month end — set per client (Admin →
+  // client profile), never automatic just from their cadence.
+  billingMode: text('billing_mode', { enum: ['PER_CLEAN', 'MONTHLY_BATCH'] }).notNull().default('PER_CLEAN'),
   // Where reminders and alerts go for this person — a customer picks this
   // in My Account; defaults to email until they choose otherwise.
   notificationChannel: text('notification_channel', { enum: ['EMAIL', 'SMS', 'WHATSAPP'] })
@@ -515,6 +522,33 @@ export const quoteItems = pgTable('quote_items', {
 // and "paid" status both come from Stripe (webhook), not guessed
 // client-side.
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Monthly billing batches (lib/monthlyBilling.ts) — for a MONTHLY_BATCH
+// client, every completed visit's invoice in a calendar month rolls into
+// one combined Stripe invoice/charge here instead of being sent
+// individually. Closed by a daily cron once periodEnd has passed.
+// ---------------------------------------------------------------------------
+export const monthlyBillingBatches = pgTable('monthly_billing_batches', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  clientId: text('client_id').notNull().references(() => users.id),
+  periodStart: text('period_start').notNull(),
+  periodEnd: text('period_end').notNull(),
+  status: text('status', { enum: ['OPEN', 'INVOICED', 'PAID', 'FAILED'] }).notNull().default('OPEN'),
+  totalCents: integer('total_cents').notNull().default(0),
+  stripeInvoiceId: text('stripe_invoice_id'),
+  hostedInvoiceUrl: text('hosted_invoice_url'),
+  invoicePdfUrl: text('invoice_pdf_url'),
+  receiptUrl: text('receipt_url'),
+  autopayCharged: boolean('autopay_charged').notNull().default(false),
+  invoicedAt: timestamp('invoiced_at', { withTimezone: true }),
+  paidAt: timestamp('paid_at', { withTimezone: true }),
+  ...timestamps,
+}, (t) => ({
+  // One batch per client per calendar month.
+  clientPeriodUnique: uniqueIndex('monthly_billing_batches_client_period_unique').on(t.clientId, t.periodStart),
+}));
+
 export const invoices = pgTable('invoices', {
   id: id(),
   tenantId: text('tenant_id').notNull().references(() => tenants.id),
@@ -542,6 +576,15 @@ export const invoices = pgTable('invoices', {
   // Whether this invoice was paid by autopay (client.autopayEnabled) vs.
   // the usual emailed pay-link, purely informational for the admin.
   autopayCharged: boolean('autopay_charged').notNull().default(false),
+  // Set when this booking's client is on MONTHLY_BATCH billing
+  // (lib/monthlyBilling.ts): this invoice stays DRAFT and is never sent
+  // or charged on its own — its totalCents instead gets rolled into the
+  // batch's one combined Stripe invoice/charge at month end, at which
+  // point this row's own status/paidAt/receiptUrl are updated to match
+  // so every other reader of a per-booking invoice (the account invoice
+  // list, payroll tip-claiming, QuickBooks sync) keeps working exactly
+  // as if it had been paid individually.
+  batchId: text('batch_id').references(() => monthlyBillingBatches.id),
   sentAt: timestamp('sent_at', { withTimezone: true }),
   paidAt: timestamp('paid_at', { withTimezone: true }),
   ...timestamps,

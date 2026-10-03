@@ -1,9 +1,10 @@
 import { db } from '@/db/client';
-import { jobs, jobChecklistItems, jobMedia, bookings, users, serviceTypes, addresses } from '@/db/schema';
+import { jobs, jobChecklistItems, jobMedia, bookings, users, serviceTypes, addresses, invoices } from '@/db/schema';
 import { and, eq, isNull } from 'drizzle-orm';
 import { getOwnerEmail } from '@/lib/data';
 import { isOnJob, canLeadJob } from '@/lib/team';
 import { createDraftInvoiceForBooking, sendInvoice } from '@/lib/invoices';
+import { addInvoiceToMonthlyBatch } from '@/lib/monthlyBilling';
 import { logNotification } from '@/lib/bookings';
 import { sendEmail, jobCompleteCustomerEmail, jobCompleteOwnerEmail } from '@/lib/email';
 import { appUrl } from '@/lib/url';
@@ -333,16 +334,28 @@ export async function completeJob(jobId: string, viewer: Viewer | null) {
   // Autopay means exactly that — charged the moment the cleaning is
   // done, no admin step in between. A non-autopay client's invoice stays
   // a DRAFT for the admin to review and send manually, same as before —
-  // only an autopay client's invoice gets sent (and charged) here.
+  // only an autopay client's invoice gets sent (and charged) here. A
+  // MONTHLY_BATCH client skips both: their invoice stays DRAFT and folds
+  // into that month's one combined charge instead (lib/monthlyBilling.ts),
+  // closed by a daily cron once the month actually ends.
   if (invoiceId) {
     try {
       const booking = (await db.select().from(bookings).where(eq(bookings.id, job.bookingId)).limit(1))[0];
       const client = booking ? (await db.select().from(users).where(eq(users.id, booking.clientId)).limit(1))[0] : undefined;
-      if (client?.autopayEnabled && client.stripeDefaultPaymentMethodId) {
+      if (booking && client?.billingMode === 'MONTHLY_BATCH') {
+        const invoiceRow = (await db.select({ totalCents: invoices.totalCents }).from(invoices).where(eq(invoices.id, invoiceId)).limit(1))[0];
+        await addInvoiceToMonthlyBatch({
+          invoiceId,
+          tenantId: booking.tenantId,
+          clientId: client.id,
+          cleaningDateISO: booking.slotStart.slice(0, 10),
+          amountCents: invoiceRow?.totalCents ?? 0,
+        });
+      } else if (client?.autopayEnabled && client.stripeDefaultPaymentMethodId) {
         await sendInvoice(invoiceId);
       }
     } catch (err) {
-      console.error('[jobs] autopay charge failed for invoice', invoiceId, err);
+      console.error('[jobs] invoice send/batch failed for invoice', invoiceId, err);
     }
   }
 
