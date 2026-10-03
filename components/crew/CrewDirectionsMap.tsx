@@ -40,6 +40,8 @@ export default function CrewDirectionsMap({ jobId, addressLabel: fallbackAddress
   const [state, setState] = useState<LoadState>({ status: 'loading' });
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<MapboxMap | null>(null);
+  const mapboxglRef = useRef<any>(null);
+  const mapLoadedRef = useRef(false);
   const crewMarker = useRef<Marker | null>(null);
   const destMarker = useRef<Marker | null>(null);
   const followCamera = useRef(true);
@@ -113,6 +115,7 @@ export default function CrewDirectionsMap({ jobId, addressLabel: fallbackAddress
         setState({ status: 'ready', crew, destination, addressLabel: dir.addressLabel ?? fallbackAddressLabel, route, distanceMiles, durationMinutes, hasSteps });
 
         const mapboxgl = (await import('mapbox-gl')).default;
+        mapboxglRef.current = mapboxgl;
         if (cancelled || !container.current) return;
         mapboxgl.accessToken = token;
         const points: Coord[] = [...(route ?? []), ...(crew ? [[crew.lng, crew.lat] as Coord] : []), ...(destination ? [[destination.lng, destination.lat] as Coord] : [])];
@@ -128,13 +131,8 @@ export default function CrewDirectionsMap({ jobId, addressLabel: fallbackAddress
         m.addControl(new mapboxgl.AttributionControl({ compact: true }));
         m.on('dragstart', () => (followCamera.current = false));
         m.on('load', () => {
-          if (route) {
-            m.addSource('route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: route } } });
-            m.addLayer({ id: 'route-casing', type: 'line', source: 'route', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 9 } });
-            m.addLayer({ id: 'route-line', type: 'line', source: 'route', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ROUTE_COLOR, 'line-width': 5 } });
-          }
-          if (crew) crewMarker.current = new mapboxgl.Marker({ color: ROUTE_COLOR }).setLngLat(crew).addTo(m);
-          if (destination) destMarker.current = new mapboxgl.Marker({ color: '#0B1F3B' }).setLngLat(destination).addTo(m);
+          mapLoadedRef.current = true;
+          drawRouteOnMap(route, crew, destination);
           if (points.length >= 2) {
             const lngs = points.map((p) => p[0]);
             const lats = points.map((p) => p[1]);
@@ -157,6 +155,59 @@ export default function CrewDirectionsMap({ jobId, addressLabel: fallbackAddress
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [jobId, fallbackAddressLabel]);
+
+  /** Adds (first time) or refreshes (retry) the route line and markers on an already-created map. Safe to call more than once. */
+  function drawRouteOnMap(route: Coord[] | null, crew: LngLat | null, destination: LngLat | null) {
+    const m = map.current;
+    const mapboxgl = mapboxglRef.current;
+    if (!m || !mapboxgl) return;
+    if (route && route.length > 0) {
+      const existing = m.getSource('route') as GeoJSONSource | undefined;
+      const data = { type: 'Feature' as const, properties: {}, geometry: { type: 'LineString' as const, coordinates: route } };
+      if (existing) {
+        existing.setData(data);
+      } else {
+        m.addSource('route', { type: 'geojson', data });
+        m.addLayer({ id: 'route-casing', type: 'line', source: 'route', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 9 } });
+        m.addLayer({ id: 'route-line', type: 'line', source: 'route', layout: { 'line-join': 'round', 'line-cap': 'round' }, paint: { 'line-color': ROUTE_COLOR, 'line-width': 5 } });
+      }
+    }
+    if (crew) {
+      if (crewMarker.current) crewMarker.current.setLngLat(crew);
+      else crewMarker.current = new mapboxgl.Marker({ color: ROUTE_COLOR }).setLngLat(crew).addTo(m);
+    }
+    if (destination && !destMarker.current) {
+      destMarker.current = new mapboxgl.Marker({ color: '#0B1F3B' }).setLngLat(destination).addTo(m);
+    }
+  }
+
+  /** Geolocation can fail on first load (permission prompt still pending, slow GPS fix) without being a permanent no — this re-tries it and, on success, fetches the route it couldn't before. */
+  async function retryLocation() {
+    const destination = destinationRef.current;
+    const token = tokenRef.current;
+    if (!destination || !token) return;
+    const crew = await currentPosition(12000);
+    if (!crew) return;
+    try {
+      const res = await fetch(
+        `https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${crew.lng},${crew.lat};${destination.lng},${destination.lat}?geometries=geojson&overview=full&steps=true&access_token=${token}`,
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      const best = data?.routes?.[0];
+      if (!best?.geometry?.coordinates) return;
+      const route: Coord[] = best.geometry.coordinates;
+      routeRef.current = route;
+      stepsRef.current = parseSteps(best.legs?.[0]?.steps ?? []);
+      const distanceMiles = Math.round((best.distance / 1609.34) * 10) / 10;
+      const durationMinutes = Math.max(1, Math.round(best.duration / 60));
+      setState((s) => (s.status === 'ready' ? { ...s, crew, route, distanceMiles, durationMinutes, hasSteps: stepsRef.current.length > 0 } : s));
+      if (mapLoadedRef.current) drawRouteOnMap(route, crew, destination);
+      else map.current?.once('load', () => drawRouteOnMap(route, crew, destination));
+    } catch {
+      // Still no luck — the retry button stays, nothing else to do here.
+    }
+  }
 
   function speak(text: string) {
     if (!voiceOnRef.current || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
@@ -202,9 +253,16 @@ export default function CrewDirectionsMap({ jobId, addressLabel: fallbackAddress
     const point: Coord = [pos.coords.longitude, pos.coords.latitude];
     const m = map.current;
 
-    if (m && crewMarker.current) {
-      if (!crewMarker.current.getElement().isConnected) crewMarker.current.setLngLat(point).addTo(m);
-      else crewMarker.current.setLngLat(point);
+    if (m) {
+      // Geolocation may have failed on the initial load (denied, or just
+      // slow) but succeed now via watchPosition — create the marker on
+      // first fix rather than silently never showing one.
+      if (!crewMarker.current && mapboxglRef.current) {
+        crewMarker.current = new mapboxglRef.current.Marker({ color: ROUTE_COLOR }).setLngLat(point).addTo(m);
+      } else if (crewMarker.current) {
+        if (!crewMarker.current.getElement().isConnected) crewMarker.current.setLngLat(point).addTo(m);
+        else crewMarker.current.setLngLat(point);
+      }
     }
     if (m && followCamera.current) {
       const bearing = pos.coords.heading != null && !Number.isNaN(pos.coords.heading) ? pos.coords.heading : lastPointRef.current ? bearingBetween(lastPointRef.current, point) : undefined;
@@ -338,8 +396,13 @@ export default function CrewDirectionsMap({ jobId, addressLabel: fallbackAddress
 
       <div ref={container} className="h-64 w-full sm:h-72" role="region" aria-label="Map to the job address" />
 
-      {!state.crew && (
-        <p className="border-t border-line px-4 py-2 text-xs text-slate">Couldn't get your location — showing the destination only.</p>
+      {!state.crew && !navActive && (
+        <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-2">
+          <p className="text-xs text-slate">Couldn't get your location — showing the destination only.</p>
+          <button type="button" onClick={retryLocation} className="shrink-0 text-xs font-semibold text-bronze hover:underline">
+            Try again
+          </button>
+        </div>
       )}
 
       <div className="flex items-center gap-2 border-t border-line p-3">
