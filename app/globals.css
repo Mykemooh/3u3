@@ -152,7 +152,7 @@
     @apply flex h-11 w-11 items-center justify-center rounded-full text-base font-bold;
   }
   .media {
-    @apply overflow-hidden rounded-2xl bg-surface;
+    @apply overflow-hidden rounded-[1.5rem] bg-surface;
   }
 
   /* ---- Motion ----------------------------------------------------------
@@ -344,50 +344,3 @@
   }
 }
 
-/* ---- Homepage hero mark ----------------------------------------------
-   The U's real shape, masked out of its own artwork (mark-u-mask.png) so
-   an animated gradient can play through it — a raster image's baked-in
-   color can't animate on its own, a CSS gradient behind a mask can.     */
-@layer components {
-  .u-gradient-mask {
-    background: linear-gradient(120deg, #1e8e55 0%, #34a871 35%, #176b42 70%, #34a871 100%);
-    background-size: 300% 300%;
-    -webkit-mask-image: url('/brand/mark-u-mask.png');
-    mask-image: url('/brand/mark-u-mask.png');
-    -webkit-mask-size: contain;
-    mask-size: contain;
-    -webkit-mask-repeat: no-repeat;
-    mask-repeat: no-repeat;
-    animation: u-gradient-shift 5s ease-in-out infinite;
-  }
-  @keyframes u-gradient-shift {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-  }
-
-  /* A broom emoji flying left-to-right, on loop, over the line below it —
-     and the words themselves stay hidden until the broom passes over them,
-     revealed left-to-right in lockstep (same duration/timing on both), so
-     the broom looks like it's sweeping the sentence into existence.       */
-  .broom-sweep {
-    animation: broom-sweep-move 5.6s linear infinite;
-  }
-  @keyframes broom-sweep-move {
-    0% { left: -10%; }
-    100% { left: 105%; }
-  }
-  .sweep-reveal-text {
-    animation: sweep-reveal-text 5.6s linear infinite;
-  }
-  @keyframes sweep-reveal-text {
-    0%, 8% { clip-path: inset(0 100% 0 0); }
-    92%, 100% { clip-path: inset(0 0% 0 0); }
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .u-gradient-mask { animation: none; background-position: 35% 50%; }
-  .broom-sweep { animation: none; left: 50%; transform: translate(-50%, -50%) !important; }
-  .sweep-reveal-text { animation: none; clip-path: none; }
-}

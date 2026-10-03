@@ -17,15 +17,15 @@ import Image from 'next/image';
  * The mark reads through the white bands and quietly disappears behind the
  * grey and dark ones, so the page keeps its structure.
  */
-const VEIL = 0.94; // white cover over the mark: higher = fainter logo
+const VEIL = 0.99; // white cover over the mark: higher = fainter logo
 
 export default function BrandWatermark() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none fixed inset-y-0 left-0 z-0 hidden w-[40vw] max-w-[560px] select-none overflow-hidden sm:block"
+      className="pointer-events-none fixed inset-y-0 left-0 z-0 hidden w-[28vw] max-w-[400px] select-none overflow-hidden sm:block"
     >
-      <div className="absolute left-[-6%] top-1/2 w-[80vw] max-w-[900px] -translate-y-1/2">
+      <div className="absolute left-[-10%] top-1/2 w-[60vw] max-w-[680px] -translate-y-1/2">
         <Image src="/brand/logo-navy-mark.png" alt="" width={641} height={208} className="h-auto w-full" />
       </div>
 

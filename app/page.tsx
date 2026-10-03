@@ -9,11 +9,6 @@ import { SERVICES, HIDDEN_SERVICE_KEYS } from '@/lib/services';
 
 export const dynamic = 'force-dynamic';
 
-// Native pixel sizes of the upscaled (3x + Lanczos) mark pieces — see
-// public/brand/mark-*.png.
-const LEFT_3 = { w: 633, h: 624 };
-const RIGHT_3 = { w: 630, h: 624 };
-
 const PHILOSOPHY = [
   { n: '01', title: 'Your time matters.', body: 'Every hour we spend cleaning is an hour you got back for the people and things you actually care about.' },
   { n: '02', title: 'Your home matters.', body: 'Not a stop on a route. We work the same checklist every visit so nothing quietly gets skipped on a busy week.' },
@@ -31,16 +26,10 @@ export default async function WelcomePage() {
 
       <main>
         {/* ---------- Hero ---------- */}
-        <section className="px-6 pt-14 text-center md:pt-20">
+        <section className="px-6 pt-20 text-center md:pt-28">
           <div className="container-narrow">
-            <div role="img" aria-label="3U3 Cleaning" className="mx-auto flex h-14 items-center justify-center md:h-20">
-              <Image src="/brand/mark-3-left.png" alt="" width={LEFT_3.w} height={LEFT_3.h} priority className="h-full w-auto select-none" aria-hidden="true" />
-              <div className="u-gradient-mask h-full w-[48px] shrink-0 md:w-[68px]" aria-hidden="true" />
-              <Image src="/brand/mark-3-right.png" alt="" width={RIGHT_3.w} height={RIGHT_3.h} priority className="h-full w-auto select-none" aria-hidden="true" />
-            </div>
-
-            <p className="eyebrow mt-8">Professional cleaning · Katy &amp; Houston</p>
-            <h1 className="display mx-auto mt-4 max-w-2xl">
+            <p className="eyebrow">Professional cleaning · Katy &amp; Houston</p>
+            <h1 className="display mx-auto mt-5 max-w-2xl">
               Come home
               <br />
               to clean.
@@ -61,7 +50,7 @@ export default async function WelcomePage() {
             <p className="meta mt-5">No obligation · Nothing to pay up front · Priced in person, never by form</p>
           </div>
 
-          <div className="container-wide mt-14">
+          <div className="container-wide mt-16">
             <div className="media relative aspect-[16/10] shadow-card-lg md:aspect-[16/8]">
               <Image
                 src="/images/hero-living-room.jpg"
@@ -117,11 +106,11 @@ export default async function WelcomePage() {
             <p className="eyebrow">Why 3U3</p>
             <h2 className="h2 mt-3">A short list we actually keep.</h2>
 
-            <div className="mt-12 grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-8">
+            <div className="mt-12 grid grid-cols-1 gap-12 md:grid-cols-3 md:gap-10">
               {PHILOSOPHY.map((p) => (
-                <div key={p.n}>
+                <div key={p.n} className="border-t border-line pt-6">
                   <span className="meta">{p.n}</span>
-                  <p className="mt-3 text-2xl font-bold tracking-[-0.01em] text-ink">{p.title}</p>
+                  <p className="mt-4 text-[1.75rem] font-bold leading-[1.1] tracking-[-0.015em] text-ink">{p.title}</p>
                   <p className="body mt-3">{p.body}</p>
                 </div>
               ))}
@@ -140,14 +129,6 @@ export default async function WelcomePage() {
             </div>
           </section>
         )}
-
-        {/* ---------- The broom (kept — it's the one playful beat on the page) ---------- */}
-        <div className="relative mx-auto max-w-sm overflow-hidden px-6 py-10">
-          <p className="sweep-reveal-text text-center text-lg font-semibold text-ink">Come on, commit to something!</p>
-          <span className="broom-sweep pointer-events-none absolute top-1/2 -translate-y-1/2 text-[72px] leading-none" aria-hidden="true">
-            🧹
-          </span>
-        </div>
 
         {/* ---------- Final CTA ---------- */}
         <section className="px-6 pb-20">
