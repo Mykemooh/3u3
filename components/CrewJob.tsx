@@ -9,6 +9,7 @@ import { useLocationReporter, currentPosition } from '@/lib/useLocationReporter'
 import { useOfflineSync, registerCrewServiceWorker, isNetworkError } from '@/lib/offlineSync';
 import { enqueueAction, removePendingAction, offlineQueueSupported } from '@/lib/offlineQueue';
 import OfflineBanner from '@/components/crew/OfflineBanner';
+import CrewDirectionsMap from '@/components/crew/CrewDirectionsMap';
 
 export type CrewMedia = {
   id: string;
@@ -705,12 +706,15 @@ export default function CrewJob(props: Props) {
       {showDirections && address && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={() => setShowDirections(false)}>
           <div
-            className="w-full max-w-xl rounded-t-2xl border-t border-line bg-white p-5"
+            className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-t-2xl border-t border-line bg-white p-5"
             style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="eyebrow">Get directions</p>
-            <p className="mt-1 mb-4 text-sm text-slate">{address}</p>
+            <p className="eyebrow">Directions</p>
+            <div className="mt-3">
+              <CrewDirectionsMap jobId={props.job.id} addressLabel={address} />
+            </div>
+            <p className="mb-2 mt-4 text-xs font-bold uppercase tracking-wide text-muted">Start navigation</p>
             <div className="space-y-2">
               {directionLinks.map((link) => (
                 <a
@@ -734,7 +738,7 @@ export default function CrewJob(props: Props) {
               </button>
             </div>
             <button type="button" onClick={() => setShowDirections(false)} className="btn-secondary mt-4 w-full">
-              Cancel
+              Close
             </button>
           </div>
         </div>
