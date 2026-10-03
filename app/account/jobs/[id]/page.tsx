@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth';
 import { loadJob, canViewJob, viewerFrom } from '@/lib/jobs';
 import { SERVICE_LABELS } from '@/lib/data';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
-import { formatClock } from '@/lib/time';
+import { formatClock, BUSINESS_TIMEZONE } from '@/lib/time';
 import { cleaningJourney } from '@/lib/account';
 import { db } from '@/db/client';
 import { invoices } from '@/db/schema';
@@ -20,6 +20,10 @@ import { getUserById } from '@/lib/data';
 import { getReviewForBooking } from '@/lib/reviews';
 
 export const dynamic = 'force-dynamic';
+
+function timestampLabel(createdAt: Date): string {
+  return createdAt.toLocaleString('en-US', { timeZone: BUSINESS_TIMEZONE, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
 
 export default async function JobGallery({ params }: { params: { id: string } }) {
   const viewer = viewerFrom(await getServerSession(authOptions));
@@ -95,6 +99,9 @@ export default async function JobGallery({ params }: { params: { id: string } })
                 <>
                   <BeforeAfter before={firstBefore.url} after={firstAfter.url} room={item.roomName} />
                   <p className="text-center text-xs text-muted">Drag the handle to compare</p>
+                  <p className="text-center text-xs text-muted">
+                    Before {timestampLabel(firstBefore.createdAt)} · After {timestampLabel(firstAfter.createdAt)}
+                  </p>
                 </>
               ) : (
                 <p className="text-sm text-muted">No photos for this room yet.</p>
@@ -118,6 +125,11 @@ export default async function JobGallery({ params }: { params: { id: string } })
                         {m.phase === 'AFTER' ? 'After' : 'Before'}
                         {m.kind === 'VIDEO' ? ' · video' : ''}
                       </figcaption>
+                      {m.kind === 'VIDEO' && (
+                        <span className="pointer-events-none absolute bottom-1 right-1 rounded bg-ink/70 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                          {timestampLabel(m.createdAt)}
+                        </span>
+                      )}
                     </figure>
                   ))}
                 </div>

@@ -16,6 +16,8 @@ export type CrewMedia = {
   phase: Phase;
   kind: Kind;
   url: string;
+  /** ISO timestamp — photos already have one burned into the image itself (lib/clientUpload.ts); videos don't, so this is shown as text for both. */
+  createdAt: string;
 };
 
 export type CrewItem = {
@@ -262,7 +264,7 @@ export default function CrewJob(props: Props) {
               fileName: file.name,
               fileType: file.type,
             });
-            setMedia((m) => [...m, { id: `pending:${queued.id}`, itemId, phase, kind, url: URL.createObjectURL(file) }]);
+            setMedia((m) => [...m, { id: `pending:${queued.id}`, itemId, phase, kind, url: URL.createObjectURL(file), createdAt: new Date().toISOString() }]);
             offline.refreshPendingCount();
           } catch {
             // Likely IndexedDB storage full — a video can be tens of MB.
@@ -741,6 +743,10 @@ export default function CrewJob(props: Props) {
   );
 }
 
+function mediaTimestampLabel(createdAt: string): string {
+  return new Date(createdAt).toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
 function Icon({ d }: { d: string }) {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -927,6 +933,10 @@ function PhaseColumn({
                 <video src={`${m.url}#t=0.1`} className="h-full w-full object-cover" muted playsInline preload="metadata" />
                 <span className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
                   <span className="flex h-8 w-8 items-center justify-center rounded-full bg-ink/70 text-white">▶</span>
+                </span>
+                {/* Photos get their timestamp burned into the image itself (lib/clientUpload.ts); video can't be stamped client-side, so it shows one here instead. */}
+                <span className="pointer-events-none absolute bottom-1 left-1 rounded bg-ink/70 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                  {mediaTimestampLabel(m.createdAt)}
                 </span>
               </>
             )}

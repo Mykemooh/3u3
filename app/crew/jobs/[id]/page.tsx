@@ -61,7 +61,7 @@ export default async function CrewJobPage({ params }: { params: { id: string } }
             : null
         }
         items={items.map((i) => ({ id: i.id, roomName: i.roomName, taskDetail: i.taskDetail, status: i.status, skipReason: i.skipReason }))}
-        media={media.map((m) => ({ id: m.id, itemId: m.itemId, phase: m.phase, kind: m.kind, url: m.url }))}
+        media={media.map((m) => ({ id: m.id, itemId: m.itemId, phase: m.phase, kind: m.kind, url: m.url, createdAt: m.createdAt.toISOString() }))}
         perPhase={MEDIA_LIMITS.perPhase}
         videoSeconds={MEDIA_LIMITS.videoSeconds}
         isAdmin={viewer.role === 'ADMIN'}

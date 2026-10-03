@@ -15,6 +15,40 @@ export type Kind = 'PHOTO' | 'VIDEO';
 const MAX_EDGE = 1600;
 const QUALITY = 0.82;
 
+// Matches lib/time.ts's BUSINESS_TIMEZONE default — duplicated rather
+// than imported, since this runs in the browser bundle where a
+// non-NEXT_PUBLIC_ env var always reads as undefined, which would
+// silently show the fallback anyway while looking like it respected a
+// server-side override.
+const DISPLAY_TIMEZONE = 'America/Chicago';
+
+/** Burns a timestamp into the photo itself, bottom-right — proof of when it was actually taken that travels with the file, not just a DB column. */
+function drawTimestamp(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  const label = new Date().toLocaleString('en-US', {
+    timeZone: DISPLAY_TIMEZONE,
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+  const fontSize = Math.max(14, Math.round(w * 0.022));
+  ctx.font = `${fontSize}px sans-serif`;
+  const paddingX = Math.round(fontSize * 0.5);
+  const paddingY = Math.round(fontSize * 0.35);
+  const textWidth = ctx.measureText(label).width;
+  const boxW = textWidth + paddingX * 2;
+  const boxH = fontSize + paddingY * 2;
+  const margin = Math.round(fontSize * 0.6);
+  const x = w - boxW - margin;
+  const y = h - boxH - margin;
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(x, y, boxW, boxH);
+  ctx.fillStyle = '#ffffff';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, x + paddingX, y + boxH / 2);
+}
+
 export async function compressPhoto(file: File): Promise<Blob> {
   try {
     const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' } as ImageBitmapOptions);
@@ -28,9 +62,13 @@ export async function compressPhoto(file: File): Promise<Blob> {
     if (!ctx) return file;
     ctx.drawImage(bitmap, 0, 0, w, h);
     bitmap.close?.();
+    drawTimestamp(ctx, w, h);
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', QUALITY));
-    // Keep the original if the browser couldn't do better (already small).
-    return blob && blob.size < file.size ? blob : file;
+    // Unlike before, the canvas pass (burning in the timestamp) is now
+    // always meaningful even when it doesn't shrink the file — so unlike
+    // the old "keep the original if we didn't do better" check, the
+    // stamped version is kept whenever the canvas pass succeeded at all.
+    return blob ?? file;
   } catch {
     return file;
   }
