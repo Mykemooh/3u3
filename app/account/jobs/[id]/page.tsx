@@ -14,8 +14,10 @@ import JourneyRail from '@/components/app/JourneyRail';
 import BeforeAfter from '@/components/app/BeforeAfter';
 import LiveTrackingMap from '@/components/app/LiveTrackingMap';
 import SocialMediaConsent from '@/components/account/SocialMediaConsent';
+import ReviewPrompt from '@/components/account/ReviewPrompt';
 import { getTracking, publicMapboxToken } from '@/lib/tracking';
 import { getUserById } from '@/lib/data';
+import { getReviewForBooking } from '@/lib/reviews';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +27,7 @@ export default async function JobGallery({ params }: { params: { id: string } })
   const data = await loadJob(params.id);
   if (!data || !(await canViewJob(viewer, data.job, data.booking))) notFound();
 
-  const { job, booking, service, items, media } = data;
+  const { job, booking, client, service, items, media } = data;
   const invoiceRow = (await db.select().from(invoices).where(eq(invoices.bookingId, booking.id)).limit(1))[0];
   const invoice = invoiceRow && (viewer.role === 'ADMIN' || (invoiceRow.status !== 'DRAFT' && invoiceRow.status !== 'VOID')) ? invoiceRow : null;
   // Clients see the photos once the job is finished; staff see them live.
@@ -124,6 +126,15 @@ export default async function JobGallery({ params }: { params: { id: string } })
           );
         })}
         </>
+      )}
+
+      {viewer.role === 'CUSTOMER' && showMedia && job.status === 'COMPLETE' && (
+        <ReviewPrompt
+          jobId={job.id}
+          name={client?.name ?? 'there'}
+          avatarUrl={client?.avatarUrl ?? null}
+          existingRating={(await getReviewForBooking(booking.id))?.rating ?? null}
+        />
       )}
 
       {viewer.role === 'CUSTOMER' && showMedia && (

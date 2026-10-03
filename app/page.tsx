@@ -1,5 +1,10 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import { getTenant } from '@/lib/data';
+import { getFeaturedReviews } from '@/lib/reviews';
+import TestimonialCarousel from '@/components/TestimonialCarousel';
+
+export const dynamic = 'force-dynamic';
 
 // Native pixel sizes of the upscaled (3x + Lanczos) mark pieces — see
 // public/brand/mark-*.png. Displayed well below their native size, so
@@ -11,7 +16,10 @@ import Image from 'next/image';
 const LEFT_3 = { w: 633, h: 624 };
 const RIGHT_3 = { w: 630, h: 624 };
 
-export default function WelcomePage() {
+export default async function WelcomePage() {
+  const tenant = await getTenant();
+  const featuredReviews = tenant ? await getFeaturedReviews(tenant.id) : [];
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center overflow-x-hidden bg-white px-6 py-20 text-center">
       <div
@@ -70,6 +78,8 @@ export default function WelcomePage() {
           🧹
         </span>
       </div>
+
+      <TestimonialCarousel reviews={featuredReviews} />
     </main>
   );
 }

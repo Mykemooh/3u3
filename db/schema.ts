@@ -699,6 +699,26 @@ export const bookingAddOns = pgTable('booking_add_ons', {
 });
 
 // ---------------------------------------------------------------------------
+// Reviews (lib/reviews.ts) — prompted on the client's before-and-after
+// gallery once a job is complete (one per booking). Every review reaches
+// the admin portal first; "featured" is the admin's deliberate choice to
+// show it in the landing page's testimonial carousel, so nothing a client
+// writes goes public without a human picking it.
+// ---------------------------------------------------------------------------
+export const reviews = pgTable('reviews', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  bookingId: text('booking_id').notNull().references(() => bookings.id),
+  clientId: text('client_id').notNull().references(() => users.id),
+  rating: integer('rating').notNull(),
+  comment: text('comment'),
+  featured: boolean('featured').notNull().default(false),
+  ...timestamps,
+}, (t) => ({
+  bookingUnique: uniqueIndex('reviews_booking_unique').on(t.bookingId),
+}));
+
+// ---------------------------------------------------------------------------
 // Supply reports (lib/supplies.ts) — a deliberately light way for a crew
 // member to flag a product that's low, out, or damaged, from the crew
 // portal: just a product name typed in free text and a status, no catalog

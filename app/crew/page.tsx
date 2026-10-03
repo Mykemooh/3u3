@@ -89,11 +89,18 @@ export default async function CrewHome() {
   return (
     <AppShell name={session.user.name} tabs={CREW_TABS} homeHref={role === 'ADMIN' ? '/admin' : '/crew'}>
       <div className="space-y-8">
-        <div>
-          <p className="eyebrow">{formatDateLabel(today)}</p>
-          <h1 className="mt-1 text-3xl font-extrabold">
-            {inProgress.length ? 'Job in progress' : todays.length ? `${todays.length} job${todays.length === 1 ? '' : 's'} today` : 'No jobs today'}
-          </h1>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="eyebrow">{formatDateLabel(today)}</p>
+            <h1 className="mt-1 text-3xl font-extrabold">
+              {inProgress.length ? 'Job in progress' : todays.length ? `${todays.length} job${todays.length === 1 ? '' : 's'} today` : 'No jobs today'}
+            </h1>
+          </div>
+          {role === 'CLEANER' && (
+            <Link href="/crew/supplies" className="btn-secondary !px-3 !py-2 text-sm shrink-0">
+              Report supplies
+            </Link>
+          )}
         </div>
 
         {next && <NextJobCard row={next} />}

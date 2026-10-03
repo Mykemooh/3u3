@@ -579,6 +579,21 @@ async function main() {
     -- service's own default duration when null.
     ALTER TABLE addresses ADD COLUMN IF NOT EXISTS target_clean_minutes INTEGER;
 
+    -- Reviews (lib/reviews.ts) — prompted once per booking on the client's
+    -- before-and-after gallery; "featured" is an admin picking it for the
+    -- landing page's testimonial carousel.
+    CREATE TABLE IF NOT EXISTS reviews (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      booking_id TEXT NOT NULL REFERENCES bookings(id),
+      client_id TEXT NOT NULL REFERENCES users(id),
+      rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+      comment TEXT,
+      featured BOOLEAN NOT NULL DEFAULT false,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS reviews_booking_unique ON reviews(booking_id);
+
     -- Light supply reporting from the crew portal (lib/supplies.ts): a
     -- free-text product name and a status, tied to the crew/team.
     CREATE TABLE IF NOT EXISTS supply_reports (
