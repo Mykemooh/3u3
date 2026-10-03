@@ -334,6 +334,15 @@ export const bookings = pgTable('bookings', {
   // reminder twice no matter how often the cron runs.
   reminder3dSentAt: timestamp('reminder_3d_sent_at', { withTimezone: true }),
   reminder36hSentAt: timestamp('reminder_36h_sent_at', { withTimezone: true }),
+  // Service-area check (lib/serviceArea.ts), snapshotted once at lead
+  // capture against tenants.serviceAreaRadiusMiles — a verdict and a
+  // distance, never the geocoded coordinates themselves (those stay
+  // ephemeral, same rule as everywhere else in this app). Null means
+  // "never checked" (no crew home base configured yet, or geocoding
+  // unavailable) — never treated as "outside," since that would block
+  // every lead just because nothing's been set up to check against.
+  outsideServiceArea: boolean('outside_service_area'),
+  serviceAreaDistanceMiles: doublePrecision('service_area_distance_miles'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdate(() => new Date()),
   ...timestamps,
 }, (t) => ({

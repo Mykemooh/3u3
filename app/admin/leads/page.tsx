@@ -91,6 +91,11 @@ export default async function AdminLeads() {
                     <span className={`pill ${ESTIMATE_STYLE[estimate.status]}`}>Estimate {estimate.status}</span>
                   )}
                   {won && <span className="pill bg-gold/15 text-bronze">Won — rate on file</span>}
+                  {lead.outsideServiceArea && (
+                    <span className="pill bg-red-100 text-red-700">
+                      Outside service area{lead.serviceAreaDistanceMiles != null ? ` (${lead.serviceAreaDistanceMiles} mi)` : ''}
+                    </span>
+                  )}
                 </div>
                 <p className="text-sm text-slate">
                   {client?.phone} {client?.email ? `· ${client.email}` : ''}

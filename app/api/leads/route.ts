@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/db/client';
-import { users, addresses, serviceTypes } from '@/db/schema';
+import { users, addresses, serviceTypes, bookings } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { getTenant, getOwnerEmail } from '@/lib/data';
 import { createQuoteVisitBooking, logNotification, DoubleBookingError } from '@/lib/bookings';
@@ -10,6 +10,7 @@ import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 import { issuePasswordSetupToken } from '@/lib/passwordSetup';
 import { appUrl } from '@/lib/url';
 import { pickedAddressSchema, addressFields } from '@/lib/addresses';
+import { checkServiceArea } from '@/lib/serviceArea';
 
 const schema = z.object({
   name: z.string().min(1),
@@ -75,6 +76,17 @@ export async function POST(req: Request) {
       slotStart,
       slotEnd,
     });
+
+    // Service-area check (lib/serviceArea.ts) — a snapshot for the admin
+    // to see on this lead, never a reason to refuse the booking itself:
+    // the office still decides whether to take on a borderline or
+    // out-of-area job, same as they always could.
+    try {
+      const { outsideServiceArea, distanceMiles } = await checkServiceArea(tenant.id, addressLine1);
+      await db.update(bookings).set({ outsideServiceArea, serviceAreaDistanceMiles: distanceMiles }).where(eq(bookings.id, bookingId));
+    } catch (err) {
+      console.error('[leads] service-area check failed', err);
+    }
 
     const dateLabel = formatDateLabel(slotStart.split('T')[0]);
     const timeLabel = formatSlotLabel(slotStart, slotEnd);

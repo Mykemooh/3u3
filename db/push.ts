@@ -669,6 +669,10 @@ async function main() {
     -- Dashboard customization (lib/dashboard.ts, Admin → Dashboard).
     ALTER TABLE tenants ADD COLUMN IF NOT EXISTS dashboard_hidden_widgets TEXT NOT NULL DEFAULT '';
     ALTER TABLE tenants ADD COLUMN IF NOT EXISTS avg_supply_cost_cents_per_clean INTEGER NOT NULL DEFAULT 800;
+
+    -- Service-area check, snapshotted once per lead (lib/serviceArea.ts).
+    ALTER TABLE bookings ADD COLUMN IF NOT EXISTS outside_service_area BOOLEAN;
+    ALTER TABLE bookings ADD COLUMN IF NOT EXISTS service_area_distance_miles DOUBLE PRECISION;
   `);
 
   console.log('Schema pushed to Postgres.');
