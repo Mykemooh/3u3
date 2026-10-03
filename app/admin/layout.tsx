@@ -25,6 +25,7 @@ const NAV = [
   { href: '/crew', label: 'Jobs & photos' },
   { href: '/admin/invoices', label: 'Invoices' },
   { href: '/admin/services', label: 'Services' },
+  { href: '/admin/addons', label: 'Add-ons' },
   { href: '/admin/rates', label: 'Rates' },
   { href: '/admin/notifications', label: 'Notifications' },
   { href: '/admin/payroll', label: 'Payroll' },

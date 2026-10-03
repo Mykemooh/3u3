@@ -6,12 +6,14 @@ import { createBooking, DoubleBookingError, sendBookingConfirmationEmails } from
 import { teamsFreeFor } from '@/lib/capacity';
 import { getAddressesFor, getServiceType, getClientRatesFor, getTenant } from '@/lib/data';
 import { pickNearestTeam } from '@/lib/routeOptimization';
+import { getAddOnsForClient } from '@/lib/addons';
 
 const schema = z.object({
   serviceTypeId: z.string(),
   slotStart: z.string(),
   slotEnd: z.string(),
   cadence: z.enum(['ONE_TIME', 'BIWEEKLY', 'MONTHLY']),
+  addOnServiceIds: z.array(z.string()).optional(),
 });
 
 // Returning-customer booking (PRD 6.3): booked at the client's own agreed
@@ -30,7 +32,7 @@ export async function POST(req: Request) {
   const body = await req.json();
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
-  const { serviceTypeId, slotStart, slotEnd, cadence } = parsed.data;
+  const { serviceTypeId, slotStart, slotEnd, cadence, addOnServiceIds } = parsed.data;
 
   const service = await getServiceType(serviceTypeId);
   if (!service) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -41,6 +43,14 @@ export async function POST(req: Request) {
 
   const rate = (await getClientRatesFor(clientId)).find((r) => r.serviceTypeId === serviceTypeId);
   const addresses = await getAddressesFor(clientId);
+
+  // Re-price every selection server-side against the client's own catalog
+  // — never trust a price sent from the browser.
+  const availableAddOns = await getAddOnsForClient(tenant.id, clientId);
+  const addOns = (addOnServiceIds ?? [])
+    .map((id) => availableAddOns.find((a) => a.id === id))
+    .filter((a): a is NonNullable<typeof a> => !!a)
+    .map((a) => ({ addOnServiceId: a.id, name: a.name, priceCents: a.priceCents }));
 
   try {
     // Whichever free team is closest to the client takes it — a fast,
@@ -67,6 +77,7 @@ export async function POST(req: Request) {
           cadence,
           priceCents: rate?.rateCents,
           isQuoteVisit: false,
+          addOns,
         });
         break;
       } catch (err) {

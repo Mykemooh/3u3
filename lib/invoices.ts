@@ -2,6 +2,7 @@ import { db } from '@/db/client';
 import { invoices, invoiceItems, bookings, users, serviceTypes, addresses } from '@/db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { formatSlotDateLong } from '@/lib/time';
+import { getBookingAddOns } from '@/lib/addons';
 import { getStripe } from '@/lib/stripe';
 import { getOwnerEmail } from '@/lib/data';
 import { logNotification } from '@/lib/bookings';
@@ -31,7 +32,8 @@ export async function createDraftInvoiceForBooking(bookingId: string): Promise<s
     ? (await db.select().from(serviceTypes).where(eq(serviceTypes.id, booking.serviceTypeId)).limit(1))[0]
     : undefined;
 
-  const amountCents = booking.priceCents ?? 0;
+  const addOns = await getBookingAddOns(booking.id);
+  const amountCents = (booking.priceCents ?? 0) + addOns.reduce((sum, a) => sum + a.priceCents, 0);
   const invoiceId = crypto.randomUUID();
 
   // Next sequential number for this business. The unique index on
@@ -63,9 +65,22 @@ export async function createDraftInvoiceForBooking(bookingId: string): Promise<s
     id: crypto.randomUUID(),
     invoiceId,
     description: `${service ? service.name : 'Cleaning service'} — ${formatSlotDateLong(booking.slotStart)}`,
-    amountCents,
+    amountCents: booking.priceCents ?? 0,
     sortOrder: 0,
   });
+
+  // Each add-on the client picked at booking time gets its own line, at
+  // the price snapshotted onto bookingAddOns — never re-derived from the
+  // catalog, so a later price change never rewrites a past invoice.
+  for (let i = 0; i < addOns.length; i += 1) {
+    await db.insert(invoiceItems).values({
+      id: crypto.randomUUID(),
+      invoiceId,
+      description: addOns[i].name,
+      amountCents: addOns[i].priceCents,
+      sortOrder: i + 1,
+    });
+  }
 
   return invoiceId;
 }

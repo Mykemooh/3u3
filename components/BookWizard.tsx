@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import LogoBadge from '@/components/LogoBadge';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
-import { SERVICE_LABELS } from '@/lib/data';
+import { SERVICE_LABELS, formatMoney } from '@/lib/format';
 import BookingCalendar from '@/components/BookingCalendar';
 
 const NEARBY_BEFORE_DAYS = 3;
@@ -21,6 +21,7 @@ type Service = {
 type Slot = { start: string; end: string; available: boolean };
 type Day = { date: string; slots: Slot[] };
 type Cadence = 'ONE_TIME' | 'BIWEEKLY' | 'MONTHLY';
+type AddOn = { id: string; name: string; description: string | null; priceCents: number };
 
 const CADENCE_LABEL: Record<Cadence, string> = {
   ONE_TIME: 'One-time',
@@ -31,20 +32,35 @@ const CADENCE_LABEL: Record<Cadence, string> = {
 export default function BookWizard({
   customerName,
   services,
+  addOns,
 }: {
   customerName: string;
   services: Service[];
+  addOns: AddOn[];
 }) {
-  const [step, setStep] = useState<'service' | 'schedule' | 'cadence' | 'confirmed'>('service');
+  const [step, setStep] = useState<'service' | 'schedule' | 'addons' | 'cadence' | 'confirmed'>('service');
   const [service, setService] = useState<Service | null>(null);
   const [days, setDays] = useState<Day[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selected, setSelected] = useState<Slot | null>(null);
   const [cadence, setCadence] = useState<Cadence>('ONE_TIME');
+  const [selectedAddOnIds, setSelectedAddOnIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [standbyStatus, setStandbyStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+
+  const selectedAddOns = useMemo(() => addOns.filter((a) => selectedAddOnIds.has(a.id)), [addOns, selectedAddOnIds]);
+  const addOnsTotalCents = useMemo(() => selectedAddOns.reduce((sum, a) => sum + a.priceCents, 0), [selectedAddOns]);
+
+  function toggleAddOn(id: string) {
+    setSelectedAddOnIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   useEffect(() => {
     if (step !== 'schedule' || !service) return;
@@ -86,6 +102,7 @@ export default function BookWizard({
     setSelectedDate(null);
     setSelected(null);
     setCadence('ONE_TIME');
+    setSelectedAddOnIds(new Set());
     setStandbyStatus('idle');
     setStep('schedule');
   }
@@ -109,6 +126,16 @@ export default function BookWizard({
 
   function proceedFromSchedule() {
     if (!selected) return;
+    if (addOns.length > 0) {
+      setStep('addons');
+    } else if (service?.recurringEligible) {
+      setStep('cadence');
+    } else {
+      submit('ONE_TIME');
+    }
+  }
+
+  function proceedFromAddOns() {
     if (service?.recurringEligible) {
       setStep('cadence');
     } else {
@@ -129,6 +156,7 @@ export default function BookWizard({
           slotStart: selected.start,
           slotEnd: selected.end,
           cadence: finalCadence,
+          addOnServiceIds: Array.from(selectedAddOnIds),
         }),
       });
       const data = await res.json();
@@ -288,9 +316,58 @@ export default function BookWizard({
         </div>
       )}
 
-      {step === 'cadence' && service && selected && (
+      {step === 'addons' && service && selected && (
         <div className="card w-full max-w-md">
           <button onClick={() => setStep('schedule')} className="text-sm text-muted mb-4 hover:text-ink">
+            ← Back
+          </button>
+          <h1 className="text-xl font-bold mb-1">Want to add a service for this clean?</h1>
+          <p className="text-sm text-slate mb-6">Totally optional — pick as many or as few as you'd like.</p>
+          <div className="space-y-2 mb-6">
+            {addOns.map((a) => {
+              const checked = selectedAddOnIds.has(a.id);
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => toggleAddOn(a.id)}
+                  className={`flex w-full items-start justify-between gap-3 rounded-xl border-2 px-4 py-3 text-left transition ${
+                    checked ? 'border-gold bg-gold/10' : 'border-line hover:border-gold'
+                  }`}
+                >
+                  <span className="flex items-start gap-3">
+                    <span
+                      className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 text-xs ${
+                        checked ? 'border-gold bg-gold text-white' : 'border-line'
+                      }`}
+                      aria-hidden="true"
+                    >
+                      {checked ? '✓' : ''}
+                    </span>
+                    <span>
+                      <span className="block font-semibold text-ink">{a.name}</span>
+                      {a.description && <span className="block text-sm text-slate">{a.description}</span>}
+                    </span>
+                  </span>
+                  <span className="shrink-0 font-semibold text-bronze">{formatMoney(a.priceCents)}</span>
+                </button>
+              );
+            })}
+          </div>
+          {selectedAddOns.length > 0 && (
+            <p className="mb-4 text-sm text-slate">
+              Add-ons: <span className="font-semibold text-ink">{formatMoney(addOnsTotalCents)}</span>
+            </p>
+          )}
+          <button onClick={proceedFromAddOns} className="btn-primary w-full">
+            Continue
+          </button>
+        </div>
+      )}
+
+      {step === 'cadence' && service && selected && (
+        <div className="card w-full max-w-md">
+          <button onClick={() => setStep(addOns.length > 0 ? 'addons' : 'schedule')} className="text-sm text-muted mb-4 hover:text-ink">
             ← Back
           </button>
           <h1 className="text-xl font-bold mb-1">How often?</h1>
@@ -333,6 +410,9 @@ export default function BookWizard({
             <p>{formatDateLabel(selected.start.split('T')[0])}</p>
             <p>{formatSlotLabel(selected.start, selected.end)}</p>
             <p>{CADENCE_LABEL[cadence]} · {service.rateLabel}</p>
+            {selectedAddOns.length > 0 && (
+              <p>+ {selectedAddOns.map((a) => a.name).join(', ')} ({formatMoney(addOnsTotalCents)})</p>
+            )}
           </div>
           <p className="mb-6 text-xs text-muted">
             A confirmation is on its way to your email. When the crew finishes, you'll get before-and-after photos of every room.

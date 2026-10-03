@@ -6,6 +6,8 @@ import { eq } from 'drizzle-orm';
 import { getTenant, getUserById, getServiceTypes, getAddressesFor, formatMoney, SERVICE_LABELS } from '@/lib/data';
 import { getEstimatesForClient } from '@/lib/estimates';
 import ClientRateForm from '@/components/ClientRateForm';
+import ClientAddOnRateForm from '@/components/admin/ClientAddOnRateForm';
+import ClientAddOnResetButton from '@/components/admin/ClientAddOnResetButton';
 import StartEstimateButton from '@/components/StartEstimateButton';
 import ClientInfoForm from '@/components/ClientInfoForm';
 import CloseClientButton from '@/components/CloseClientButton';
@@ -14,6 +16,7 @@ import BookingCadencePriceEditor from '@/components/BookingCadencePriceEditor';
 import HomeProfileEditor from '@/components/HomeProfileEditor';
 import { getHomeProfile } from '@/lib/homeProfile';
 import { encryptionConfigured } from '@/lib/encryption';
+import { getAddOnCatalog, getClientAddOnRates } from '@/lib/addons';
 
 const ESTIMATE_STYLE: Record<string, string> = {
   DRAFT: 'bg-surface text-slate',
@@ -47,6 +50,8 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
   );
   const estimates = await getEstimatesForClient(client.id);
   const homeProfile = primaryAddress ? await getHomeProfile(primaryAddress.id) : null;
+  const addOnCatalog = await getAddOnCatalog(tenant.id);
+  const addOnOverrides = await getClientAddOnRates(client.id);
 
   return (
     <div className="space-y-8">
@@ -157,6 +162,32 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
           {rates.length === 0 && <p className="text-sm text-muted">No rates on file yet — set one below.</p>}
         </div>
         <ClientRateForm clientId={client.id} services={services.map((s) => ({ id: s.id, name: s.name }))} />
+      </div>
+
+      <div className="card max-w-2xl">
+        <h2 className="mb-1 font-semibold text-ink">Add-on services</h2>
+        <p className="mb-4 text-sm text-slate">
+          Override this client's price for any add-on — otherwise they pay the catalog's default price.
+        </p>
+        <div className="mb-4 space-y-2">
+          {addOnCatalog.map((a) => {
+            const override = addOnOverrides.get(a.id);
+            return (
+              <div key={a.id} className="flex items-center justify-between border-b border-line py-2 text-sm last:border-0">
+                <span className="font-medium">{a.name}</span>
+                <span className="flex items-center gap-2">
+                  <span className="font-semibold text-bronze">
+                    {formatMoney(override ?? a.defaultPriceCents)}
+                    {override == null && <span className="ml-1 text-xs font-normal text-muted">(default)</span>}
+                  </span>
+                  {override != null && <ClientAddOnResetButton clientId={client.id} addOnServiceId={a.id} />}
+                </span>
+              </div>
+            );
+          })}
+          {addOnCatalog.length === 0 && <p className="text-sm text-muted">No add-on services configured yet — set them up under Admin → Add-ons.</p>}
+        </div>
+        <ClientAddOnRateForm clientId={client.id} addOns={addOnCatalog.map((a) => ({ id: a.id, name: a.name }))} />
       </div>
 
       <div className="card overflow-x-auto p-0">

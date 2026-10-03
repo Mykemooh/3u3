@@ -1,7 +1,7 @@
 import { db } from '@/db/client';
 import {
   bookings, jobs, jobChecklistItems, checklistTemplates, checklistTemplateItems,
-  notificationLog, serviceTypes, addresses,
+  notificationLog, serviceTypes, addresses, bookingAddOns,
 } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { businessNowISO } from '@/lib/time';
@@ -77,6 +77,7 @@ export async function createBooking(input: {
   cadence: 'ONE_TIME' | 'BIWEEKLY' | 'MONTHLY';
   priceCents?: number;
   isQuoteVisit?: boolean;
+  addOns?: { addOnServiceId: string; name: string; priceCents: number }[];
 }) {
   const dateOnly = input.slotStart.split('T')[0];
   const newStart = toMinutes(input.slotStart);
@@ -108,6 +109,20 @@ export async function createBooking(input: {
       priceCents: input.priceCents,
       isQuoteVisit: input.isQuoteVisit ?? false,
     });
+
+    // Snapshot each selected add-on's name and price at booking time —
+    // the client's agreed add-on rate can change later without rewriting
+    // what was actually charged for a past visit (same reasoning
+    // invoiceItems snapshots a description rather than re-deriving it).
+    for (const addOn of input.addOns ?? []) {
+      await tx.insert(bookingAddOns).values({
+        id: crypto.randomUUID(),
+        bookingId,
+        addOnServiceId: addOn.addOnServiceId,
+        name: addOn.name,
+        priceCents: addOn.priceCents,
+      });
+    }
 
     // Quote visits don't get a cleaner-facing job/checklist — only real
     // cleaning jobs do.

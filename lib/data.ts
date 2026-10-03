@@ -105,10 +105,7 @@ export async function getCrewForUser(userId: string) {
   return rows[0];
 }
 
-export function formatMoney(cents: number | null | undefined) {
-  if (cents == null) return '—';
-  return `$${(cents / 100).toFixed(2)}`;
-}
+export { formatMoney, SERVICE_LABELS } from './format';
 
 export async function getClientsForTenant(tenantId: string) {
   const rows = await db
@@ -138,9 +135,3 @@ export async function getUnreadAdminAlerts(tenantId: string, limit = 20) {
   return rows.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, limit);
 }
 
-export const SERVICE_LABELS: Record<string, string> = {
-  STANDARD: 'Standard Cleaning',
-  DEEP: 'Deep Cleaning',
-  MOVE_IN_OUT: 'Move-In / Move-Out',
-  AIRBNB: 'Airbnb / Rental Turnover',
-};

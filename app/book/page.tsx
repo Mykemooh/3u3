@@ -6,6 +6,7 @@ import BookWizard from '@/components/BookWizard';
 import AccessNotice from '@/components/AccessNotice';
 import { homeForRole } from '@/lib/nav';
 import { HIDDEN_SERVICE_KEYS } from '@/lib/services';
+import { getAddOnsForClient } from '@/lib/addons';
 
 // Reads the signed-in customer's session and live rate/service data —
 // never statically cacheable.
@@ -24,6 +25,7 @@ export default async function BookPage() {
 
   const services = await getServiceTypes(tenant.id);
   const rates = await getClientRatesFor((session.user as any).id);
+  const addOns = await getAddOnsForClient(tenant.id, (session.user as any).id);
 
   const eligibleServices = services
     .filter((s) => !HIDDEN_SERVICE_KEYS.includes(s.key))
@@ -42,6 +44,7 @@ export default async function BookPage() {
       <BookWizard
         customerName={(session.user as any).name ?? 'there'}
         services={eligibleServices}
+        addOns={addOns}
       />
     </>
   );
