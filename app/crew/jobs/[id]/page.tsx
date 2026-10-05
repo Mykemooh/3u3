@@ -49,6 +49,7 @@ export default async function CrewJobPage({ params }: { params: { id: string } }
         whenLabel={whenLabel}
         addressLabel={address ? `${address.line1}, ${address.city}, ${address.state}${address.zip ? ` ${address.zip}` : ''}` : null}
         cleanerNotes={address?.notes ?? null}
+        visitNote={data.booking.clientNotes ?? null}
         homeProfile={
           homeProfile && homeProfileHasContent(homeProfile)
             ? {
@@ -62,7 +63,15 @@ export default async function CrewJobPage({ params }: { params: { id: string } }
               }
             : null
         }
-        items={items.map((i) => ({ id: i.id, roomName: i.roomName, taskDetail: i.taskDetail, status: i.status, skipReason: i.skipReason }))}
+        items={items.map((i) => ({
+          id: i.id,
+          roomName: i.roomName,
+          taskDetail: i.taskDetail,
+          status: i.status,
+          skipReason: i.skipReason,
+          startedAt: i.startedAt ? i.startedAt.toISOString() : null,
+          completedAt: i.completedAt ? i.completedAt.toISOString() : null,
+        }))}
         media={media.map((m) => ({ id: m.id, itemId: m.itemId, phase: m.phase, kind: m.kind, url: m.url, createdAt: m.createdAt.toISOString() }))}
         perPhase={MEDIA_LIMITS.perPhase}
         videoSeconds={MEDIA_LIMITS.videoSeconds}

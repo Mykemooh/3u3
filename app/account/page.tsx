@@ -11,6 +11,11 @@ import JourneyRail from '@/components/app/JourneyRail';
 import LiveTrackingMap from '@/components/app/LiveTrackingMap';
 import AddToCalendar from '@/components/AddToCalendar';
 import { getTracking, publicMapboxToken, type TrackingState } from '@/lib/tracking';
+import ClientDashboard from '@/components/account/ClientDashboard';
+import { getEstimatesForClient } from '@/lib/estimates';
+import { db } from '@/db/client';
+import { reviews } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +28,12 @@ export default async function AccountHome() {
   const user = session?.user as { id: string; name?: string; role?: string };
   if (user.role === 'ADMIN') redirect('/admin');
 
-  const [rows, rates] = await Promise.all([getAccountBookings(user.id), getClientRatesFor(user.id)]);
+  const [rows, rates, quoteRows, reviewRows] = await Promise.all([
+    getAccountBookings(user.id),
+    getClientRatesFor(user.id),
+    getEstimatesForClient(user.id),
+    db.select({ bookingId: reviews.bookingId }).from(reviews).where(eq(reviews.clientId, user.id)),
+  ]);
   const now = businessNowISO();
 
   // The "live" cleaning: one the crew is driving to or working on, else the
@@ -36,6 +46,30 @@ export default async function AccountHome() {
   const focus = active ?? upcoming[0] ?? past[0];
   const first = (user.name ?? 'there').split(' ')[0];
   const tracking = focus?.job?.status === 'EN_ROUTE' ? getTracking(focus.job) : null;
+  const nextRow = active ?? upcoming[0];
+  const lastRow = past[0];
+  const reviewed = new Set(reviewRows.map((r) => r.bookingId));
+  const dashboard = {
+    next: nextRow
+      ? {
+          bookingId: nextRow.booking.id,
+          slotStart: nextRow.booking.slotStart,
+          slotEnd: nextRow.booking.slotEnd,
+          serviceName: serviceName(nextRow),
+          note: nextRow.booking.clientNotes ?? null,
+          onTheWay: nextRow.job?.status === 'EN_ROUTE',
+        }
+      : null,
+    openQuotes: quoteRows
+      .filter((q) => q.status === 'SENT')
+      .map((q) => ({ id: q.id, href: q.approvalToken ? `/estimate/${q.approvalToken}` : null, totalCents: q.totalCents, status: q.status })),
+    lastClean: lastRow?.job
+      ? { jobId: lastRow.job.id, date: lastRow.booking.slotStart.slice(0, 10), photoCount: lastRow.photoCount, reviewed: reviewed.has(lastRow.booking.id) }
+      : null,
+    balanceCents: needsPayment.reduce((sum, r) => sum + (r.invoice?.totalCents ?? 0), 0),
+    unpaidHref: needsPayment[0] ? `/account/invoices/${needsPayment[0].invoice!.id}` : null,
+    canBook: rates.length > 0,
+  };
 
   return (
     <div className="space-y-8">
@@ -49,19 +83,8 @@ export default async function AccountHome() {
         </Link>
       </div>
 
-      {needsPayment.length > 0 && (
-        <Link href={`/account/invoices/${needsPayment[0].invoice!.id}`} className="flex items-center justify-between gap-4 rounded-2xl bg-cream px-5 py-4 transition hover:-translate-y-0.5">
-          <div>
-            <p className="font-semibold text-ink">
-              {needsPayment.length === 1 ? 'An invoice is ready' : `${needsPayment.length} invoices are ready`}
-            </p>
-            <p className="text-sm text-bronze">
-              {invoiceLabel(needsPayment[0].invoice!)} · {formatMoney(needsPayment[0].invoice!.totalCents)}
-            </p>
-          </div>
-          <span className="btn-primary btn-sm">View and pay</span>
-        </Link>
-      )}
+      <ClientDashboard {...dashboard} />
+
 
       {focus ? (
         <FocusCard
@@ -74,7 +97,7 @@ export default async function AccountHome() {
           <h2 className="text-xl font-bold">Ready when you are</h2>
           <p className="mx-auto mt-2 max-w-sm text-slate">
             {rates.length
-              ? 'Pick a time that suits you. Our crew of three has most homes done in under three hours.'
+              ? 'Pick a time that suits you. You will see your crew, your before-and-after photos and your invoice right here.'
               : "Once your estimate is approved, you'll be able to book here."}
           </p>
           {rates.length > 0 && (

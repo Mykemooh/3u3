@@ -23,6 +23,7 @@ const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('reschedule'), slotStart: z.string(), slotEnd: z.string() }),
   z.object({ action: z.literal('cadence'), cadence: z.enum(['ONE_TIME', 'BIWEEKLY', 'MONTHLY']) }),
   z.object({ action: z.literal('cancel') }),
+  z.object({ action: z.literal('note'), note: z.string().max(1000) }),
 ]);
 
 // Customer self-service booking changes — reschedule, change cadence, or
@@ -41,6 +42,16 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   const tenant = await getTenant();
   if (!tenant) return NextResponse.json({ error: 'Not set up' }, { status: 500 });
+
+  // A note for the crew on one upcoming visit ("the dog is out back today").
+  // Not subject to the 24-hour cutoff — it changes nothing on the schedule.
+  if (parsed.data.action === 'note') {
+    const row = (await db.select().from(bookings).where(eq(bookings.id, params.id)).limit(1))[0];
+    if (!row || row.clientId !== clientId) return NextResponse.json({ error: 'Booking not found.' }, { status: 404 });
+    if (row.status === 'CANCELLED' || row.status === 'COMPLETED') return NextResponse.json({ error: 'That cleaning is already finished.' }, { status: 409 });
+    await db.update(bookings).set({ clientNotes: parsed.data.note.trim() || null }).where(eq(bookings.id, params.id));
+    return NextResponse.json({ ok: true });
+  }
 
   try {
     let summary = '';

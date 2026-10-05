@@ -19,6 +19,10 @@ import { mediaExpiry } from '@/lib/mediaRetention';
  * the crew app, an admin, or anything added later.
  */
 
+function randomToken() {
+  return Buffer.from(crypto.getRandomValues(new Uint8Array(24))).toString('base64url');
+}
+
 export class JobError extends Error {
   constructor(message: string, public status = 400) {
     super(message);
@@ -119,8 +123,16 @@ const CLEAR_TRACKING = {
  * acknowledged. Enforced here too, not just client-side, so a bypassed UI
  * can't skip it.
  */
-export async function startJob(jobId: string, viewer: Viewer | null, acknowledgedNotes = false) {
-  const job = await requireLead(jobId, viewer);
+export async function startJob(
+  jobId: string,
+  viewer: Viewer | null,
+  acknowledgedNotes = false,
+  position?: { lat: number; lng: number } | null,
+) {
+  // Whoever on the team gets there first starts the clock for everyone on
+  // the visit (Mike, Oct 2026) — not just the Team Lead. Finishing is
+  // still the lead's call (completeJob).
+  const job = await requireWorkable(jobId, viewer);
   if (job.status === 'COMPLETE') throw new JobError('This job is already finished', 409);
   if (job.status === 'IN_PROGRESS') return job;
 
@@ -142,11 +154,36 @@ export async function startJob(jobId: string, viewer: Viewer | null, acknowledge
 
   const startedAt = new Date();
   const cleanerNotesAckAt = hasNotes ? startedAt : job.cleanerNotesAckAt;
+  // The clock-in stamp: who tapped Start, and where their phone was (the
+  // device's own GPS, kept as the timesheet record — not a geocoding
+  // result, so the Mapbox storage rule doesn't apply).
+  const stamp = {
+    startedByUserId: viewer?.id ?? null,
+    startLat: validCoord(position?.lat, 90),
+    startLng: validCoord(position?.lng, 180),
+  };
   await db
     .update(jobs)
-    .set({ status: 'IN_PROGRESS', startedAt, cleanerNotesAckAt, ...CLEAR_TRACKING })
+    .set({ status: 'IN_PROGRESS', startedAt, cleanerNotesAckAt, ...stamp, ...CLEAR_TRACKING })
     .where(eq(jobs.id, jobId));
-  return { ...job, ...CLEAR_TRACKING, status: 'IN_PROGRESS' as const, startedAt, cleanerNotesAckAt };
+  return { ...job, ...CLEAR_TRACKING, ...stamp, status: 'IN_PROGRESS' as const, startedAt, cleanerNotesAckAt };
+}
+
+function validCoord(v: number | undefined, max: number): number | null {
+  return typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= max ? v : null;
+}
+
+/**
+ * Starts a room's count-up timer (idempotent). Also started automatically
+ * by the first photo, so a crew that never taps it still gets a time.
+ * Time per room feeds the time-to-finish report (lib/reports.ts).
+ */
+export async function startRoom(jobId: string, itemId: string, viewer: Viewer | null) {
+  const { item } = await requireOpenItem(jobId, itemId, viewer);
+  if (item.startedAt) return item;
+  const startedAt = new Date();
+  await db.update(jobChecklistItems).set({ startedAt }).where(eq(jobChecklistItems.id, itemId));
+  return { ...item, startedAt };
 }
 
 /** A room the crew can document right now: job started, not yet finished. */
@@ -203,7 +240,11 @@ export async function setItemDone(jobId: string, itemId: string, viewer: Viewer 
   const { job, item } = await requireOpenItem(jobId, itemId, viewer);
   if (!job.noPhotosNeeded) throw new JobError('This job requires before-and-after photos for each room.', 409);
   if (item.status === 'SKIPPED') throw new JobError('Undo the skip first.', 409);
-  const patch = { status: (done ? 'COMPLETE' : 'PENDING') as ChecklistItemRow['status'], completedAt: done ? new Date() : null };
+  const patch = {
+    status: (done ? 'COMPLETE' : 'PENDING') as ChecklistItemRow['status'],
+    completedAt: done ? new Date() : null,
+    startedAt: item.startedAt ?? (done ? job.startedAt ?? new Date() : null),
+  };
   await db.update(jobChecklistItems).set(patch).where(eq(jobChecklistItems.id, itemId));
   return { ...item, ...patch };
 }
@@ -261,6 +302,10 @@ export async function addMedia(input: {
     expiresAt: mediaExpiry(input.kind),
   };
   await db.insert(jobMedia).values(row);
+  await db
+    .update(jobChecklistItems)
+    .set({ startedAt: new Date() })
+    .where(and(eq(jobChecklistItems.id, input.itemId), isNull(jobChecklistItems.startedAt)));
   const item = await syncItem(input.itemId);
   const media = (await db.select().from(jobMedia).where(eq(jobMedia.id, row.id)).limit(1))[0];
   return { media, item };
@@ -305,7 +350,7 @@ export async function setSkip(jobId: string, itemId: string, viewer: Viewer | nu
  * not fatal (a declined autopay charge still leaves a SENT invoice with
  * its normal emailed pay link, same as sendInvoice always does).
  */
-export async function completeJob(jobId: string, viewer: Viewer | null) {
+export async function completeJob(jobId: string, viewer: Viewer | null, position?: { lat: number; lng: number } | null) {
   const job = await requireLead(jobId, viewer);
   if (job.status === 'COMPLETE') return { alreadyComplete: true as const, invoiceId: null };
   if (job.status === 'PENDING' || job.status === 'EN_ROUTE') throw new JobError('Start the job first.', 409);
@@ -321,7 +366,17 @@ export async function completeJob(jobId: string, viewer: Viewer | null) {
   }
 
   const completedAt = new Date();
-  await db.update(jobs).set({ status: 'COMPLETE', completedAt }).where(eq(jobs.id, jobId));
+  await db
+    .update(jobs)
+    .set({
+      status: 'COMPLETE',
+      completedAt,
+      finishedByUserId: viewer?.id ?? null,
+      finishLat: validCoord(position?.lat, 90),
+      finishLng: validCoord(position?.lng, 180),
+      proofToken: job.proofToken ?? randomToken(),
+    })
+    .where(eq(jobs.id, jobId));
   await db.update(bookings).set({ status: 'COMPLETED' }).where(eq(bookings.id, job.bookingId));
 
   let invoiceId: string | null = null;

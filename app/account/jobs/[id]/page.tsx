@@ -15,6 +15,7 @@ import BeforeAfter from '@/components/app/BeforeAfter';
 import LiveTrackingMap from '@/components/app/LiveTrackingMap';
 import SocialMediaConsent from '@/components/account/SocialMediaConsent';
 import ReviewPrompt from '@/components/account/ReviewPrompt';
+import ShareProofButton from '@/components/ShareProofButton';
 import { getTracking, publicMapboxToken } from '@/lib/tracking';
 import { getUserById } from '@/lib/data';
 import { getReviewForBooking } from '@/lib/reviews';
@@ -141,7 +142,13 @@ export default async function JobGallery({ params }: { params: { id: string } })
       )}
 
       {viewer.role === 'CUSTOMER' && showMedia && job.status === 'COMPLETE' && (
+        <div id="rate" className="scroll-mt-24 flex justify-end">
+          <ShareProofButton jobId={job.id} />
+        </div>
+      )}
+      {viewer.role === 'CUSTOMER' && showMedia && job.status === 'COMPLETE' && (
         <ReviewPrompt
+          rooms={items.filter((i) => i.status === 'COMPLETE').map((i) => ({ id: i.id, roomName: i.roomName }))}
           jobId={job.id}
           name={client?.name ?? 'there'}
           avatarUrl={client?.avatarUrl ?? null}

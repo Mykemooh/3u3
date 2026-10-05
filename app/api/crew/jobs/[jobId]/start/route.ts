@@ -10,7 +10,8 @@ import { apiError } from '@/lib/api';
 export async function POST(req: Request, { params }: { params: { jobId: string } }) {
   try {
     const body = await req.json().catch(() => ({}));
-    const job = await startJob(params.jobId, viewerFrom(await getServerSession(authOptions)), body?.acknowledgedNotes === true);
+    const position = body?.position && typeof body.position.lat === 'number' && typeof body.position.lng === 'number' ? body.position : null;
+    const job = await startJob(params.jobId, viewerFrom(await getServerSession(authOptions)), body?.acknowledgedNotes === true, position);
     return NextResponse.json({ status: job.status, startedAt: job.startedAt });
   } catch (err) {
     return apiError(err);

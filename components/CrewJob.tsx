@@ -27,6 +27,9 @@ export type CrewItem = {
   taskDetail: string | null;
   status: 'PENDING' | 'COMPLETE' | 'SKIPPED';
   skipReason: string | null;
+  /** Per-room count-up timer (lib/jobs.ts startRoom). ISO strings. */
+  startedAt?: string | null;
+  completedAt?: string | null;
 };
 
 type JobStatus = 'PENDING' | 'EN_ROUTE' | 'IN_PROGRESS' | 'COMPLETE';
@@ -51,6 +54,8 @@ type Props = {
   addressLabel: string | null;
   /** The free-text "cleaner needs to know" catch-all (components/AddressForm.tsx sets it). */
   cleanerNotes: string | null;
+  /** A note the client left on this one visit ("dog is out back today"). */
+  visitNote?: string | null;
   /** The structured home profile — pets, parking, allergies, do-not-touch, entry code, room notes (components/HomeProfileEditor.tsx sets it). Null when there's nothing in it. */
   homeProfile: CrewHomeProfile | null;
   items: CrewItem[];
@@ -116,7 +121,20 @@ export default function CrewJob(props: Props) {
 
   function applyItem(updated: CrewItem | null | undefined) {
     if (!updated) return;
-    setItems((prev) => prev.map((i) => (i.id === updated.id ? { ...i, status: updated.status, skipReason: updated.skipReason } : i)));
+    const iso = (v: unknown) => (v ? new Date(v as string).toISOString() : null);
+    setItems((prev) =>
+      prev.map((i) =>
+        i.id === updated.id
+          ? {
+              ...i,
+              status: updated.status,
+              skipReason: updated.skipReason,
+              startedAt: updated.startedAt !== undefined ? iso(updated.startedAt) : i.startedAt,
+              completedAt: updated.completedAt !== undefined ? iso(updated.completedAt) : i.completedAt,
+            }
+          : i,
+      ),
+    );
   }
 
   // Offline support: when a mutation can't reach the network, it's
@@ -202,7 +220,10 @@ export default function CrewJob(props: Props) {
     if (notesBlockStart) return setError('Please review the cleaner notes below first.');
     setBusy('start');
     setError('');
-    const body = { acknowledgedNotes: notesAcknowledged };
+    // The clock-in stamp: where the phone is when the team starts (a few
+    // seconds at most; starting never waits on it).
+    const position = await currentPosition(4000);
+    const body = { acknowledgedNotes: notesAcknowledged, position };
     try {
       const res = await fetch(`/api/crew/jobs/${props.job.id}/start`, {
         method: 'POST',
@@ -355,11 +376,29 @@ export default function CrewJob(props: Props) {
     }
   }
 
+  async function startRoomTimer(itemId: string) {
+    setItems((prev) => prev.map((i) => (i.id === itemId && !i.startedAt ? { ...i, startedAt: new Date().toISOString() } : i)));
+    const form = new FormData();
+    form.append('kind', 'start');
+    try {
+      const res = await fetch(`/api/crew/jobs/${props.job.id}/items/${itemId}`, { method: 'POST', body: form });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) applyItem(data.item);
+    } catch {
+      // Offline: the first photo starts the timer on the server anyway.
+    }
+  }
+
   async function finish() {
     setBusy('finish');
     setError('');
     try {
-      const res = await fetch(`/api/crew/jobs/${props.job.id}/complete`, { method: 'POST' });
+      const position = await currentPosition(4000);
+      const res = await fetch(`/api/crew/jobs/${props.job.id}/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ position }),
+      });
       const data = await res.json().catch(() => ({}));
       setBusy(null);
       if (!res.ok) return setError(data.error || 'Could not finish the job.');
@@ -504,7 +543,8 @@ export default function CrewJob(props: Props) {
             <>Your Team Lead is driving over and sharing the trip with the client.</>
           ) : (
             <>
-              Your <strong>Team Lead</strong> starts the trip and the job. Once they have, you can add photos here.
+              Your <strong>Team Lead</strong> starts the trip. When you get there, anyone on the team can tap{' '}
+              <strong>I've arrived</strong> to start the clock for everyone.
             </>
           )}
         </p>
@@ -624,6 +664,13 @@ export default function CrewJob(props: Props) {
         </p>
       )}
 
+      {props.visitNote && (
+        <p className="rounded-xl border border-gold/30 bg-gold/5 px-4 py-3 text-sm text-ink">
+          <span className="font-semibold text-bronze">Note for this visit: </span>
+          <span className="whitespace-pre-wrap">{props.visitNote}</span>
+        </p>
+      )}
+
       {error && (
         <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
           {error}
@@ -647,14 +694,15 @@ export default function CrewJob(props: Props) {
             onRemove={remove}
             onSkip={(reason) => skip(item.id, reason)}
             onMarkDone={(done) => markDone(item.id, done)}
+            onStartTimer={() => startRoomTimer(item.id)}
           />
         ))}
       </div>
 
-      {status !== 'COMPLETE' && (props.canLead || status === 'IN_PROGRESS') && (
+      {status !== 'COMPLETE' && (
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 backdrop-blur" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
           <div className="mx-auto max-w-xl px-5 py-3 md:max-w-3xl">
-            {status === 'PENDING' ? (
+            {status === 'PENDING' && props.canLead ? (
               <div className="flex gap-2">
                 <button onClick={startDriving} disabled={busy !== null} className="btn-primary flex-1">
                   {busy === 'drive' ? 'Letting the client know…' : 'Start driving'}
@@ -663,12 +711,14 @@ export default function CrewJob(props: Props) {
                   {busy === 'start' ? 'Starting…' : 'Already here'}
                 </button>
               </div>
-            ) : status === 'EN_ROUTE' ? (
+            ) : status === 'PENDING' || status === 'EN_ROUTE' ? (
               <>
-                <p className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate">
-                  <span className={`h-2 w-2 rounded-full ${location === 'sharing' ? 'bg-green' : 'bg-amber-500'}`} aria-hidden="true" />
-                  {location === 'sharing' ? 'Sharing your location with the client' : location === 'locating' ? 'Finding your location…' : 'Location not shared'}
-                </p>
+                {status === 'EN_ROUTE' && props.canLead && (
+                  <p className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate">
+                    <span className={`h-2 w-2 rounded-full ${location === 'sharing' ? 'bg-green' : 'bg-amber-500'}`} aria-hidden="true" />
+                    {location === 'sharing' ? 'Sharing your location with the client' : location === 'locating' ? 'Finding your location…' : 'Location not shared'}
+                  </p>
+                )}
                 <button onClick={start} disabled={busy === 'start' || notesBlockStart} className="btn-primary w-full">
                   {busy === 'start' ? 'Starting…' : notesBlockStart ? 'Review cleaner notes above first' : "I've arrived — start job"}
                 </button>
@@ -773,6 +823,7 @@ function RoomCard({
   onRemove,
   onSkip,
   onMarkDone,
+  onStartTimer,
 }: {
   index: number;
   item: CrewItem;
@@ -787,6 +838,7 @@ function RoomCard({
   onRemove: (m: CrewMedia) => void;
   onSkip: (reason: string | null) => void;
   onMarkDone: (done: boolean) => void;
+  onStartTimer?: () => void;
 }) {
   const [showSkip, setShowSkip] = useState(false);
   const [reason, setReason] = useState('');
@@ -810,6 +862,7 @@ function RoomCard({
               {item.roomName}
             </h2>
             {item.taskDetail && <p className="text-sm text-muted">{item.taskDetail}</p>}
+            <RoomTimer item={item} open={open} onStart={onStartTimer} />
           </div>
         </div>
         <span
@@ -1013,5 +1066,39 @@ function PhaseColumn({
       />
       {open && !full && <p className="mt-1.5 text-[11px] text-muted">Videos up to {videoSeconds} seconds.</p>}
     </div>
+  );
+}
+
+/**
+ * A room's count-up clock: running while the room is being cleaned, then
+ * frozen at how long it took. Feeds the time-to-finish report.
+ */
+function RoomTimer({ item, open, onStart }: { item: CrewItem; open: boolean; onStart?: () => void }) {
+  const [now, setNow] = useState(() => Date.now());
+  const running = !!item.startedAt && item.status === 'PENDING' && open;
+  useEffect(() => {
+    if (!running) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [running]);
+
+  if (item.status === 'SKIPPED') return null;
+  if (!item.startedAt) {
+    return open && item.status === 'PENDING' && onStart ? (
+      <button type="button" onClick={onStart} className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-bronze hover:underline">
+        <span aria-hidden="true">⏱</span> Start room timer
+      </button>
+    ) : null;
+  }
+  const end = item.completedAt ? new Date(item.completedAt).getTime() : now;
+  const secs = Math.max(0, Math.floor((end - new Date(item.startedAt).getTime()) / 1000));
+  const mm = Math.floor(secs / 60);
+  const label = item.completedAt
+    ? `Took ${mm < 1 ? 'under a minute' : `${mm} min`}`
+    : `${String(Math.floor(mm / 60)).padStart(1, '0')}:${String(mm % 60).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`;
+  return (
+    <p className={`mt-1 inline-flex items-center gap-1 text-xs font-semibold ${item.completedAt ? 'text-muted' : 'text-green'}`} aria-live="off">
+      <span aria-hidden="true">⏱</span> {label}
+    </p>
   );
 }

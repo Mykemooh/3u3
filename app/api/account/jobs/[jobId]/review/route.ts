@@ -4,10 +4,12 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { loadJob, canViewJob, viewerFrom } from '@/lib/jobs';
 import { submitReview, ReviewError } from '@/lib/reviews';
+import { rateRooms, afterReview } from '@/lib/quality';
 
 const schema = z.object({
   rating: z.number().int().min(1).max(5),
   comment: z.string().max(2000).optional(),
+  rooms: z.array(z.object({ itemId: z.string(), rating: z.number().int().min(1).max(5) })).max(60).optional(),
 });
 
 // Rate a finished cleaning from the client's before-and-after gallery
@@ -24,14 +26,18 @@ export async function POST(req: Request, { params }: { params: { jobId: string }
   if (!parsed.success) return NextResponse.json({ error: 'Pick a star rating from 1 to 5.' }, { status: 400 });
 
   try {
-    await submitReview({
+    const reviewId = await submitReview({
       tenantId: data.booking.tenantId,
       bookingId: data.booking.id,
       clientId: viewer.id,
       rating: parsed.data.rating,
       comment: parsed.data.comment,
     });
-    return NextResponse.json({ ok: true });
+    if (parsed.data.rooms?.length) {
+      await rateRooms({ tenantId: data.booking.tenantId, bookingId: data.booking.id, reviewId, ratings: parsed.data.rooms });
+    }
+    const outcome = await afterReview({ tenantId: data.booking.tenantId, bookingId: data.booking.id, reviewId });
+    return NextResponse.json({ ok: true, ...outcome });
   } catch (err) {
     if (err instanceof ReviewError) return NextResponse.json({ error: err.message }, { status: 400 });
     console.error('[review] submit failed', err);

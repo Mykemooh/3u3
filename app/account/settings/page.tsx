@@ -86,7 +86,7 @@ export default async function AccountSettings() {
       </section>
 
       {primaryAddress && (
-        <section className="card">
+        <section id="home" className="card scroll-mt-24">
           <h2 className="mb-1 text-lg font-bold text-ink">Home profile</h2>
           <p className="mb-4 text-sm text-slate">
             Pets, parking, allergies, anything the crew shouldn't touch, an entry code, or notes for a specific
@@ -108,7 +108,7 @@ export default async function AccountSettings() {
         </section>
       )}
 
-      <section className="card space-y-6">
+      <section id="payment" className="card scroll-mt-24 space-y-6">
         <h2 className="text-lg font-bold text-ink">Payment</h2>
 
         <div>
@@ -141,7 +141,7 @@ export default async function AccountSettings() {
         </div>
       </section>
 
-      <section className="card">
+      <section id="bookings" className="card scroll-mt-24">
         <h2 className="mb-1 text-lg font-bold text-ink">Upcoming cleanings</h2>
         <p className="mb-4 text-sm text-slate">
           Change your frequency, reschedule, or cancel up to 24 hours before a cleaning begins. Closer than

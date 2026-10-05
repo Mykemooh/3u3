@@ -13,6 +13,8 @@ import { businessTodayISO } from '@/lib/time';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 import AppShell, { CREW_TABS } from '@/components/app/AppShell';
 import ServiceWorkerRegistrar from '@/components/crew/ServiceWorkerRegistrar';
+import CrewDashboardCards from '@/components/crew/CrewDashboardCards';
+import { crewDashboard } from '@/lib/earnings';
 
 // Reads the signed-in cleaner's own jobs — live data, per-session.
 export const dynamic = 'force-dynamic';
@@ -80,6 +82,7 @@ export default async function CrewHome() {
   }
 
   const rows = await loadRows(myJobs);
+  const dashboard = role === 'CLEANER' ? await crewDashboard(userId) : null;
   const today = businessTodayISO();
   // A crew that's driving over counts as in progress: it's the job they're on.
   const inProgress = rows.filter((r) => r.job.status === 'IN_PROGRESS' || r.job.status === 'EN_ROUTE');
@@ -96,6 +99,7 @@ export default async function CrewHome() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="eyebrow">{formatDateLabel(today)}</p>
+            {dashboard && <p className="text-sm text-slate">Hi {dashboard.user.firstName}{dashboard.teamName ? ` · ${dashboard.teamName}` : ''}{dashboard.user.roleName ? ` · ${dashboard.user.roleName}` : ''}</p>}
             <h1 className="mt-1 text-3xl font-extrabold">
               {inProgress.length ? 'Job in progress' : todays.length ? `${todays.length} job${todays.length === 1 ? '' : 's'} today` : 'No jobs today'}
             </h1>
@@ -106,6 +110,8 @@ export default async function CrewHome() {
             </Link>
           )}
         </div>
+
+        {dashboard && <CrewDashboardCards data={dashboard} />}
 
         {next && <NextJobCard row={next} />}
 

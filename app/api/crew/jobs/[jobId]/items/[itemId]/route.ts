@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { addMedia, requireOpenItem, setSkip, setItemDone, viewerFrom, JobError } from '@/lib/jobs';
+import { addMedia, requireOpenItem, setSkip, setItemDone, startRoom, viewerFrom, JobError } from '@/lib/jobs';
 import { apiError } from '@/lib/api';
 import { effectiveMaxBytes, isAllowedType, mediaKey, saveServerUpload } from '@/lib/storage';
 
@@ -17,6 +17,9 @@ export async function POST(req: Request, { params }: { params: { jobId: string; 
     const form = await req.formData();
     const kind = form.get('kind') as string; // 'skip' | 'unskip' | 'done' | 'undone' | 'before' | 'after'
 
+    if (kind === 'start') {
+      return NextResponse.json({ item: await startRoom(params.jobId, params.itemId, viewer) });
+    }
     if (kind === 'skip') {
       const reason = String(form.get('skipReason') || '').trim();
       if (!reason) throw new JobError('Add a short reason for skipping this room.');
