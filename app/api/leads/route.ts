@@ -13,6 +13,7 @@ import { pickedAddressSchema, addressFields } from '@/lib/addresses';
 import { checkServiceArea } from '@/lib/serviceArea';
 import { cookies } from 'next/headers';
 import { recordReferral } from '@/lib/referrals';
+import { intakeSchema, needsIntake, describeIntake } from '@/lib/intake';
 
 const schema = z.object({
   name: z.string().min(1),
@@ -26,6 +27,8 @@ const schema = z.object({
   serviceTypeId: z.string().min(1),
   slotStart: z.string(),
   slotEnd: z.string(),
+  // Post-construction and commercial requests answer a few more questions.
+  intake: intakeSchema.optional(),
 });
 
 // New-customer speed-to-lead capture (PRD 6.2): name, phone, address — no
@@ -45,8 +48,12 @@ export async function POST(req: Request) {
   const { name, phone, email, addressLine1, address: picked, bedrooms, serviceTypeId, slotStart, slotEnd } = parsed.data;
 
   const service = (await db.select().from(serviceTypes).where(eq(serviceTypes.id, serviceTypeId)).limit(1))[0];
-  if (!service || service.tenantId !== tenant.id) {
+  if (!service || service.tenantId !== tenant.id || !service.offered) {
     return NextResponse.json({ error: 'Please choose a service.' }, { status: 400 });
+  }
+  const intake = parsed.data.intake;
+  if (needsIntake(service.key) && intake?.kind !== service.key) {
+    return NextResponse.json({ error: 'Please tell us a little about the project first.' }, { status: 400 });
   }
 
   let user = (await db.select().from(users).where(eq(users.phone, phone)).limit(1))[0];
@@ -79,6 +86,7 @@ export async function POST(req: Request) {
       serviceTypeId: service.id,
       slotStart,
       slotEnd,
+      intakeJson: needsIntake(service.key) && intake ? JSON.stringify(intake) : null,
     });
 
     // Service-area check (lib/serviceArea.ts) — a snapshot for the admin
@@ -146,6 +154,7 @@ export async function POST(req: Request) {
         serviceName: service.name,
         dateLabel,
         timeLabel,
+        details: needsIntake(service.key) && intake ? describeIntake(intake) : undefined,
       });
       await sendEmail({ to: ownerEmail, subject, html });
     }

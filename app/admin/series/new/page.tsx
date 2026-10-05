@@ -1,5 +1,6 @@
 import { db } from '@/db/client';
-import { users, addresses, clientRates, crews, serviceTypes } from '@/db/schema';
+import { users, addresses, clientRates, crews, serviceTypes, quotes } from '@/db/schema';
+import { parsePricing } from '@/lib/pricingGuides';
 import { and, eq, inArray } from 'drizzle-orm';
 import { getTenant } from '@/lib/data';
 import { listTemplates } from '@/lib/scheduleTemplates';
@@ -19,12 +20,23 @@ export default async function NewCleanPage({ searchParams }: { searchParams: { c
     listTemplates(tenant.id),
   ]);
   const ids = clientRows.map((c) => c.id);
-  const [addrRows, rateRows] = ids.length
+  const [addrRows, rateRows, approved] = ids.length
     ? await Promise.all([
         db.select().from(addresses).where(inArray(addresses.userId, ids)),
         db.select().from(clientRates).where(inArray(clientRates.userId, ids)),
+        db.select().from(quotes).where(and(eq(quotes.tenantId, tenant.id), eq(quotes.status, 'APPROVED'))),
       ])
-    : [[], []];
+    : [[], [], []];
+  // Phase prices (post-construction) and per-visit prices (commercial) from approved quotes.
+  const quotedFor = (clientId: string) =>
+    approved
+      .filter((q) => q.clientId === clientId)
+      .flatMap((q) => {
+        const p = parsePricing(q.pricingJson);
+        if (p?.kind === 'POST_CONSTRUCTION') return p.phases.map((ph) => ({ serviceTypeId: q.serviceTypeId, label: ph.label, amountCents: ph.amountCents }));
+        if (p?.kind === 'COMMERCIAL') return [{ serviceTypeId: q.serviceTypeId, label: p.visitsPerWeek ? 'Contract visit' : 'Quoted visit', amountCents: p.perVisitCents }];
+        return [];
+      });
 
   const clients = clientRows
     .map((c) => {
@@ -36,6 +48,7 @@ export default async function NewCleanPage({ searchParams }: { searchParams: { c
         zip: a?.zip ?? null,
         address: a ? `${a.line1}, ${a.city}` : null,
         rates: Object.fromEntries(rateRows.filter((r) => r.userId === c.id).map((r) => [r.serviceTypeId, r.rateCents])),
+        quoted: quotedFor(c.id),
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -48,7 +61,7 @@ export default async function NewCleanPage({ searchParams }: { searchParams: { c
       </div>
       <ScheduleCleanForm
         clients={clients}
-        services={services.map((s) => ({ id: s.id, name: s.name, defaultDurationMinutes: s.defaultDurationMinutes }))}
+        services={services.filter((s) => s.offered).map((s) => ({ id: s.id, name: s.name, defaultDurationMinutes: s.defaultDurationMinutes }))}
         crews={crewRows.map((c) => ({ id: c.id, name: c.name }))}
         templates={templates.map((t) => ({ ...t }))}
         defaultDate={addDays(businessTodayISO(), 1)}

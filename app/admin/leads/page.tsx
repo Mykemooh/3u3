@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { db } from '@/db/client';
 import { users, addresses, clientRates, serviceTypes, quotes } from '@/db/schema';
+import { parseIntake, describeIntake } from '@/lib/intake';
 import { eq, inArray } from 'drizzle-orm';
 import { getTenant, getAllBookings } from '@/lib/data';
 import BookingStatusActions from '@/components/BookingStatusActions';
@@ -102,6 +103,16 @@ export default async function AdminLeads() {
                 </p>
                 {address && <p className="text-sm text-slate">{address.line1}, {address.city}, {address.state}</p>}
                 <p className="text-sm text-muted">Visit: {lead.slotStart.replace('T', ' ')}</p>
+                {(() => {
+                  const intake = parseIntake(lead.intakeJson);
+                  if (!intake) return null;
+                  const rows = describeIntake(intake).slice(0, 4);
+                  return (
+                    <p className="mt-1 text-sm text-ink">
+                      {rows.map((r) => `${r.label}: ${r.value}`).join(' · ')}
+                    </p>
+                  );
+                })()}
               </div>
               <div className="flex items-center gap-3">
                 {client && (
@@ -110,7 +121,7 @@ export default async function AdminLeads() {
                   </Link>
                 )}
                 <Link href={`/admin/leads/${lead.id}/walkthrough`} className="text-sm font-semibold text-bronze hover:underline">
-                  Walk this home →
+                  {lead.intakeJson ? 'Walk this site →' : 'Walk this home →'}
                 </Link>
                 {client &&
                   (estimate ? (

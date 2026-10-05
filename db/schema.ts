@@ -290,6 +290,9 @@ export const serviceTypes = pgTable('service_types', {
   name: text('name').notNull(),
   defaultDurationMinutes: integer('default_duration_minutes').notNull(),
   recurringEligible: boolean('recurring_eligible').notNull().default(false),
+  // Whether this company offers the service at all (Admin → Services). A
+  // residential-only company switches Commercial off; nothing is deleted.
+  offered: boolean('offered').notNull().default(true),
   ...timestamps,
 });
 
@@ -585,6 +588,9 @@ export const quotes = pgTable('quotes', {
   reminderCount: integer('reminder_count').notNull().default(0),
   lastReminderAt: timestamp('last_reminder_at', { withTimezone: true }),
   remindersOptedOut: boolean('reminders_opted_out').notNull().default(false),
+  // Structured pricing from the quote helper (lib/pricingGuides.ts) for
+  // post-construction phases and commercial monthly contracts — JSON.
+  pricingJson: text('pricing_json'),
   ...timestamps,
 }, (t) => ({
   tokenUnique: uniqueIndex('quotes_approval_token_unique').on(t.approvalToken),

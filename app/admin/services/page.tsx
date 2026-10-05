@@ -10,8 +10,9 @@ export default async function AdminServices() {
     <div className="space-y-6">
       <div>
         <h1 className="mb-1 text-2xl font-bold text-ink">Services</h1>
-        <p className="text-slate">
-          Duration and recurring eligibility per service — these settings drive the scheduling engine (PRD 6.4).
+        <p className="max-w-2xl text-slate">
+          The kinds of cleaning you offer. Switch off anything you don’t do — it disappears from the request form and nothing is
+          deleted. Length and repeat settings drive scheduling.
         </p>
       </div>
 
@@ -21,7 +22,7 @@ export default async function AdminServices() {
             <h2 className="mb-4 font-semibold text-ink">{SERVICE_LABELS[s.key] ?? s.name}</h2>
             <ServiceSettingsForm
               serviceId={s.id}
-              initial={{ defaultDurationMinutes: s.defaultDurationMinutes, recurringEligible: s.recurringEligible }}
+              initial={{ defaultDurationMinutes: s.defaultDurationMinutes, recurringEligible: s.recurringEligible, offered: s.offered }}
             />
           </div>
         ))}

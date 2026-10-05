@@ -5,6 +5,7 @@ import {
   tenants, users, addresses, serviceTypes, clientRates, crews, crewMembers,
   checklistTemplates, checklistTemplateItems,
 } from './schema';
+import { ensureServiceLines } from '../lib/serviceLines';
 
 // Room-by-room checklist content. The PRD (6.5) says each service type's
 // checklist should match "the room-by-room lists already defined in
@@ -171,6 +172,9 @@ async function main() {
       id: crypto.randomUUID(), userId: customer.id, serviceTypeId: serviceRows.DEEP.id, rateCents: 22000,
     });
   }
+
+  // Newer service lines (post-construction, commercial) with their checklists.
+  await ensureServiceLines(tenant.id);
 
   console.log('Seed complete.');
   console.log('---------------------------------------------');

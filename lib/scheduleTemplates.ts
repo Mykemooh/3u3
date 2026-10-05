@@ -1,4 +1,5 @@
 import { db } from '@/db/client';
+import { automationSends } from '@/db/schema';
 import { scheduleTemplates, serviceTypes } from '@/db/schema';
 import { and, eq } from 'drizzle-orm';
 import type { Pattern } from '@/lib/recurring';
@@ -32,12 +33,25 @@ const STARTERS: Record<string, { name: string; pattern: TemplatePattern; start: 
   COMMERCIAL: [{ name: 'Commercial — weekly, after hours', pattern: 'WEEKLY', start: 18 * 60, window: 30, teamSize: 2, notes: 'Check in and out with the site contact. Alarm code is on the property profile.', color: '#041730' }],
 };
 
+/**
+ * Starter templates per service line. A line gets its starters once — the
+ * first time it has none (so lines added later, like post-construction
+ * and commercial, get theirs too) — and never again, so templates an
+ * owner deletes stay deleted (claimed in automation_sends).
+ */
 export async function ensureStarterTemplates(tenantId: string) {
   const existing = await db.select().from(scheduleTemplates).where(eq(scheduleTemplates.tenantId, tenantId));
-  if (existing.length) return existing;
   const services = await db.select().from(serviceTypes).where(eq(serviceTypes.tenantId, tenantId));
-  let order = 0;
-  for (const svc of services) {
+  // A company that already has templates only gets starters for the lines
+  // added since (anything else it deleted on purpose).
+  const LATER_LINES = ['POST_CONSTRUCTION', 'COMMERCIAL'];
+  const missing = services.filter(
+    (svc) => (STARTERS[svc.key] ?? []).length && !existing.some((t) => t.serviceTypeId === svc.id) && (existing.length === 0 || LATER_LINES.includes(svc.key)),
+  );
+  if (!missing.length) return existing;
+  let order = existing.reduce((m, t) => Math.max(m, t.sortOrder + 1), 0);
+  for (const svc of missing) {
+    if (!(await claimOnce(tenantId, 'starter_templates', svc.id))) continue;
     for (const t of STARTERS[svc.key] ?? []) {
       await db.insert(scheduleTemplates).values({
         id: crypto.randomUUID(),
@@ -56,6 +70,11 @@ export async function ensureStarterTemplates(tenantId: string) {
     }
   }
   return db.select().from(scheduleTemplates).where(eq(scheduleTemplates.tenantId, tenantId));
+}
+
+async function claimOnce(tenantId: string, key: string, refId: string) {
+  const rows = await db.insert(automationSends).values({ id: crypto.randomUUID(), tenantId, key, refId }).onConflictDoNothing().returning({ id: automationSends.id });
+  return rows.length > 0;
 }
 
 export async function listTemplates(tenantId: string) {

@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'Cleaning services in Katy & Houston — 3U3 Cleaning',
   description:
-    'Standard, deep and move-in/move-out cleaning for homes in Katy and the surrounding Houston area. Exact price confirmed in person, before any work starts.',
+    'Standard, deep, move-in/move-out, post-construction and commercial cleaning in Katy and the surrounding Houston area. Exact price confirmed in person, before any work starts.',
 };
 
 export default function ServicesIndex() {
@@ -24,7 +24,7 @@ export default function ServicesIndex() {
             <p className="eyebrow">Our services</p>
             <h1 className="display mx-auto mt-4 max-w-2xl">Cleaning, priced at your door.</h1>
             <p className="lead measure mx-auto mt-6">
-              Every home is walked and priced in person — never a guess from a form — then cleaned room by room,
+              Every home, site and workplace is walked and priced in person — never a guess from a form — then cleaned room by room,
               with before-and-after photos waiting in your account when the crew leaves.
             </p>
           </div>

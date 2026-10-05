@@ -3,7 +3,16 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-type Client = { id: string; name: string; phone: string | null; zip: string | null; address: string | null; rates: Record<string, number> };
+type Client = {
+  id: string;
+  name: string;
+  phone: string | null;
+  zip: string | null;
+  address: string | null;
+  rates: Record<string, number>;
+  /** Phase or per-visit prices from the client's approved quotes (post-construction, commercial). */
+  quoted?: { serviceTypeId: string; label: string; amountCents: number }[];
+};
 type Service = { id: string; name: string; defaultDurationMinutes: number };
 type Crew = { id: string; name: string };
 type Template = {
@@ -262,6 +271,23 @@ export default function ScheduleCleanForm({
             <div>
               <label className="label" htmlFor="price">Price per visit ($)</label>
               <input id="price" type="number" min={0} step="0.01" className="input" placeholder="Agreed rate" value={price} onChange={(e) => setPrice(e.target.value)} />
+              {(client?.quoted ?? []).filter((q) => q.serviceTypeId === serviceTypeId).length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {client!.quoted!
+                    .filter((q) => q.serviceTypeId === serviceTypeId)
+                    .map((q) => (
+                      <button
+                        key={q.label}
+                        type="button"
+                        className="pill bg-gold/10 text-gold hover:bg-gold/20"
+                        onClick={() => setPrice((q.amountCents / 100).toFixed(2))}
+                        title="From the approved quote"
+                      >
+                        {q.label} ${(q.amountCents / 100).toFixed(2)}
+                      </button>
+                    ))}
+                </div>
+              )}
             </div>
           </div>
         </section>

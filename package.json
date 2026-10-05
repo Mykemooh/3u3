@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "tsx scripts/migrate-on-build.ts && next build",
+    "build": "tsx scripts/migrate-on-build.ts && tsx scripts/backfill-on-build.ts && next build",
     "start": "next start",
     "lint": "next lint",
     "db:push": "tsx --env-file=.env.local db/push.ts",

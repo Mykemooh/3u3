@@ -7,10 +7,13 @@ import { authOptions } from '@/lib/auth';
 import { db } from '@/db/client';
 import { serviceTypes } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { logChange, diff } from '@/lib/audit';
 
 const schema = z.object({
-  defaultDurationMinutes: z.number().int().min(30).max(600),
-  recurringEligible: z.boolean(),
+  defaultDurationMinutes: z.number().int().min(30).max(720).optional(),
+  recurringEligible: z.boolean().optional(),
+  // Whether the company offers this line at all (hidden from the request form when off).
+  offered: z.boolean().optional(),
 });
 
 // Tenant-configurable service settings (PRD 6.4 / 6.8) — duration drives the
@@ -26,6 +29,16 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: 'Invalid settings' }, { status: 400 });
 
+  const before = (await db.select().from(serviceTypes).where(eq(serviceTypes.id, params.id)).limit(1))[0];
   await db.update(serviceTypes).set(parsed.data).where(eq(serviceTypes.id, params.id));
+  await logChange({
+    tenantId: guardAdmin.tenantId,
+    actor: { id: guardAdmin.userId, name: guardAdmin.name },
+    entityType: 'service',
+    entityId: params.id,
+    action: 'updated',
+    summary: `${before?.name ?? 'Service'}: ${parsed.data.offered === false ? 'switched off' : parsed.data.offered === true ? 'switched on' : 'settings changed'}`,
+    changes: before ? diff(before, parsed.data) : [],
+  });
   return NextResponse.json({ ok: true });
 }

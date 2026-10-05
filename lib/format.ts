@@ -15,4 +15,6 @@ export const SERVICE_LABELS: Record<string, string> = {
   DEEP: 'Deep Cleaning',
   MOVE_IN_OUT: 'Move-In / Move-Out',
   AIRBNB: 'Airbnb / Rental Turnover',
+  POST_CONSTRUCTION: 'Post-Construction Cleaning',
+  COMMERCIAL: 'Commercial Cleaning',
 };

@@ -2,6 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import PricingHelper from '@/components/PricingHelper';
+import type { Intake } from '@/lib/intake';
+import type { QuotePricing } from '@/lib/pricingGuides';
 
 type Item = { description: string; amountCents: number };
 
@@ -21,13 +24,17 @@ export default function EstimateEditor({
   initialServiceTypeId,
   services,
   clientHasEmail,
+  intake = null,
+  initialPricing = null,
 }: {
   quoteId: string;
   initialItems: Item[];
   initialNotes: string;
   initialServiceTypeId: string;
-  services: { id: string; name: string }[];
+  services: { id: string; name: string; key?: string }[];
   clientHasEmail: boolean;
+  intake?: Intake | null;
+  initialPricing?: QuotePricing | null;
 }) {
   const router = useRouter();
   const [items, setItems] = useState<Item[]>(
@@ -40,6 +47,9 @@ export default function EstimateEditor({
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [sentLink, setSentLink] = useState('');
+  const [pricing, setPricing] = useState<QuotePricing | null>(initialPricing);
+  const serviceKey = services.find((s) => s.id === serviceTypeId)?.key;
+  const helperKind = serviceKey === 'POST_CONSTRUCTION' || serviceKey === 'COMMERCIAL' ? serviceKey : null;
 
   const totalCents = items.reduce((sum, i) => sum + (Number.isFinite(i.amountCents) ? i.amountCents : 0), 0);
 
@@ -57,7 +67,8 @@ export default function EstimateEditor({
     const res = await fetch(`/api/admin/estimates/${quoteId}/items`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items, notes, serviceTypeId }),
+      // Pricing from the helper only belongs to the line it was made for.
+      body: JSON.stringify({ items, notes, serviceTypeId, pricing: pricing && pricing.kind === helperKind ? pricing : null }),
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -121,6 +132,22 @@ export default function EstimateEditor({
         ))}
       </select>
 
+      {helperKind && (
+        <div className="mb-5">
+          <PricingHelper
+            key={helperKind}
+            kind={helperKind}
+            intake={intake}
+            initial={pricing}
+            onApply={(next, p) => {
+              touch();
+              setItems(next);
+              setPricing(p);
+            }}
+          />
+        </div>
+      )}
+
       <div className="space-y-3">
         {items.map((item, idx) => (
           <div key={idx} className="flex items-center gap-2">
@@ -133,7 +160,7 @@ export default function EstimateEditor({
             <div className="flex items-center gap-1">
               <span className="text-muted">$</span>
               <input
-                className="input w-24"
+                className="input w-28"
                 type="number"
                 min="0"
                 step="0.01"

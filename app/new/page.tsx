@@ -6,6 +6,8 @@ import LogoBadge from '@/components/LogoBadge';
 import AddressInput, { type PickedAddress } from '@/components/AddressInput';
 import PhoneInput from '@/components/PhoneInput';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
+import ProjectIntakeForm from '@/components/intake/ProjectIntakeForm';
+import { needsIntake, type Intake } from '@/lib/intake';
 
 type Slot = { start: string; end: string; available: boolean };
 type Day = { date: string; slots: Slot[] };
@@ -15,10 +17,13 @@ const SERVICE_BLURBS: Record<string, string> = {
   STANDARD: 'Regular upkeep — kitchens, bathrooms, floors, dusting.',
   DEEP: 'A deeper one-time or quarterly clean, top to bottom.',
   MOVE_IN_OUT: 'Empty-home clean for moving in or out.',
+  POST_CONSTRUCTION: 'New builds and renovations — rough, final and touch-up cleans.',
+  COMMERCIAL: 'Offices, clinics and other workplaces, on a schedule that suits you.',
 };
 
 export default function NewCustomerPage() {
-  const [step, setStep] = useState<'service' | 'form' | 'schedule' | 'confirmed'>('service');
+  const [step, setStep] = useState<'service' | 'form' | 'project' | 'schedule' | 'confirmed'>('service');
+  const [intake, setIntake] = useState<Intake | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [serviceTypeId, setServiceTypeId] = useState('');
   const [name, setName] = useState('');
@@ -40,7 +45,17 @@ export default function NewCustomerPage() {
   useEffect(() => {
     fetch('/api/services')
       .then((r) => r.json())
-      .then((data) => setServices(data.services ?? []));
+      .then((data) => {
+        const list: Service[] = data.services ?? [];
+        setServices(list);
+        // /new?service=COMMERCIAL (from a service page) skips the picker.
+        const wanted = new URLSearchParams(window.location.search).get('service');
+        const match = wanted ? list.find((s) => s.key === wanted.toUpperCase()) : undefined;
+        if (match) {
+          setServiceTypeId(match.id);
+          setStep('form');
+        }
+      });
   }, []);
 
   useEffect(() => {
@@ -53,6 +68,8 @@ export default function NewCustomerPage() {
   }, [step]);
 
   const selectedService = services.find((s) => s.id === serviceTypeId);
+  const project = needsIntake(selectedService?.key);
+  const placeLabel = selectedService?.key === 'COMMERCIAL' ? 'Business address' : selectedService?.key === 'POST_CONSTRUCTION' ? 'Site address' : 'Home address';
 
   async function confirmBooking() {
     if (!selected) return;
@@ -72,6 +89,7 @@ export default function NewCustomerPage() {
           serviceTypeId,
           slotStart: selected.start,
           slotEnd: selected.end,
+          intake: project && intake ? intake : undefined,
         }),
       });
       const data = await res.json();
@@ -89,7 +107,9 @@ export default function NewCustomerPage() {
     }
   }
 
-  const stepNumber = step === 'service' ? 1 : step === 'form' ? 2 : step === 'schedule' ? 3 : null;
+  const steps = project ? ['service', 'form', 'project', 'schedule'] : ['service', 'form', 'schedule'];
+  const stepLabels: Record<string, string> = { service: 'Service', form: 'Your details', project: 'The project', schedule: 'Pick a time' };
+  const stepNumber = steps.includes(step) ? steps.indexOf(step) + 1 : null;
 
   return (
     <main className="min-h-screen flex flex-col items-center px-6 py-12">
@@ -98,12 +118,15 @@ export default function NewCustomerPage() {
       </Link>
 
       {stepNumber && (
-        <div className="mb-6 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted">
-          <span className={stepNumber === 1 ? 'text-bronze' : ''}>1. Service</span>
-          <span className="text-muted">—</span>
-          <span className={stepNumber === 2 ? 'text-bronze' : ''}>2. Your details</span>
-          <span className="text-muted">—</span>
-          <span className={stepNumber === 3 ? 'text-bronze' : ''}>3. Pick a time</span>
+        <div className="mb-6 flex flex-wrap items-center justify-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted">
+          {steps.map((k, i) => (
+            <span key={k} className="flex items-center gap-2">
+              {i > 0 && <span className="text-muted">—</span>}
+              <span className={stepNumber === i + 1 ? 'text-bronze' : ''}>
+                {i + 1}. {stepLabels[k]}
+              </span>
+            </span>
+          ))}
         </div>
       )}
 
@@ -151,7 +174,7 @@ export default function NewCustomerPage() {
                 setAddressError(true);
                 return;
               }
-              setStep('schedule');
+              setStep(project ? 'project' : 'schedule');
             }}
             className="space-y-4"
           >
@@ -180,7 +203,7 @@ export default function NewCustomerPage() {
             </div>
             <div>
               <label className="label" htmlFor="address">
-                Home address
+                {placeLabel}
               </label>
               <AddressInput
                 id="address"
@@ -210,6 +233,7 @@ export default function NewCustomerPage() {
                 </p>
               )}
             </div>
+            {!project && (
             <div>
               <label className="label" htmlFor="bedrooms">
                 Bedrooms
@@ -224,21 +248,38 @@ export default function NewCustomerPage() {
               </select>
               <p className="mt-1 text-xs text-muted">So we can set up your checklist room-by-room.</p>
             </div>
+            )}
             <button type="submit" className="btn-primary w-full">
-              Continue to pick a visit time
+              {project ? 'Continue' : 'Continue to pick a visit time'}
             </button>
           </form>
         </div>
       )}
 
+      {step === 'project' && selectedService && needsIntake(selectedService.key) && (
+        <div className="card w-full max-w-lg">
+          <ProjectIntakeForm
+            kind={selectedService.key as 'POST_CONSTRUCTION' | 'COMMERCIAL'}
+            initial={intake}
+            onBack={() => setStep('form')}
+            onDone={(v) => {
+              setIntake(v);
+              setStep('schedule');
+            }}
+          />
+        </div>
+      )}
+
       {step === 'schedule' && (
         <div className="card w-full max-w-lg">
-          <button onClick={() => setStep('form')} className="text-sm text-muted mb-4 hover:text-ink">
+          <button onClick={() => setStep(project ? 'project' : 'form')} className="text-sm text-muted mb-4 hover:text-ink">
             ← Back
           </button>
-          <h1 className="text-xl font-bold mb-1">Pick a quote visit time</h1>
+          <h1 className="text-xl font-bold mb-1">{project ? 'Pick a walkthrough time' : 'Pick a quote visit time'}</h1>
           <p className="text-sm text-slate mb-6">
-            A 30-minute in-person visit — we'll look at the home and give you an exact price on the spot.
+            {project
+              ? "An in-person walkthrough of the site — we'll confirm the scope and send you a written quote."
+              : "A 30-minute in-person visit — we'll look at the home and give you an exact price on the spot."}
           </p>
           {loadingSlots && <p className="text-sm text-muted">Loading real availability…</p>}
           <div className="space-y-5 max-h-[420px] overflow-y-auto pr-1">
@@ -292,7 +333,11 @@ export default function NewCustomerPage() {
             {customerEmailSent
               ? "We've emailed you a confirmation. "
               : ''}
-            The owner has been notified and will meet you at your home for the visit.
+            {selectedService?.key === 'COMMERCIAL'
+              ? "We'll meet you at your business for the walkthrough and send your written quote after."
+              : selectedService?.key === 'POST_CONSTRUCTION'
+              ? "We'll meet you on site for the walkthrough and send a written quote for each phase."
+              : 'The owner has been notified and will meet you at your home for the visit.'}
           </p>
           <Link href="/" className="btn-secondary w-full">
             Back to home

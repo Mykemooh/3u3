@@ -3,6 +3,7 @@ import { randomBytes } from 'crypto';
 import { db } from '@/db/client';
 import { quotes, quoteItems, bookings, users, serviceTypes, clientRates, addresses } from '@/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
+import { parsePricing, type QuotePricing } from '@/lib/pricingGuides';
 import { getOwnerEmail } from '@/lib/data';
 import { logNotification } from '@/lib/bookings';
 import {
@@ -121,7 +122,7 @@ export async function getEstimatesForClient(clientId: string) {
 /** Replaces a draft estimate's line items and notes wholesale. Draft only. */
 export async function updateDraftEstimate(
   quoteId: string,
-  input: { items: { description: string; amountCents: number }[]; notes?: string; serviceTypeId?: string },
+  input: { items: { description: string; amountCents: number }[]; notes?: string; serviceTypeId?: string; pricing?: QuotePricing | null },
 ) {
   const quote = (await db.select().from(quotes).where(eq(quotes.id, quoteId)).limit(1))[0];
   if (!quote) throw new EstimateError('Estimate not found');
@@ -153,6 +154,7 @@ export async function updateDraftEstimate(
       totalCents,
       notes: input.notes ?? quote.notes,
       serviceTypeId: input.serviceTypeId ?? quote.serviceTypeId,
+      ...(input.pricing !== undefined ? { pricingJson: input.pricing ? JSON.stringify(input.pricing) : null } : {}),
     })
     .where(eq(quotes.id, quoteId));
 
@@ -245,16 +247,28 @@ export async function respondToEstimate(token: string, action: 'APPROVE' | 'DECL
         .where(and(eq(clientRates.userId, quote.clientId), eq(clientRates.serviceTypeId, quote.serviceTypeId)))
         .limit(1)
     )[0];
-    if (existing) {
-      await db.update(clientRates).set({ rateCents: quote.totalCents }).where(eq(clientRates.id, existing.id));
+    // A commercial contract is priced by the month; each visit carries
+    // its share, so a month of visits adds up to the agreed monthly price,
+    // and the client is billed once a month (lib/monthlyBilling.ts).
+    const pricing = parsePricing(quote.pricingJson);
+    const contract = pricing?.kind === 'COMMERCIAL' && pricing.visitsPerWeek > 0 ? pricing : null;
+    const rateCents = contract ? contract.perVisitCents : quote.totalCents;
+    // Post-construction is priced per phase and scheduled by the office
+    // (the phase prices are quick picks when scheduling), so it never
+    // becomes a self-bookable per-visit rate.
+    if (pricing?.kind === 'POST_CONSTRUCTION') {
+      // nothing to store on the client
+    } else if (existing) {
+      await db.update(clientRates).set({ rateCents }).where(eq(clientRates.id, existing.id));
     } else {
       await db.insert(clientRates).values({
         id: crypto.randomUUID(),
         userId: quote.clientId,
         serviceTypeId: quote.serviceTypeId,
-        rateCents: quote.totalCents,
+        rateCents,
       });
     }
+    if (contract) await db.update(users).set({ billingMode: 'MONTHLY_BATCH' }).where(eq(users.id, quote.clientId));
   }
 
   const ownerEmail = await getOwnerEmail(quote.tenantId);

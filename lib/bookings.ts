@@ -305,6 +305,8 @@ export async function createQuoteVisitBooking(input: {
   serviceTypeId?: string;
   slotStart: string;
   slotEnd: string;
+  /** Post-construction / commercial answers (lib/intake.ts), as JSON. */
+  intakeJson?: string | null;
 }) {
   return db.transaction(async (tx) => {
     const existing = await tx.select().from(bookings).where(eq(bookings.tenantId, input.tenantId));
@@ -325,6 +327,7 @@ export async function createQuoteVisitBooking(input: {
       cadence: 'ONE_TIME',
       status: 'REQUESTED',
       isQuoteVisit: true,
+      intakeJson: input.intakeJson ?? null,
     });
 
     return bookingId;

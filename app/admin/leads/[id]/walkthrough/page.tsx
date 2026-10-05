@@ -5,6 +5,7 @@ import { getHomeProfile } from '@/lib/homeProfile';
 import { encryptionConfigured } from '@/lib/encryption';
 import HomeProfileEditor from '@/components/HomeProfileEditor';
 import RoomCountForm from '@/components/admin/RoomCountForm';
+import { parseIntake, describeIntake } from '@/lib/intake';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +26,7 @@ export default async function QuoteWalkthrough({ params }: { params: { id: strin
   if (!client) notFound();
   const address = addresses.find((a) => a.id === lead.addressId) ?? addresses.find((a) => a.isPrimary) ?? addresses[0];
   const homeProfile = address ? await getHomeProfile(address.id) : null;
+  const intake = parseIntake(lead.intakeJson);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -38,6 +40,21 @@ export default async function QuoteWalkthrough({ params }: { params: { id: strin
         {address && <p className="text-slate">{address.line1}, {address.city}, {address.state} {address.zip ?? ''}</p>}
         <p className="text-sm text-muted">Visit: {lead.slotStart.replace('T', ' ')}</p>
       </div>
+
+      {intake && (
+        <div className="card">
+          <h2 className="mb-1 font-semibold text-ink">{intake.kind === 'COMMERCIAL' ? 'About the space' : 'About the project'}</h2>
+          <p className="mb-3 text-sm text-slate">What they told us when they booked. Confirm it on site, then price it from the quote’s calculator.</p>
+          <dl className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[10rem_1fr]">
+            {describeIntake(intake).map((row) => (
+              <div key={row.label} className="contents">
+                <dt className="text-slate">{row.label}</dt>
+                <dd className="font-medium text-ink">{row.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
 
       {!address ? (
         <p className="card text-sm text-amber-700">

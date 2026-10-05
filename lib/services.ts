@@ -264,6 +264,71 @@ export const SERVICES: ServiceContent[] = [
     houstonNote:
       'Plenty of Houston-area leases require a professional clean before move-out, and inspectors here reliably check inside the oven, the fridge seals and the window tracks. Those are exactly the places this service is built around.',
   },
+  // Post-construction and commercial use existing photos for now; swap in
+  // real job photos from these lines once there are some.
+  {
+    key: 'POST_CONSTRUCTION',
+    slug: 'post-construction-cleaning',
+    name: 'Post-Construction Cleaning',
+    tagline: 'From job site to move-in ready — dust, debris and stickers gone.',
+    summary:
+      'For new builds, renovations and remodels. Construction dust settles in waves, so the work comes in phases: a rough clean while trades finish, a final clean top to bottom once they are gone, and a touch-up right before handover. We walk the site first, price each phase in writing, and schedule around your builder.',
+    bestFor: ['Builders and contractors handing over a home', 'Homeowners after a renovation or addition', 'Kitchen and bath remodels', 'Realtors listing a new build'],
+    cadence: 'One to three visits per project: rough, final and touch-up',
+    typicalLength: 'Depends on square footage and phase — confirmed at the walkthrough',
+    includes: [
+      {
+        area: 'Rough clean',
+        items: ['Construction debris bagged and removed', 'Heavy dust vacuumed from floors, sills and ledges', 'Packaging, tape and protective paper pulled where trades are done'],
+      },
+      {
+        area: 'Final clean',
+        items: [
+          'Top-to-bottom dusting: ceiling fans, vents, light fixtures, trim',
+          'Stickers, labels and protective film off windows, fixtures and appliances',
+          'Paint and caulk specks scraped from glass and hard floors',
+          'Cabinets and drawers vacuumed and wiped inside and out',
+          'Bathrooms and kitchen cleaned and polished, grout haze removed',
+          'Floors vacuumed and damp-mopped with a cleaner suited to the finish',
+        ],
+      },
+      {
+        area: 'Touch-up',
+        items: ['The dust that settled since the final clean', 'Fingerprints from inspections and last trades', 'A walkthrough with you or your site contact'],
+      },
+    ],
+    notIncluded: [
+      'Hauling dumpster-sized debris or leftover building materials',
+      'Exterior windows above the first floor',
+      'Paint, drywall or caulk repairs',
+      'Pressure washing and outdoor concrete',
+    ],
+    image: '/images/stairs-vacuum.jpg',
+    imageAlt: 'A 3U3 cleaner vacuuming a living room rug with a canister vacuum',
+    houstonNote:
+      'Houston humidity makes drywall dust cling — a damp wipe after the HEPA vacuum is what actually gets it off ledges and cabinet faces. Ask us to come back after the HVAC has run for a few days; that is when the last of it shows.',
+  },
+  {
+    key: 'COMMERCIAL',
+    slug: 'commercial-cleaning',
+    name: 'Commercial Cleaning',
+    tagline: 'A clean workplace on a schedule that never gets in the way.',
+    summary:
+      'Offices, clinics, studios and other workplaces, cleaned after hours or whenever suits you. We walk the space, agree what gets done each visit, and give you one monthly price — with the same checklist and photo proof the crew uses in homes.',
+    bestFor: ['Small and mid-size offices', 'Medical and dental practices', 'Retail, studios and showrooms', 'Churches and event spaces'],
+    cadence: 'One to seven visits a week, or a one-time clean',
+    typicalLength: 'Set at the walkthrough from your square footage and how often we visit',
+    includes: [
+      { area: 'Every visit', items: ['Trash and recycling out, liners replaced', 'Restrooms disinfected and restocked', 'Break room counters, sink and appliances wiped', 'Door handles, switches and other high-touch points disinfected', 'Floors vacuumed and mopped'] },
+      { area: 'Work areas', items: ['Clear desk surfaces dusted — papers are never moved', 'Conference tables and chairs wiped', 'Glass doors and partitions spot-cleaned'] },
+      { area: 'On request', items: ['High dusting of vents and beams', 'Floor care: strip and wax, carpet shampoo', 'Restroom paper and soap supplied by us'] },
+    ],
+    notIncluded: ['Biohazard or medical-waste removal', 'Exterior windows above the first floor', 'Moving heavy furniture or equipment'],
+    image: '/images/dusting-shelves.jpg',
+    imageAlt: 'A 3U3 cleaner wiping down a large wooden table',
+    houstonNote:
+      'Summer storms track mud and water straight through Houston lobbies. Entry mats and the first few feet of floor get extra attention on every visit from May to September.',
+  },
 ];
 
 export function getService(slug: string): ServiceContent | undefined {

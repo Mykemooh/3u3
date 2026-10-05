@@ -126,12 +126,15 @@ export default function ServicePage({ params }: { params: { slug: string } }) {
         </section>
 
         <section className="mt-14 rounded-2xl border border-line bg-surface p-8 text-center">
-          <h2 className="h3">Want {service.name.toLowerCase()} for your home?</h2>
+          <h2 className="h3">
+            Want {service.name.toLowerCase()} for your {service.key === 'COMMERCIAL' ? 'workplace' : service.key === 'POST_CONSTRUCTION' ? 'project' : 'home'}?
+          </h2>
           <p className="mx-auto mt-2 max-w-md text-sm text-slate">
-            Book a free walkthrough. We'll look at your home, give you an exact price on the spot, and you decide
-            from there.
+            {service.key === 'COMMERCIAL' || service.key === 'POST_CONSTRUCTION'
+              ? "Book a free walkthrough. We'll see the space, agree the scope, and send you a written quote."
+              : "Book a free walkthrough. We'll look at your home, give you an exact price on the spot, and you decide from there."}
           </p>
-          <Link href="/new" className="btn-primary mt-6 w-full max-w-xs">
+          <Link href={`/new?service=${service.key}`} className="btn-primary mt-6 w-full max-w-xs">
             Get a free quote
           </Link>
           <p className="mt-5 text-sm text-muted">

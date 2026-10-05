@@ -268,6 +268,8 @@ export function newLeadOwnerEmail(input: {
   serviceName?: string;
   dateLabel: string;
   timeLabel: string;
+  /** Post-construction / commercial answers (lib/intake.ts describeIntake). */
+  details?: { label: string; value: string }[];
 }) {
   return {
     subject: `New lead: ${esc(input.name)} — quote visit ${input.dateLabel}`,
@@ -283,6 +285,11 @@ export function newLeadOwnerEmail(input: {
           <li>Address: ${esc(input.address)}</li>
           <li>Visit: ${input.dateLabel} &middot; ${input.timeLabel}</li>
         </ul>
+        ${
+          input.details?.length
+            ? `<p style="margin-bottom:4px;"><strong>About the project</strong></p><ul>${input.details.map((d) => `<li>${esc(d.label)}: ${esc(d.value)}</li>`).join('')}</ul>`
+            : ''
+        }
         <p style="color:#6b6b6b;font-size:13px;">See it in the admin dashboard under Leads.</p>
       </div>
     `,

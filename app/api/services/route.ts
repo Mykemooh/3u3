@@ -18,7 +18,7 @@ export async function GET() {
   const rows = await db.select().from(serviceTypes).where(eq(serviceTypes.tenantId, tenant.id));
   return NextResponse.json({
     services: rows
-      .filter((s) => !HIDDEN_SERVICE_KEYS.includes(s.key))
+      .filter((s) => s.offered && !HIDDEN_SERVICE_KEYS.includes(s.key))
       .map((s) => ({ id: s.id, key: s.key, name: s.name })),
   });
 }

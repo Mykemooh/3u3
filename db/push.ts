@@ -947,6 +947,10 @@ async function main() {
       sent_at TIMESTAMPTZ,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+
+    -- Post-construction and commercial lines (lib/serviceLines.ts).
+    ALTER TABLE service_types ADD COLUMN IF NOT EXISTS offered BOOLEAN NOT NULL DEFAULT true;
+    ALTER TABLE quotes ADD COLUMN IF NOT EXISTS pricing_json TEXT;
   `);
 
   console.log('Schema pushed to Postgres.');

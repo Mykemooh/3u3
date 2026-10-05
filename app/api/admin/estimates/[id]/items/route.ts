@@ -5,6 +5,7 @@ import { getServerSession } from 'next-auth';
 import { z } from 'zod';
 import { authOptions } from '@/lib/auth';
 import { updateDraftEstimate, EstimateError } from '@/lib/estimates';
+import { pricingSchema } from '@/lib/pricingGuides';
 
 const schema = z.object({
   items: z
@@ -17,6 +18,8 @@ const schema = z.object({
     .min(1),
   notes: z.string().max(2000).optional(),
   serviceTypeId: z.string().min(1).optional(),
+  // From the pricing helper (post-construction phases, commercial monthly).
+  pricing: pricingSchema.nullable().optional(),
 });
 
 // Wholesale replace of a DRAFT estimate's line items, plus the optional

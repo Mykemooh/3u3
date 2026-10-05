@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation';
 import { getEstimateWithItems, estimateUrl } from '@/lib/estimates';
 import { getTenant, getServiceTypes, formatMoney } from '@/lib/data';
 import EstimateEditor from '@/components/EstimateEditor';
+import { parseIntake, describeIntake } from '@/lib/intake';
+import { parsePricing } from '@/lib/pricingGuides';
 
 const STATUS_STYLE: Record<string, string> = {
   DRAFT: 'bg-surface text-slate',
@@ -20,6 +22,8 @@ export default async function AdminEstimateDetail({ params }: { params: { id: st
   if (!data || data.quote.tenantId !== tenant.id) notFound();
   const { quote, items, client, service, visit, address } = data;
   const services = await getServiceTypes(tenant.id);
+  const intake = parseIntake(visit?.intakeJson);
+  const pricing = parsePricing(quote.pricingJson);
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -45,14 +49,30 @@ export default async function AdminEstimateDetail({ params }: { params: { id: st
           <span className={`pill ${STATUS_STYLE[quote.status]}`}>{quote.status}</span>
         </div>
 
+        {intake && (
+          <div className="mb-5 rounded-xl bg-surface p-4">
+            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted">What they told us</p>
+            <dl className="grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[10rem_1fr]">
+              {describeIntake(intake).map((row) => (
+                <div key={row.label} className="contents">
+                  <dt className="text-slate">{row.label}</dt>
+                  <dd className="font-medium text-ink">{row.value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
+
         {quote.status === 'DRAFT' ? (
           <EstimateEditor
             quoteId={quote.id}
             initialItems={items.map((i) => ({ description: i.description, amountCents: i.amountCents }))}
             initialNotes={quote.notes ?? ''}
             initialServiceTypeId={quote.serviceTypeId}
-            services={services.map((s) => ({ id: s.id, name: s.name }))}
+            services={services.filter((s) => s.offered || s.id === quote.serviceTypeId).map((s) => ({ id: s.id, name: s.name, key: s.key }))}
             clientHasEmail={!!client?.email}
+            intake={intake}
+            initialPricing={pricing}
           />
         ) : (
           <div>
@@ -86,12 +106,23 @@ export default async function AdminEstimateDetail({ params }: { params: { id: st
                   {quote.status === 'APPROVED' ? 'Approved' : 'Declined'} {quote.respondedAt.toLocaleString()}
                 </p>
               )}
-              {quote.status === 'APPROVED' && (
-                <p className="text-slate">
-                  {formatMoney(quote.totalCents)} is now this client's agreed rate for {service?.name} — they can
-                  book it themselves at any time.
-                </p>
-              )}
+              {quote.status === 'APPROVED' &&
+                (pricing?.kind === 'COMMERCIAL' && pricing.visitsPerWeek > 0 ? (
+                  <p className="text-slate">
+                    Monthly contract: {formatMoney(pricing.monthlyCents)} a month. Each visit is billed at {formatMoney(pricing.perVisitCents)} and
+                    the client is billed once a month. Set up the repeating schedule from Schedule → Recurring cleans.
+                  </p>
+                ) : pricing?.kind === 'POST_CONSTRUCTION' ? (
+                  <p className="text-slate">
+                    Approved phases: {pricing.phases.map((p) => `${p.label} ${formatMoney(p.amountCents)}`).join(' · ')}. Schedule each phase
+                    as its own visit — the phase prices show up as quick picks when you schedule.
+                  </p>
+                ) : (
+                  <p className="text-slate">
+                    {formatMoney(quote.totalCents)} is now this client's agreed rate for {service?.name} — they can
+                    book it themselves at any time.
+                  </p>
+                ))}
               {quote.approvalToken && quote.status === 'SENT' && (
                 <p className="break-all text-xs text-muted">
                   Client link: <span className="font-mono">{estimateUrl(quote.approvalToken)}</span>

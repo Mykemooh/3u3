@@ -368,7 +368,7 @@ export async function sendWalkthroughReminders(now = Date.now()) {
     const rows = await db
       .select()
       .from(bookings)
-      .where(and(eq(bookings.tenantId, tenant.id), eq(bookings.isQuoteVisit, true), eq(bookings.status, 'CONFIRMED'), gte(bookings.slotStart, businessTodayISO())));
+      .where(and(eq(bookings.tenantId, tenant.id), eq(bookings.isQuoteVisit, true), inArray(bookings.status, ['REQUESTED', 'CONFIRMED']), gte(bookings.slotStart, businessTodayISO())));
     for (const b of rows) {
       const hoursUntil = (businessLocalToUtc(b.slotStart).getTime() - now) / HOUR;
       if (hoursUntil <= 0 || hoursUntil > state.offsetMinutes / 60) continue;

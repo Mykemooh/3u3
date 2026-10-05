@@ -4,6 +4,7 @@ import Footer from '@/components/Footer';
 import { getEstimateByToken } from '@/lib/estimates';
 import { formatMoney } from '@/lib/data';
 import EstimateResponse from '@/components/EstimateResponse';
+import { parsePricing } from '@/lib/pricingGuides';
 
 // Reads a live estimate by token — never prerender or cache this.
 export const dynamic = 'force-dynamic';
@@ -20,6 +21,7 @@ export default async function EstimatePage({
   const data = await getEstimateByToken(params.token);
   if (!data) notFound();
   const { quote, items, client, service, address } = data;
+  const pricing = parsePricing(quote.pricingJson);
 
   const expired = quote.status === 'EXPIRED' || (!!quote.expiresAt && quote.expiresAt.getTime() < Date.now());
   const intent =
@@ -49,11 +51,23 @@ export default async function EstimatePage({
                 </tr>
               ))}
               <tr>
-                <td className="py-3 text-lg font-bold">Total</td>
+                <td className="py-3 text-lg font-bold">{pricing?.kind === 'COMMERCIAL' && pricing.visitsPerWeek > 0 ? 'Monthly total' : 'Total'}</td>
                 <td className="py-3 text-right text-lg font-bold text-bronze">{formatMoney(quote.totalCents)}</td>
               </tr>
             </tbody>
           </table>
+
+          {pricing?.kind === 'COMMERCIAL' && pricing.visitsPerWeek > 0 && (
+            <p className="mt-3 text-sm text-slate">
+              {pricing.visitsPerWeek} visit{pricing.visitsPerWeek === 1 ? '' : 's'} a week, billed once a month. Months with an extra visit or
+              a skipped one are billed for the visits that actually happened ({formatMoney(pricing.perVisitCents)} each).
+            </p>
+          )}
+          {pricing?.kind === 'POST_CONSTRUCTION' && pricing.phases.length > 1 && (
+            <p className="mt-3 text-sm text-slate">
+              Each phase is its own visit, scheduled around your build and invoiced when that phase is done.
+            </p>
+          )}
 
           {quote.notes && (
             <p className="mt-4 rounded-xl bg-gold/10 px-4 py-3 text-sm text-slate">{quote.notes}</p>
