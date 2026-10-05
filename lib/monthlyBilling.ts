@@ -1,3 +1,4 @@
+import { connectRouting } from '@/lib/connect';
 import { and, eq, inArray, lt } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { monthlyBillingBatches, invoices, users, bookings, serviceTypes } from '@/db/schema';
@@ -115,6 +116,7 @@ async function closeBatch(batch: MonthlyBatchRow): Promise<void> {
   const customerId = await getOrCreateStripeCustomer(batch.clientId);
   const useAutopay = !!client.autopayEnabled && !!client.stripeDefaultPaymentMethodId;
   const brand = await brandFor(batch.tenantId);
+  const routing = await connectRouting(batch.tenantId);
 
   const stripeInvoice = await stripe.invoices.create({
     customer: customerId,
@@ -124,6 +126,7 @@ async function closeBatch(batch: MonthlyBatchRow): Promise<void> {
     ...(useAutopay ? { default_payment_method: client.stripeDefaultPaymentMethodId! } : { days_until_due: 7 }),
     auto_advance: false,
     metadata: { batchId: batch.id },
+    ...(routing ? { transfer_data: { destination: routing.destination }, on_behalf_of: routing.destination } : {}),
   });
 
   const lineItems: { description: string; amountCents: number }[] = [];

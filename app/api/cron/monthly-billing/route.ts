@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { recordHeartbeat } from '@/lib/health';
 import { closeDueMonthlyBatches } from '@/lib/monthlyBilling';
 
 export const dynamic = 'force-dynamic';
@@ -14,6 +15,12 @@ export async function GET(req: Request) {
   if (!secret || req.headers.get('authorization') !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Not allowed' }, { status: 401 });
   }
-  const result = await closeDueMonthlyBatches();
-  return NextResponse.json(result);
+  try {
+    const result = await closeDueMonthlyBatches();
+    await recordHeartbeat('cron:monthly-billing', true, result);
+    return NextResponse.json(result);
+  } catch (err) {
+    await recordHeartbeat('cron:monthly-billing', false, String(err));
+    throw err;
+  }
 }

@@ -101,6 +101,9 @@ export const tenants = pgTable('tenants', {
   // MFA policy (lib/mfa.ts): admins always need it; this extends the
   // requirement to cleaners as well.
   mfaRequiredForCrew: boolean('mfa_required_for_crew').notNull().default(false),
+  // Platform tenant only: whether /start takes new companies on its own
+  // (otherwise it collects a waitlist for the platform owner).
+  signupOpen: boolean('signup_open').notNull().default(false),
   ...timestamps,
 }, (t) => ({
   slugUnique: uniqueIndex('tenants_slug_unique').on(t.slug),
@@ -1182,4 +1185,33 @@ export const campaigns = pgTable('campaigns', {
   sentCount: integer('sent_count').notNull().default(0),
   sentAt: timestamp('sent_at', { withTimezone: true }),
   ...timestamps,
+});
+
+// Self-serve signup (lib/signup.ts): an emailed code proves the address
+// before a company is created; WAITLIST rows are requests while signup is
+// closed. Codes are only ever stored hashed.
+export const signupRequests = pgTable('signup_requests', {
+  id: id(),
+  kind: text('kind', { enum: ['SIGNUP', 'WAITLIST'] }).notNull(),
+  email: text('email').notNull(),
+  name: text('name'),
+  companyName: text('company_name'),
+  phone: text('phone'),
+  codeHash: text('code_hash'),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  attempts: integer('attempts').notNull().default(0),
+  ip: text('ip'),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  tenantId: text('tenant_id'),
+  ...timestamps,
+}, (t) => ({
+  emailIdx: index('signup_requests_email_idx').on(t.email),
+}));
+
+// Last run of each background job, for the public status page (/status).
+export const heartbeats = pgTable('heartbeats', {
+  key: text('key').primaryKey(),
+  ranAt: timestamp('ran_at', { withTimezone: true }).notNull(),
+  ok: boolean('ok').notNull(),
+  detail: text('detail'),
 });

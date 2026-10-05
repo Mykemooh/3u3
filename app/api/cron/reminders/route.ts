@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { recordHeartbeat } from '@/lib/health';
 import { sendBookingReminders, sendQuoteReminders } from '@/lib/reminders';
 import { expireStaleStandbyOffers } from '@/lib/standby';
 import { extendAllSeries } from '@/lib/recurring';
@@ -29,5 +30,6 @@ export async function GET(req: Request) {
     console.error('[cron] automations failed', err);
     return null;
   });
+  await recordHeartbeat('cron:reminders', automations !== null, { booking, quote, standby, automations });
   return NextResponse.json({ series, booking, quote, standby, automations });
 }

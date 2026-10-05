@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { recordHeartbeat } from '@/lib/health';
 import { cleanupExpiredMedia, enforceStorageBudget } from '@/lib/mediaRetention';
 
 export const dynamic = 'force-dynamic';
@@ -16,7 +17,13 @@ export async function GET(req: Request) {
   if (!secret || req.headers.get('authorization') !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Not allowed' }, { status: 401 });
   }
-  const expired = await cleanupExpiredMedia();
-  const budget = await enforceStorageBudget();
-  return NextResponse.json({ expired, budget });
+  try {
+    const expired = await cleanupExpiredMedia();
+    const budget = await enforceStorageBudget();
+    await recordHeartbeat('cron:media-cleanup', true, { expired, budget });
+    return NextResponse.json({ expired, budget });
+  } catch (err) {
+    await recordHeartbeat('cron:media-cleanup', false, String(err));
+    throw err;
+  }
 }

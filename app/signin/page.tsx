@@ -5,6 +5,7 @@ import { signIn, getSession, signOut, getProviders } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import LogoBadge from '@/components/LogoBadge';
+import TrashCanMark from '@/components/TrashCanMark';
 import { homeForRole, canAccess } from '@/lib/nav';
 
 /**
@@ -38,7 +39,7 @@ function SignInInner() {
     getProviders().then((p) => setGoogle(!!p?.google)).catch(() => setGoogle(false));
   }, []);
 
-  const [identifier, setIdentifier] = useState('');
+  const [identifier, setIdentifier] = useState(params.get('email') ?? '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -99,9 +100,16 @@ function SignInInner() {
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
-      <Link href="/" className="mb-10">
-        <LogoBadge />
-      </Link>
+      {/* Coming from TrashCan signup (/start): the platform's mark, not 3U3's. */}
+      {params.get('platform') ? (
+        <Link href="/start" className="mb-10">
+          <TrashCanMark />
+        </Link>
+      ) : (
+        <Link href="/" className="mb-10">
+          <LogoBadge />
+        </Link>
+      )}
 
       <div className="w-full max-w-sm">
         <h1 className="text-2xl font-bold text-ink">Sign in</h1>
@@ -215,15 +223,26 @@ function SignInInner() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-slate">
-          New here?{' '}
-          <Link href="/new" className="font-semibold text-bronze underline">
-            Get a free quote
-          </Link>
-        </p>
-        <p className="mt-2 text-center text-xs text-muted">
-          A new account will be created for you after your quote request.
-        </p>
+        {params.get('platform') ? (
+          <p className="mt-6 text-center text-sm text-slate">
+            New company?{' '}
+            <Link href="/start" className="font-semibold text-bronze underline">
+              Start a free trial
+            </Link>
+          </p>
+        ) : (
+          <>
+            <p className="mt-6 text-center text-sm text-slate">
+              New here?{' '}
+              <Link href="/new" className="font-semibold text-bronze underline">
+                Get a free quote
+              </Link>
+            </p>
+            <p className="mt-2 text-center text-xs text-muted">
+              A new account will be created for you after your quote request.
+            </p>
+          </>
+        )}
       </div>
     </main>
   );

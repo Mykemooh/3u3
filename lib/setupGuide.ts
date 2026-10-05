@@ -48,7 +48,24 @@ export async function setupSteps(tenantId: string): Promise<SetupStep[]> {
     { key: 'booking', title: 'Share your booking link', why: 'Put it on your website, Google profile and social pages.', href: '/admin/settings#booking-link', cta: 'Get the link', done: false },
     { key: 'integrations', title: 'Connect your accounting', why: 'Paid invoices go to QuickBooks Online on their own, without duplicates.', href: '/admin/integrations', cta: 'Connect QuickBooks', done: integ.length > 0 },
   ];
-  return steps.map((s) => ({ ...s, skipped: skipped.has(s.key) }));
+  // What the owner said they want help with first (signup question 5)
+  // comes straight after the basics.
+  const FOCUS: Record<string, string[]> = {
+    SCHEDULING: ['templates', 'schedule'],
+    PAYMENTS: ['payments', 'automations'],
+    GROWTH: ['booking', 'tex'],
+    TEAM: ['team'],
+  };
+  let focus: string | undefined;
+  try {
+    focus = tenant.intakeJson ? JSON.parse(tenant.intakeJson).focus : undefined;
+  } catch {
+    focus = undefined;
+  }
+  const first = FOCUS[focus ?? ''] ?? [];
+  const rank = (key: string) => (key === 'profile' ? 0 : key === 'services' ? 1 : first.includes(key) ? 2 + first.indexOf(key) : 10);
+  const ordered = steps.map((s, i) => ({ s, i })).sort((a, b) => rank(a.s.key) - rank(b.s.key) || a.i - b.i).map((x) => x.s);
+  return ordered.map((s) => ({ ...s, skipped: skipped.has(s.key) }));
 }
 
 export async function setupProgress(tenantId: string) {

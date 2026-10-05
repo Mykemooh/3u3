@@ -8,10 +8,13 @@ import ServiceAreaForm from '@/components/admin/ServiceAreaForm';
 import CompanySettingsForm from '@/components/admin/CompanySettingsForm';
 import { appUrl } from '@/lib/url';
 import { isStripeConfigured } from '@/lib/stripe';
+import ConnectStripeCard from '@/components/admin/ConnectStripeCard';
+import { adminSession } from '@/lib/adminApi';
 
-export default async function AdminSettings() {
+export default async function AdminSettings({ searchParams }: { searchParams?: { connect?: string } }) {
   const tenant = await getTenant();
   if (!tenant) return null;
+  const admin = await adminSession('settings.manage');
   const settings = await getPayrollSettings(tenant.id);
   const crewRows = await db.select().from(crews).where(eq(crews.tenantId, tenant.id));
   const hasCrewHomeBase = crewRows.some((c) => c.homeAddressLine1 && c.homeCity && c.homeState);
@@ -50,13 +53,21 @@ export default async function AdminSettings() {
         <p className="rounded-xl bg-surface px-4 py-3 font-mono text-sm text-ink">{bookingLink}</p>
       </div>
 
-      <div id="payments" className="card max-w-2xl">
+      <div id="payments" className="card max-w-2xl scroll-mt-24">
         <h2 className="mb-1 font-semibold text-ink">Payments</h2>
         <p className="text-sm text-slate">
           {isStripeConfigured()
             ? 'Online payments are on. Clients pay from their invoice or portal; tips go to the crew through payroll.'
             : 'Online payments are off until Stripe keys are added (Vercel → Settings → Environment Variables: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY).'}
         </p>
+        {isStripeConfigured() && (
+          <ConnectStripeCard
+            connected={!!tenant.stripeConnectAccountId}
+            ready={tenant.stripeConnectReady}
+            returning={searchParams?.connect === 'return'}
+            canManage={!!admin?.permissions.has('billing.manage')}
+          />
+        )}
       </div>
 
       <div className="card max-w-2xl">

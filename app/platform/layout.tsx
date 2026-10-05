@@ -10,6 +10,8 @@ export const dynamic = 'force-dynamic';
 
 const NAV = [
   { href: '/platform/companies', label: 'Companies' },
+  { href: '/platform/signups', label: 'Signups' },
+  { href: '/platform/roles', label: 'Role template' },
   { href: '/platform/promo-codes', label: 'Promo codes' },
 ];
 
@@ -25,7 +27,7 @@ export default async function PlatformLayout({ children }: { children: React.Rea
       <header className="bg-ink text-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-3">
-            <span className="text-sm font-bold uppercase tracking-widest text-gold">3U3 Platform</span>
+            <span className="text-sm font-bold uppercase tracking-widest text-gold">TrashCan Platform</span>
           </div>
           <div className="flex items-center gap-4 text-sm">
             <span className="text-white/60">{session.user.name}</span>

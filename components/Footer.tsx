@@ -73,8 +73,13 @@ export default function Footer() {
           </p>
         </div>
 
-        <div className="mt-10 border-t border-white/10 pt-6 text-xs text-white/40">
-          © {new Date().getFullYear()} 3U3 Cleaning. All rights reserved.
+        <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-6 text-xs text-white/40">
+          <span>© {new Date().getFullYear()} 3U3 Cleaning. All rights reserved.</span>
+          <span className="flex gap-4">
+            <Link href="/privacy" className="hover:text-white/80">Privacy</Link>
+            <Link href="/terms" className="hover:text-white/80">Terms</Link>
+            <Link href="/start" className="hover:text-white/80">Run your own cleaning company on TrashCan</Link>
+          </span>
         </div>
       </div>
     </footer>

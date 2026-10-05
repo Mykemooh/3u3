@@ -951,6 +951,31 @@ async function main() {
     -- Post-construction and commercial lines (lib/serviceLines.ts).
     ALTER TABLE service_types ADD COLUMN IF NOT EXISTS offered BOOLEAN NOT NULL DEFAULT true;
     ALTER TABLE quotes ADD COLUMN IF NOT EXISTS pricing_json TEXT;
+
+    -- Self-serve signup, status page (lib/signup.ts, lib/health.ts).
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS signup_open BOOLEAN NOT NULL DEFAULT false;
+    CREATE TABLE IF NOT EXISTS signup_requests (
+      id TEXT PRIMARY KEY,
+      kind TEXT NOT NULL CHECK (kind IN ('SIGNUP','WAITLIST')),
+      email TEXT NOT NULL,
+      name TEXT,
+      company_name TEXT,
+      phone TEXT,
+      code_hash TEXT,
+      expires_at TIMESTAMPTZ,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      ip TEXT,
+      completed_at TIMESTAMPTZ,
+      tenant_id TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS signup_requests_email_idx ON signup_requests(email);
+    CREATE TABLE IF NOT EXISTS heartbeats (
+      key TEXT PRIMARY KEY,
+      ran_at TIMESTAMPTZ NOT NULL,
+      ok BOOLEAN NOT NULL,
+      detail TEXT
+    );
   `);
 
   console.log('Schema pushed to Postgres.');

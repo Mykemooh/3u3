@@ -8,6 +8,7 @@ import { getOwnerEmail } from '@/lib/data';
 import { logNotification } from '@/lib/bookings';
 import { sendEmail, invoiceEmail, paymentReceivedCustomerEmail, paymentReceivedOwnerEmail, type EmailBrand } from '@/lib/email';
 import { pushPaidInvoice } from '@/lib/quickbooks';
+import { connectRouting } from '@/lib/connect';
 import type Stripe from 'stripe';
 
 /** This tenant's own name/colors/logo for the invoice and payment emails — never 3U3's, once this is a different company's booking. */
@@ -247,6 +248,7 @@ export async function sendInvoice(invoiceId: string): Promise<{ url: string }> {
     const customerId = await getOrCreateStripeCustomer(invoice.clientId);
     const useAutopay = !!client?.autopayEnabled && !!client?.stripeDefaultPaymentMethodId;
     const brand = await brandFor(invoice.tenantId);
+    const routing = await connectRouting(invoice.tenantId);
 
     const stripeInvoice = await stripe.invoices.create({
       customer: customerId,
@@ -264,6 +266,8 @@ export async function sendInvoice(invoiceId: string): Promise<{ url: string }> {
         : { days_until_due: 7 }),
       auto_advance: false,
       metadata: { invoiceId },
+      // The company's own Stripe account, once connected (lib/connect.ts).
+      ...(routing ? { transfer_data: { destination: routing.destination }, on_behalf_of: routing.destination } : {}),
     });
 
     for (const item of items) {

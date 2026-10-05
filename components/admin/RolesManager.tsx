@@ -1,6 +1,9 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { createContext, useContext, useMemo, useState } from 'react';
+
+// Where role changes are sent: a company's own roles, or (Platform → Role template) the template new companies copy.
+const ApiBase = createContext('/api/admin/roles');
 import { useRouter } from 'next/navigation';
 
 type Perm = { key: string; label: string; detail: string };
@@ -46,12 +49,14 @@ export default function RolesManager({
   adminPermissions,
   crewPermissions,
   presets,
+  apiBase = '/api/admin/roles',
 }: {
   roles: RoleRow[];
   people: Person[];
   adminPermissions: Perm[];
   crewPermissions: Perm[];
   presets: Preset[];
+  apiBase?: string;
 }) {
   const router = useRouter();
   const [error, setError] = useState('');
@@ -68,6 +73,7 @@ export default function RolesManager({
   };
 
   return (
+    <ApiBase.Provider value={apiBase}>
     <div className="space-y-8">
       {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
 
@@ -102,7 +108,7 @@ export default function RolesManager({
           crewPermissions={crewPermissions}
           onCancel={() => setAdding(false)}
           onCreate={(body) => run(async () => {
-            await send('/api/admin/roles', 'POST', body);
+            await send(apiBase, 'POST', body);
             setAdding(false);
           })}
         />
@@ -110,6 +116,7 @@ export default function RolesManager({
         <button className="btn-primary" onClick={() => setAdding(true)}>Add a role</button>
       )}
     </div>
+    </ApiBase.Provider>
   );
 }
 
@@ -126,6 +133,7 @@ function RoleCard({
   sameTierRoles: RoleRow[];
   run: (fn: () => Promise<unknown>) => Promise<void>;
 }) {
+  const base = useContext(ApiBase);
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(role.name);
   const [checked, setChecked] = useState<Set<string>>(new Set(role.permissions));
@@ -144,7 +152,7 @@ function RoleCard({
             onSubmit={(e) => {
               e.preventDefault();
               run(async () => {
-                await send(`/api/admin/roles/${role.id}`, 'PATCH', { name });
+                await send(`${base}/${role.id}`, 'PATCH', { name });
                 setEditingName(false);
               });
             }}
@@ -175,7 +183,7 @@ function RoleCard({
             aria-label={`Delete ${role.name}`}
             disabled={role.memberCount > 0}
             onClick={() => {
-              if (confirm(`Delete the role "${role.name}"?`)) run(() => send(`/api/admin/roles/${role.id}`, 'DELETE'));
+              if (confirm(`Delete the role "${role.name}"?`)) run(() => send(`${base}/${role.id}`, 'DELETE'));
             }}
             className="rounded-lg p-2 text-muted hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-30"
           >
@@ -212,7 +220,7 @@ function RoleCard({
           {dirty && (
             <button
               className="btn-primary btn-sm mt-2"
-              onClick={() => run(() => send(`/api/admin/roles/${role.id}`, 'PATCH', { permissions: Array.from(checked) }))}
+              onClick={() => run(() => send(`${base}/${role.id}`, 'PATCH', { permissions: Array.from(checked) }))}
             >
               Save access
             </button>
@@ -229,7 +237,7 @@ function RoleCard({
                 className="rounded-lg border border-line px-2 py-1 text-xs"
                 value={role.id}
                 aria-label={`Role for ${m.name}`}
-                onChange={(e) => run(() => send('/api/admin/roles/assign', 'POST', { userId: m.id, roleId: e.target.value }))}
+                onChange={(e) => run(() => send(`${base}/assign`, 'POST', { userId: m.id, roleId: e.target.value }))}
               >
                 {sameTierRoles.map((r) => (
                   <option key={r.id} value={r.id}>{r.name}</option>
