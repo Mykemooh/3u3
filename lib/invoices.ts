@@ -105,6 +105,8 @@ export async function createDraftInvoiceForBooking(bookingId: string): Promise<s
  * balance still being there, so two invoices drafted at once can't both
  * spend the same credit.
  */
+export const CREDIT_LINE = 'Referral credit';
+
 export async function applyClientCredit(invoiceId: string) {
   const invoice = (await db.select().from(invoices).where(eq(invoices.id, invoiceId)).limit(1))[0];
   if (!invoice || invoice.status !== 'DRAFT' || invoice.totalCents <= 0) return 0;
@@ -120,7 +122,7 @@ export async function applyClientCredit(invoiceId: string) {
   await db.insert(invoiceItems).values({
     id: crypto.randomUUID(),
     invoiceId,
-    description: 'Referral credit',
+    description: CREDIT_LINE,
     amountCents: -apply,
     sortOrder: 99,
     taxable: false,
@@ -178,6 +180,16 @@ export async function replaceInvoiceItems(
   // discount); the total itself can never go below zero.
   const totalCents = items.reduce((sum, i) => sum + Math.round(i.amountCents), 0);
   if (totalCents < 0) throw new InvoiceError('Credits and discounts can’t add up to more than the invoice.');
+  // Referral credit already came off the client's balance when it was
+  // applied; if an edit removes or shrinks that line, the difference goes
+  // back to their balance rather than disappearing.
+  const creditOf = (rows: { description: string; amountCents: number }[]) =>
+    -rows.filter((r) => r.description === CREDIT_LINE && r.amountCents < 0).reduce((sum, r) => sum + Math.round(r.amountCents), 0);
+  const oldItems = await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoiceId));
+  const returned = creditOf(oldItems) - creditOf(items);
+  if (returned > 0) {
+    await db.update(users).set({ creditCents: sql`${users.creditCents} + ${returned}` }).where(eq(users.id, invoice.clientId));
+  }
   await db.delete(invoiceItems).where(eq(invoiceItems.invoiceId, invoiceId));
   for (let i = 0; i < items.length; i += 1) {
     await db.insert(invoiceItems).values({
@@ -248,7 +260,7 @@ export async function sendInvoice(invoiceId: string): Promise<{ url: string }> {
     const customerId = await getOrCreateStripeCustomer(invoice.clientId);
     const useAutopay = !!client?.autopayEnabled && !!client?.stripeDefaultPaymentMethodId;
     const brand = await brandFor(invoice.tenantId);
-    const routing = await connectRouting(invoice.tenantId);
+    const routing = await connectRouting(invoice.tenantId, invoice.totalCents);
 
     const stripeInvoice = await stripe.invoices.create({
       customer: customerId,
@@ -267,7 +279,7 @@ export async function sendInvoice(invoiceId: string): Promise<{ url: string }> {
       auto_advance: false,
       metadata: { invoiceId },
       // The company's own Stripe account, once connected (lib/connect.ts).
-      ...(routing ? { transfer_data: { destination: routing.destination }, on_behalf_of: routing.destination } : {}),
+      ...(routing ? { transfer_data: { destination: routing.destination }, on_behalf_of: routing.destination, application_fee_amount: routing.feeCents } : {}),
     });
 
     for (const item of items) {

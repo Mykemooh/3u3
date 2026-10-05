@@ -326,13 +326,19 @@ export async function sendAutomationMessage(input: {
   cta?: { label: string; url: string };
   relatedBookingId?: string;
   marketing?: boolean;
+  /** An extra line at the foot of the email (for example "Stop these reminders"). */
+  footerNote?: string;
 }) {
   const def = automationDef(input.key);
   const words = wordingFor(def, input.state);
   const vars = { company: input.tenantName, firstName: input.client.name.split(/[\s(]/)[0], ...input.vars };
   const subject = renderTemplate(words.subject, vars);
   const body = renderTemplate(words.body, vars);
-  const footer = input.marketing ? `— ${input.tenantName}\nDon't want these? Unsubscribe: ${unsubscribeUrl(input.client.id)}` : undefined;
+  const footer = input.marketing
+    ? `— ${input.tenantName}\nDon't want these? Unsubscribe: ${unsubscribeUrl(input.client.id)}`
+    : input.footerNote
+    ? `— ${input.tenantName}\n${input.footerNote}`
+    : undefined;
   return notifyClient({
     tenantId: input.tenantId,
     client: input.client,

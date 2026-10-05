@@ -4,7 +4,7 @@ import { seeded, makeUser, db } from './helpers/fixtures';
 import { ensureServiceLines, backfillServiceLines } from '@/lib/serviceLines';
 import { intakeSchema, describeIntake, parseIntake, needsIntake } from '@/lib/intake';
 import { postConstructionPrice, commercialPrice, productionGuideFor, parsePricing } from '@/lib/pricingGuides';
-import { createDraftEstimate, updateDraftEstimate, sendEstimate, respondToEstimate } from '@/lib/estimates';
+import { createDraftEstimate, updateDraftEstimate, sendEstimate, respondToEstimate, reconcilePricing } from '@/lib/estimates';
 import { createQuoteVisitBooking } from '@/lib/bookings';
 import { listTemplates } from '@/lib/scheduleTemplates';
 import { addDays } from '@/lib/recurring';
@@ -95,4 +95,15 @@ test('commercial quote approval sets a per-visit rate and monthly billing; post-
   const noRate = await db.select().from(clientRates).where(and(eq(clientRates.userId, builder.id), eq(clientRates.serviceTypeId, postCon.id)));
   assert.equal(noRate.length, 0, 'phases are scheduled by the office, not self-booked');
   assert.equal((await db.select().from(users).where(eq(users.id, builder.id)))[0].billingMode, 'PER_CLEAN');
+});
+
+test('the lines are the deal: edited quotes keep the stored pricing in step', () => {
+  const contract = { kind: 'COMMERCIAL' as const, squareFeet: 4000, productionRate: 2000, visitsPerWeek: 3, hourlyRateCents: 4500, hoursPerVisit: 2, suppliesMonthlyCents: 0, monthlyCents: 117000, perVisitCents: 9000 };
+  const edited = reconcilePricing(contract, [{ description: 'Commercial cleaning (per month)', amountCents: 150000 }])!;
+  assert.equal(edited.kind === 'COMMERCIAL' && edited.monthlyCents, 150000);
+  assert.equal(edited.kind === 'COMMERCIAL' && edited.perVisitCents, Math.round(150000 / (3 * 52 / 12)));
+  const phases = { kind: 'POST_CONSTRUCTION' as const, squareFeet: 2000, phases: [{ key: 'ROUGH' as const, label: 'Rough clean', ratePerSqFt: 0.2, amountCents: 40000 }, { key: 'FINAL' as const, label: 'Final clean', ratePerSqFt: 0.3, amountCents: 60000 }] };
+  const kept = reconcilePricing(phases, [{ description: 'Final clean — 2,000 sq ft', amountCents: 55000 }])!;
+  assert.deepEqual(kept.kind === 'POST_CONSTRUCTION' && kept.phases.map((p) => [p.key, p.amountCents]), [['FINAL', 55000]]);
+  assert.equal(reconcilePricing(phases, [{ description: 'Something else', amountCents: 100 }]), null);
 });

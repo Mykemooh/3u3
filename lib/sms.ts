@@ -40,7 +40,13 @@ export async function sendSms(input: { to: string; body: string; from?: string |
  */
 export async function sendSmsDetailed(input: { to: string; body: string; from?: string | null }): Promise<{ ok: boolean; sid: string | null; from: string | null; to: string | null }> {
   const to = toE164(input.to);
-  const from = (input.from && toE164(input.from)) || FROM || null;
+  // An explicit null means the company has no number of its own — never
+  // fall back to the platform's (lib/messaging.ts tenantSmsNumber).
+  const from = input.from === undefined ? FROM ?? null : input.from ? toE164(input.from) : null;
+  if (!from) {
+    console.warn(`[sms] no sending number — not texting ${input.to}`);
+    return { ok: false, sid: null, from: null, to };
+  }
   if (!smsConfigured()) {
     console.warn(`[sms] Twilio not configured — would have texted ${input.to}: "${input.body}"`);
     return { ok: false, sid: null, from, to };
@@ -49,7 +55,7 @@ export async function sendSmsDetailed(input: { to: string; body: string; from?: 
     console.warn(`[sms] can't text "${input.to}" — not a US phone number`);
     return { ok: false, sid: null, from, to };
   }
-  const sent = await sendTwilioMessage(from!, to, input.body, 'sms');
+  const sent = await sendTwilioMessage(from, to, input.body, 'sms');
   return { ok: sent.ok, sid: sent.sid, from, to };
 }
 

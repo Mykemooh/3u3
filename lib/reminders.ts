@@ -105,17 +105,32 @@ export async function sendBookingReminders(): Promise<{ sent3d: number; sent36h:
       }
     };
 
+    // Each reminder is claimed with a conditional update before it is
+    // sent, so two runs at once (or a retried cron) can't both send it.
+    let sentFirst = false;
     if (due3d) {
-      // Mark first so a crash after sending can't send twice tomorrow.
-      await db.update(bookings).set({ reminder3dSentAt: new Date() }).where(eq(bookings.id, booking.id));
-      await send('visit_reminder_first', first, firstHours, 'BOOKING_REMINDER_3D');
-      sent3d += 1;
+      const claimed = await db
+        .update(bookings)
+        .set({ reminder3dSentAt: new Date() })
+        .where(and(eq(bookings.id, booking.id), isNull(bookings.reminder3dSentAt)))
+        .returning({ id: bookings.id });
+      if (claimed.length) {
+        await send('visit_reminder_first', first, firstHours, 'BOOKING_REMINDER_3D');
+        sent3d += 1;
+        sentFirst = true;
+      }
     }
     if (due36h) {
-      await db.update(bookings).set({ reminder36hSentAt: new Date() }).where(eq(bookings.id, booking.id));
+      const claimed = await db
+        .update(bookings)
+        .set({ reminder36hSentAt: new Date() })
+        .where(and(eq(bookings.id, booking.id), isNull(bookings.reminder36hSentAt)))
+        .returning({ id: bookings.id });
       // Both due in the same run (booked at short notice): one message is enough.
-      if (!due3d) await send('visit_reminder_second', second, secondHours, 'BOOKING_REMINDER_36H');
-      sent36h += 1;
+      if (claimed.length) {
+        if (!sentFirst) await send('visit_reminder_second', second, secondHours, 'BOOKING_REMINDER_36H');
+        sent36h += 1;
+      }
     }
   }
 
@@ -162,6 +177,13 @@ export async function sendQuoteReminders(): Promise<{ sent: number }> {
     const url = estimateUrl(quote.approvalToken ?? '');
     const optOutUrl = appUrl(`/api/estimates/${quote.approvalToken}/opt-out-reminders`);
 
+    const claimed = await db
+      .update(quotes)
+      .set({ reminderCount: quote.reminderCount + 1, lastReminderAt: new Date() })
+      .where(and(eq(quotes.id, quote.id), eq(quotes.reminderCount, quote.reminderCount)))
+      .returning({ id: quotes.id });
+    if (!claimed.length) continue; // another run already sent this step
+
     if (followup.customized) {
       await sendAutomationMessage({
         tenantId: quote.tenantId,
@@ -172,6 +194,7 @@ export async function sendQuoteReminders(): Promise<{ sent: number }> {
         vars: { service: serviceName, amount: formatMoney(quote.totalCents), link: url },
         cta: { label: 'View and approve', url },
         relatedBookingId: quote.quoteVisitBookingId ?? undefined,
+        footerNote: `Not interested? Stop these reminders: ${optOutUrl}`,
       });
     } else {
       await notifyClient({
@@ -183,10 +206,6 @@ export async function sendQuoteReminders(): Promise<{ sent: number }> {
         text: estimateReminderText({ serviceName, totalCents: quote.totalCents, url }),
       });
     }
-    await db
-      .update(quotes)
-      .set({ reminderCount: quote.reminderCount + 1, lastReminderAt: new Date() })
-      .where(eq(quotes.id, quote.id));
     sent += 1;
   }
 

@@ -26,13 +26,14 @@ export async function notifyClient(input: {
   // A client who replied STOP gets email instead (lib/messaging.ts).
   const textable = client.smsConsent !== false;
 
-  if (client.notificationChannel === 'SMS' && client.phone && smsConfigured() && textable) {
-    const from = await tenantSmsNumber(input.tenantId);
+  // A company without its own texting number sends by email instead.
+  const from = client.notificationChannel === 'SMS' && client.phone && smsConfigured() && textable ? await tenantSmsNumber(input.tenantId) : null;
+  if (from && client.phone) {
     const sent = await sendSmsDetailed({ to: client.phone, body: input.text, from });
     await logNotification({ tenantId: input.tenantId, channel: 'SMS', recipient: client.phone, triggerEvent: input.triggerEvent, relatedBookingId: input.relatedBookingId });
     // Filed in the client's text thread, so the inbox shows what they were sent.
     if (sent.ok) {
-      await recordOutbound({ tenantId: input.tenantId, clientId: client.id ?? null, from: sent.from ?? from ?? '', to: sent.to ?? client.phone, body: input.text, sid: sent.sid }).catch(() => undefined);
+      await recordOutbound({ tenantId: input.tenantId, clientId: client.id ?? null, from: sent.from ?? from, to: sent.to ?? client.phone, body: input.text, sid: sent.sid }).catch(() => undefined);
     }
     return sent.ok;
   }

@@ -15,7 +15,7 @@ import {
 import { createBooking } from '@/lib/bookings';
 import { createDraftInvoiceForBooking, replaceInvoiceItems, InvoiceError } from '@/lib/invoices';
 import { recordReferral, ensureReferralCode, grantReferralReward } from '@/lib/referrals';
-import { receiveInbound, listThreads, getThread, sendText, MessagingError } from '@/lib/messaging';
+import { receiveInbound, listThreads, getThread, sendText, MessagingError, tenantForInbound, checkSmsNumber } from '@/lib/messaging';
 import { validTwilioSignature, phoneDigits } from '@/lib/sms';
 import { verifyUnsubscribe, unsubscribeToken } from '@/lib/unsubscribe';
 import { addDays } from '@/lib/recurring';
@@ -163,11 +163,16 @@ test('referral credit: recorded once, granted once when turned on, taken off the
   await replaceInvoiceItems(invoiceId, lines.map((l) => ({ description: l.description, amountCents: l.amountCents })));
   assert.equal((await db.select().from(invoices).where(eq(invoices.id, invoiceId)))[0].totalCents, 7500);
   await assert.rejects(replaceInvoiceItems(invoiceId, [{ description: 'Clean', amountCents: 1000 }, { description: 'Credit', amountCents: -2000 }]), InvoiceError);
+  // Removing the credit line gives the credit back instead of losing it.
+  await replaceInvoiceItems(invoiceId, lines.filter((l) => l.description !== 'Referral credit').map((l) => ({ description: l.description, amountCents: l.amountCents })));
+  assert.equal((await db.select().from(users).where(eq(users.id, friend.id)))[0].creditCents, 2500);
   await saveAutomation(tenant.id, 'referral_rewards', { enabled: false });
 });
 
 test('inbound texts find their client, file into one thread, and STOP blocks sending', async () => {
   const { tenant } = await seeded();
+  await db.update(tenants).set({ smsNumber: '+18325550000' }).where(eq(tenants.id, tenant.id));
+  assert.equal(await tenantForInbound('+19995550000', '+17135550142'), null, 'a number no company owns routes nowhere');
   const client = await makeUser(tenant.id, 'CUSTOMER', { phone: '(713) 555-0142' });
   const got = await receiveInbound({ from: '+17135550142', to: '+18325550000', body: 'Can you come at 10 instead?' });
   assert.equal(got?.tenant.id, tenant.id);
@@ -196,4 +201,15 @@ test('Twilio signatures and unsubscribe links verify; forgeries do not', async (
   const id = crypto.randomUUID();
   assert.equal(verifyUnsubscribe(id, unsubscribeToken(id)), true);
   assert.equal(verifyUnsubscribe(id, unsubscribeToken(crypto.randomUUID())), false);
+});
+
+test('a company can only claim a texting number nobody else has', async () => {
+  const { tenant } = await seeded();
+  const other = crypto.randomUUID();
+  await db.insert(tenants).values({ id: other, name: 'Other Co', slug: `other-${Date.now()}`, planStatus: 'TRIALING' });
+  await db.update(tenants).set({ smsNumber: '+18325550000' }).where(eq(tenants.id, tenant.id));
+  await assert.rejects(checkSmsNumber(other, '+18325550000'), /another company/);
+  // Without Twilio connected, numbers can't be verified, so only the first company may save one.
+  await assert.rejects(checkSmsNumber(other, '+18325550111'), /platform owner/);
+  await checkSmsNumber(tenant.id, '+18325550111');
 });

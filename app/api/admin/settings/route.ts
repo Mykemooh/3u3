@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm';
 import { adminSession, forbidden } from '@/lib/adminApi';
 import { logChange, diff } from '@/lib/audit';
 import { toE164 } from '@/lib/sms';
+import { checkSmsNumber, MessagingError } from '@/lib/messaging';
 
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
@@ -50,6 +51,20 @@ export async function PATCH(req: Request) {
     }
   }
   if (data.googleReviewUrl === '') data.googleReviewUrl = null;
+  if (data.smsNumber === '') data.smsNumber = null;
+  // A texting number must be on the platform's Twilio account and not
+  // another company's — otherwise its texts and calls could be captured.
+  if (typeof data.smsNumber === 'string') {
+    const current = (await db.select({ smsNumber: tenants.smsNumber }).from(tenants).where(eq(tenants.id, admin.tenantId)).limit(1))[0];
+    if (current?.smsNumber !== data.smsNumber) {
+      try {
+        await checkSmsNumber(admin.tenantId, data.smsNumber);
+      } catch (err) {
+        if (err instanceof MessagingError) return NextResponse.json({ error: err.message }, { status: 400 });
+        throw err;
+      }
+    }
+  }
 
   const before = (await db.select().from(tenants).where(eq(tenants.id, admin.tenantId)).limit(1))[0]!;
   await db.update(tenants).set(data).where(eq(tenants.id, admin.tenantId));

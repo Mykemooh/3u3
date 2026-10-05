@@ -3,7 +3,7 @@ import {
   tenants, serviceTypes, crews, clientRates, users, addresses, bookings,
   jobs, jobChecklistItems, crewMembers, notificationLog, invoices,
 } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { asc, eq, and } from 'drizzle-orm';
 import { getServerSession } from 'next-auth';
 import { headers } from 'next/headers';
 import { authOptions } from '@/lib/auth';
@@ -38,14 +38,22 @@ export async function getTenant() {
     const byDomain = (await db.select().from(tenants).where(eq(tenants.customDomain, host)).limit(1))[0];
     if (byDomain) return byDomain;
 
-    const subdomain = host.split('.')[0];
-    if (subdomain && subdomain !== host) {
-      const bySlug = (await db.select().from(tenants).where(eq(tenants.slug, subdomain)).limit(1))[0];
-      if (bySlug) return bySlug;
+    // <slug>.<TENANT_BASE_DOMAIN> only. Without a configured base domain
+    // a host's first label is never treated as a company slug — otherwise
+    // a self-serve company named after the deployment's own address (for
+    // example "3u3-fm98" on 3u3-fm98.vercel.app) could take over the site.
+    const base = process.env.TENANT_BASE_DOMAIN?.toLowerCase().replace(/^\./, '');
+    if (base && host.endsWith(`.${base}`)) {
+      const subdomain = host.slice(0, -(base.length + 1));
+      if (subdomain && !subdomain.includes('.')) {
+        const bySlug = (await db.select().from(tenants).where(eq(tenants.slug, subdomain)).limit(1))[0];
+        if (bySlug && !bySlug.isPlatform) return bySlug;
+      }
     }
   }
 
-  const rows = await db.select().from(tenants).where(eq(tenants.isPlatform, false)).limit(1);
+  // The platform's first company — ordered, so it can't change as rows are updated.
+  const rows = await db.select().from(tenants).where(eq(tenants.isPlatform, false)).orderBy(asc(tenants.createdAt)).limit(1);
   return rows[0];
 }
 

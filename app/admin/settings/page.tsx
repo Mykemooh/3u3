@@ -65,7 +65,7 @@ export default async function AdminSettings({ searchParams }: { searchParams?: {
             connected={!!tenant.stripeConnectAccountId}
             ready={tenant.stripeConnectReady}
             returning={searchParams?.connect === 'return'}
-            canManage={!!admin?.permissions.has('billing.manage')}
+            canManage={!!admin?.permissions.has('billing.manage') && !!admin?.permissions.has('settings.manage')}
           />
         )}
       </div>

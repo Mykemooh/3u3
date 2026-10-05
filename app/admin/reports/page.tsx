@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { getTenant, formatMoney } from '@/lib/data';
 import { cleaningReport, rangeFor, type RangeKey } from '@/lib/reports';
 import { businessTodayISO } from '@/lib/time';
+import { adminSession } from '@/lib/adminApi';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,6 +41,10 @@ export default async function ReportsPage({ searchParams }: { searchParams: { ra
   const key = (['this_month', 'last_month', 'last_90', 'this_year', 'custom'].includes(searchParams.range ?? '') ? searchParams.range : 'this_month') as RangeKey;
   const { from, to } = rangeFor(key, today, { from: searchParams.from, to: searchParams.to });
   const r = await cleaningReport(tenant.id, from, to);
+  // What each person was paid is for people who run payroll.
+  const perms = (await adminSession())?.permissions ?? new Set<string>();
+  const seesPay = perms.has('payroll.manage');
+  const NEEDS: Record<string, string> = { payroll: 'payroll.manage', clients: 'clients.manage', expenses: 'expenses.manage' };
   const q = `from=${from}&to=${to}`;
   const roomMax = Math.max(1, ...r.work.rooms.map((x) => x.averageMinutes));
   const serviceMax = Math.max(1, ...r.work.byService.map((x) => x.cleans));
@@ -152,7 +157,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: { ra
       <section className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold uppercase tracking-wide text-muted">Team</h3>
-          <a href={`/api/admin/export?kind=payroll&${q}`} className="text-sm font-semibold text-gold hover:underline">CSV</a>
+          {seesPay && <a href={`/api/admin/export?kind=payroll&${q}`} className="text-sm font-semibold text-gold hover:underline">CSV</a>}
         </div>
         <div className="overflow-hidden rounded-2xl border border-line bg-white">
           {r.team.length === 0 && <p className="p-5 text-sm text-muted">No finished cleans in this range.</p>}
@@ -161,7 +166,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: { ra
               <span className="flex-1 font-semibold">{m.name}</span>
               <span className="w-20 text-right">{m.cleans} clean{m.cleans === 1 ? '' : 's'}</span>
               <span className="w-20 text-right">{m.hours.toFixed(1)} h</span>
-              <span className="w-24 text-right font-semibold">{m.payCents == null ? 'No rate' : formatMoney(m.payCents)}</span>
+              {seesPay && <span className="w-24 text-right font-semibold">{m.payCents == null ? 'No rate' : formatMoney(m.payCents)}</span>}
             </div>
           ))}
         </div>
@@ -217,7 +222,9 @@ export default async function ReportsPage({ searchParams }: { searchParams: { ra
             ['expenses', 'Expenses'],
             ['room-times', 'Room times'],
             ['clients', 'Client list'],
-          ].map(([k, label]) => (
+          ]
+            .filter(([k]) => !NEEDS[k] || perms.has(NEEDS[k]))
+            .map(([k, label]) => (
             <a key={k} href={`/api/admin/export?kind=${k}&${q}`} className="btn-secondary !px-3 !py-1.5">
               {label} (CSV)
             </a>

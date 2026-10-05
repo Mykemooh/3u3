@@ -20,7 +20,11 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const kind = url.searchParams.get('kind') as Kind;
   if (!KINDS.includes(kind)) return NextResponse.json({ error: 'Unknown export' }, { status: 400 });
-  const admin = await adminSession(kind === 'expenses' ? 'expenses.manage' : kind === 'payroll' ? 'payroll.manage' : 'reports.view');
+  // Each download needs the permission for what's in it: client contact
+  // details need Clients, pay needs Payroll, spending needs Expenses.
+  const admin = await adminSession(
+    kind === 'expenses' ? 'expenses.manage' : kind === 'payroll' ? 'payroll.manage' : kind === 'clients' ? 'clients.manage' : 'reports.view',
+  );
   if (!admin) return forbidden();
   const today = businessTodayISO();
   const valid = (s: string | null) => (s && /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null);

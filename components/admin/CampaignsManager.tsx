@@ -147,9 +147,26 @@ export default function CampaignsManager({ campaigns, segments, company, emailRe
                 </p>
               </div>
               {c.status === 'SENT' ? (
-                <span className="pill bg-green/10 text-green">
-                  Sent to {c.sentCount} · {c.sentAt ? new Date(c.sentAt).toLocaleDateString() : ''}
-                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="pill bg-green/10 text-green">
+                    Sent to {c.sentCount} · {c.sentAt ? new Date(c.sentAt).toLocaleDateString() : ''}
+                  </span>
+                  {c.sentCount < audience && c.sentAt && Date.now() - new Date(c.sentAt).getTime() < 48 * 3600_000 && emailReady && (
+                    <button
+                      type="button"
+                      className="btn-secondary !px-3 !py-1.5 text-sm"
+                      disabled={busy}
+                      onClick={() =>
+                        run(async () => {
+                          const r = await call(`/api/admin/campaigns/${c.id}/send`, 'POST', { resume: true });
+                          return `Sent to ${r.sent} more.`;
+                        }, 'Done.')
+                      }
+                    >
+                      Send to the rest
+                    </button>
+                  )}
+                </div>
               ) : (
                 <div className="flex flex-wrap gap-2">
                   <button type="button" className="btn-secondary !px-3 !py-1.5 text-sm" onClick={() => setEditing(c)}>

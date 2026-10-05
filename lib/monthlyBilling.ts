@@ -116,7 +116,7 @@ async function closeBatch(batch: MonthlyBatchRow): Promise<void> {
   const customerId = await getOrCreateStripeCustomer(batch.clientId);
   const useAutopay = !!client.autopayEnabled && !!client.stripeDefaultPaymentMethodId;
   const brand = await brandFor(batch.tenantId);
-  const routing = await connectRouting(batch.tenantId);
+  const routing = await connectRouting(batch.tenantId, memberInvoices.reduce((sum, i) => sum + i.totalCents, 0));
 
   const stripeInvoice = await stripe.invoices.create({
     customer: customerId,
@@ -126,7 +126,7 @@ async function closeBatch(batch: MonthlyBatchRow): Promise<void> {
     ...(useAutopay ? { default_payment_method: client.stripeDefaultPaymentMethodId! } : { days_until_due: 7 }),
     auto_advance: false,
     metadata: { batchId: batch.id },
-    ...(routing ? { transfer_data: { destination: routing.destination }, on_behalf_of: routing.destination } : {}),
+    ...(routing ? { transfer_data: { destination: routing.destination }, on_behalf_of: routing.destination, application_fee_amount: routing.feeCents } : {}),
   });
 
   const lineItems: { description: string; amountCents: number }[] = [];

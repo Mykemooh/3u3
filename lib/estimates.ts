@@ -3,7 +3,7 @@ import { randomBytes } from 'crypto';
 import { db } from '@/db/client';
 import { quotes, quoteItems, bookings, users, serviceTypes, clientRates, addresses } from '@/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
-import { parsePricing, type QuotePricing } from '@/lib/pricingGuides';
+import { parsePricing, WEEKS_PER_MONTH, type QuotePricing } from '@/lib/pricingGuides';
 import { getOwnerEmail } from '@/lib/data';
 import { logNotification } from '@/lib/bookings';
 import {
@@ -136,6 +136,10 @@ export async function updateDraftEstimate(
     if (!service || service.tenantId !== quote.tenantId) throw new EstimateError('Service not found');
   }
 
+  // Pricing from the helper is advice; the lines are the deal. Keep the
+  // stored pricing in step with whatever the lines finally say.
+  const pricing = input.pricing ? reconcilePricing(input.pricing, input.items) : input.pricing;
+
   await db.delete(quoteItems).where(eq(quoteItems.quoteId, quoteId));
   for (let i = 0; i < input.items.length; i += 1) {
     await db.insert(quoteItems).values({
@@ -154,7 +158,7 @@ export async function updateDraftEstimate(
       totalCents,
       notes: input.notes ?? quote.notes,
       serviceTypeId: input.serviceTypeId ?? quote.serviceTypeId,
-      ...(input.pricing !== undefined ? { pricingJson: input.pricing ? JSON.stringify(input.pricing) : null } : {}),
+      ...(input.pricing !== undefined ? { pricingJson: pricing ? JSON.stringify(pricing) : null } : {}),
     })
     .where(eq(quotes.id, quoteId));
 
@@ -252,7 +256,9 @@ export async function respondToEstimate(token: string, action: 'APPROVE' | 'DECL
     // and the client is billed once a month (lib/monthlyBilling.ts).
     const pricing = parsePricing(quote.pricingJson);
     const contract = pricing?.kind === 'COMMERCIAL' && pricing.visitsPerWeek > 0 ? pricing : null;
-    const rateCents = contract ? contract.perVisitCents : quote.totalCents;
+    // Worked out here from the total the client actually approved — never
+    // trusted from what the editor stored.
+    const rateCents = contract ? Math.round(quote.totalCents / (contract.visitsPerWeek * WEEKS_PER_MONTH)) : quote.totalCents;
     // Post-construction is priced per phase and scheduled by the office
     // (the phase prices are quick picks when scheduling), so it never
     // becomes a self-bookable per-visit rate.
@@ -293,4 +299,25 @@ export async function respondToEstimate(token: string, action: 'APPROVE' | 'DECL
   });
 
   return { status, alreadyAnswered: false as const };
+}
+
+/**
+ * Brings helper pricing in line with the saved lines: a commercial
+ * contract's monthly price is the lines' total (and each visit its share);
+ * post-construction phases take their amounts from the matching lines and
+ * drop any phase whose line was removed.
+ */
+export function reconcilePricing(pricing: QuotePricing, items: { description: string; amountCents: number }[]): QuotePricing | null {
+  const total = items.reduce((sum, i) => sum + Math.max(0, Math.round(i.amountCents)), 0);
+  if (pricing.kind === 'COMMERCIAL') {
+    const perVisit = pricing.visitsPerWeek > 0 ? Math.round(total / (pricing.visitsPerWeek * WEEKS_PER_MONTH)) : total;
+    return { ...pricing, monthlyCents: pricing.visitsPerWeek > 0 ? total : 0, perVisitCents: perVisit };
+  }
+  const phases = pricing.phases
+    .map((p) => {
+      const line = items.find((i) => i.description.trim().toLowerCase().startsWith(p.label.toLowerCase()));
+      return line ? { ...p, amountCents: Math.max(0, Math.round(line.amountCents)) } : null;
+    })
+    .filter((p): p is NonNullable<typeof p> => !!p);
+  return phases.length ? { ...pricing, phases } : null;
 }

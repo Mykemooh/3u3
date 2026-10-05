@@ -4,8 +4,15 @@ import { startConnectOnboarding, refreshConnectStatus, connectDashboardLink, Con
 import { logChange } from '@/lib/audit';
 
 /** POST: start (or resume) Stripe onboarding. GET: re-check status. PUT: open the Stripe Express dashboard. */
-export async function POST() {
+// Where client payments land is both a billing and a company-settings
+// decision, so connecting needs both permissions.
+async function canConnect() {
   const admin = await adminSession('billing.manage');
+  return admin && admin.permissions.has('settings.manage') ? admin : null;
+}
+
+export async function POST() {
+  const admin = await canConnect();
   if (!admin) return forbidden();
   try {
     const r = await startConnectOnboarding(admin.tenantId);
@@ -19,7 +26,7 @@ export async function POST() {
 }
 
 export async function GET() {
-  const admin = await adminSession('billing.manage');
+  const admin = await canConnect();
   if (!admin) return forbidden();
   try {
     return NextResponse.json(await refreshConnectStatus(admin.tenantId));
@@ -30,7 +37,7 @@ export async function GET() {
 }
 
 export async function PUT() {
-  const admin = await adminSession('billing.manage');
+  const admin = await canConnect();
   if (!admin) return forbidden();
   try {
     return NextResponse.json(await connectDashboardLink(admin.tenantId));

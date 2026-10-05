@@ -1,6 +1,6 @@
 import { db } from '@/db/client';
 import { bookings, campaigns, quotes, recurringSeries, tenants, users } from '@/db/schema';
-import { and, desc, eq, gte, inArray, ne } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, ne, sql } from 'drizzle-orm';
 import { lapsedClients, claimSend, renderTemplate } from '@/lib/automations';
 import { sendEmail, simpleEmail, emailConfigured } from '@/lib/email';
 import { unsubscribeUrl } from '@/lib/unsubscribe';
@@ -122,18 +122,35 @@ export async function deleteCampaign(tenantId: string, id: string) {
  * conditional update, so a double-click can't send it twice; each
  * recipient is also claimed in automation_sends.
  */
-export async function sendCampaign(tenantId: string, id: string, actor?: { id: string; name: string }) {
+export async function sendCampaign(tenantId: string, id: string, actor?: { id: string; name: string }, opts: { resume?: boolean } = {}) {
   if (!emailConfigured()) throw new MarketingError('Email isn’t connected yet. Add your Resend key (Settings → Integrations) before sending a campaign.');
-  const flipped = await db
-    .update(campaigns)
-    .set({ status: 'SENT', sentAt: new Date() })
-    .where(and(eq(campaigns.id, id), eq(campaigns.tenantId, tenantId), eq(campaigns.status, 'DRAFT')))
-    .returning();
-  const campaign = flipped[0];
-  if (!campaign) throw new MarketingError('This campaign has already gone out.');
+  let campaign: typeof campaigns.$inferSelect | undefined;
+  if (opts.resume) {
+    // Finishing a send that was cut off (a timeout on a big list): the
+    // per-person claims below mean nobody gets it twice.
+    campaign = (await db.select().from(campaigns).where(and(eq(campaigns.id, id), eq(campaigns.tenantId, tenantId))).limit(1))[0];
+    if (!campaign || campaign.status !== 'SENT' || !campaign.sentAt || Date.now() - campaign.sentAt.getTime() > 48 * 3600_000) {
+      throw new MarketingError('Only a campaign sent in the last two days can be finished.');
+    }
+  } else {
+    campaign = (
+      await db
+        .update(campaigns)
+        .set({ status: 'SENT', sentAt: new Date() })
+        .where(and(eq(campaigns.id, id), eq(campaigns.tenantId, tenantId), eq(campaigns.status, 'DRAFT')))
+        .returning()
+    )[0];
+    if (!campaign) throw new MarketingError('This campaign has already gone out.');
+  }
   const tenant = (await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1))[0]!;
   const recipients = await segmentRecipients(tenantId, campaign.segment);
   let sent = 0;
+  let pending = 0;
+  const flush = async () => {
+    if (!pending) return;
+    await db.update(campaigns).set({ sentCount: sql`${campaigns.sentCount} + ${pending}` }).where(eq(campaigns.id, campaign!.id));
+    pending = 0;
+  };
   for (const u of recipients) {
     if (!(await claimSend(tenantId, 'campaign', `${campaign.id}:${u.id}`))) continue;
     const vars = { firstName: u.name.split(/[\s(]/)[0], company: tenant.name, bookingLink: appUrl('/account') };
@@ -147,10 +164,14 @@ export async function sendCampaign(tenantId: string, id: string, actor?: { id: s
         footer: `— ${tenant.name}. Don't want news and offers? Unsubscribe: ${unsubscribeUrl(u.id)}`,
       }),
     });
-    if (ok) sent += 1;
+    if (ok) {
+      sent += 1;
+      pending += 1;
+      if (pending >= 10) await flush();
+    }
   }
-  await db.update(campaigns).set({ sentCount: sent }).where(eq(campaigns.id, campaign.id));
-  await logChange({ tenantId, actor, entityType: 'campaign', entityId: campaign.id, action: 'sent', summary: `Sent “${campaign.name}” to ${sent} client${sent === 1 ? '' : 's'}` });
+  await flush();
+  await logChange({ tenantId, actor, entityType: 'campaign', entityId: campaign.id, action: 'sent', summary: `Sent “${campaign.name}” to ${sent} client${sent === 1 ? '' : 's'}${opts.resume ? ' (finishing an earlier send)' : ''}` });
   return { sent, audience: recipients.length };
 }
 

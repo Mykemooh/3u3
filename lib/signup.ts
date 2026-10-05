@@ -1,8 +1,8 @@
-import { createHash, createHmac, randomInt, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomInt, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import { db } from '@/db/client';
 import { signupRequests, tenants, users, serviceTypes } from '@/db/schema';
-import { and, desc, eq, gte, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, lt, sql } from 'drizzle-orm';
 import { provisionTenant, slugify, ProvisioningError } from '@/lib/tenantProvisioning';
 import { sendEmail, simpleEmail, emailConfigured } from '@/lib/email';
 import { appUrl } from '@/lib/url';
@@ -83,7 +83,7 @@ export const answersSchema = z.object({
 export type SignupAnswers = z.infer<typeof answersSchema>;
 
 const CODE_MINUTES = 15;
-const MAX_ATTEMPTS = 5;
+const MAX_ATTEMPTS = 8; // verify + finish each use one; leaves room for a few typos
 
 function hashCode(email: string, code: string) {
   const secret = process.env.NEXTAUTH_SECRET || 'dev-secret';
@@ -164,11 +164,17 @@ async function checkCode(email: string, code: string) {
   if (!row || row.completedAt || !row.codeHash || !row.expiresAt || row.expiresAt.getTime() < Date.now()) {
     throw new SignupError('That code has expired — ask for a new one.');
   }
-  if (row.attempts >= MAX_ATTEMPTS) throw new SignupError('Too many wrong codes — ask for a new one.');
+  // Every check uses up one try, counted atomically before comparing, so
+  // parallel guesses can't all see an unused allowance.
+  const used = await db
+    .update(signupRequests)
+    .set({ attempts: sql`${signupRequests.attempts} + 1` })
+    .where(and(eq(signupRequests.id, row.id), lt(signupRequests.attempts, MAX_ATTEMPTS)))
+    .returning({ attempts: signupRequests.attempts });
+  if (!used.length) throw new SignupError('Too many tries — ask for a new code.');
   const want = Buffer.from(row.codeHash);
   const got = Buffer.from(hashCode(email, code.replace(/\D/g, '')));
   if (want.length !== got.length || !timingSafeEqual(want, got)) {
-    await db.update(signupRequests).set({ attempts: row.attempts + 1 }).where(eq(signupRequests.id, row.id));
     throw new SignupError('That code isn’t right — check the email and try again.');
   }
   return row;
@@ -205,7 +211,9 @@ export async function completeSignup(input: z.infer<typeof completeSchema>) {
   const request = await checkCode(email, input.code);
 
   // A unique, readable slug: "sparkle-co", then "sparkle-co-2", ...
-  const base = slugify(input.companyName) || 'company';
+  const RESERVED = ['www', 'app', 'api', 'admin', 'platform', 'start', 'help', 'status', 'mail', 'trashcan', 'support', 'billing'];
+  const raw = slugify(input.companyName) || 'company';
+  const base = RESERVED.includes(raw) ? `${raw}-co` : raw;
   let slug = base;
   for (let i = 2; (await db.select({ id: tenants.id }).from(tenants).where(eq(tenants.slug, slug)).limit(1)).length; i += 1) slug = `${base}-${i}`;
 
@@ -260,8 +268,8 @@ export async function listSignups() {
   return db.select().from(signupRequests).orderBy(desc(signupRequests.createdAt)).limit(200);
 }
 
-/** For the IP rate limit: the caller's address as Vercel reports it, hashed so raw IPs aren't stored. */
+/** For rate limits: the caller's address as Vercel reports it, keyed-hashed so stored values can't be reversed to an IP. */
 export function hashedIp(forwardedFor: string | null) {
   const ip = forwardedFor?.split(',')[0]?.trim();
-  return ip ? createHash('sha256').update(ip).digest('hex').slice(0, 32) : null;
+  return ip ? createHmac('sha256', process.env.NEXTAUTH_SECRET || 'dev-secret').update(`ip:${ip}`).digest('hex').slice(0, 32) : null;
 }

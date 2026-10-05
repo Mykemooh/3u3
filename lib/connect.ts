@@ -66,10 +66,40 @@ export async function syncConnectAccount(account: Stripe.Account) {
   await db.update(tenants).set({ stripeConnectReady: readyFrom(account) }).where(eq(tenants.id, tenant.id));
 }
 
-/** Extra Stripe parameters that route a charge to the company's own account, or nothing. */
-export async function connectRouting(tenantId: string): Promise<{ destination: string } | null> {
+/**
+ * Where a charge goes: the company's own account if it is connected and
+ * Stripe says it can take charges right now (checked live, so a restricted
+ * account never receives a charge it can't accept), otherwise the
+ * platform's account as before connecting. Returns the destination and
+ * the platform fee for this amount.
+ */
+export async function connectRouting(tenantId: string, amountCents: number): Promise<{ destination: string; feeCents: number } | null> {
   const tenant = (await db.select({ id: tenants.stripeConnectAccountId, ready: tenants.stripeConnectReady }).from(tenants).where(eq(tenants.id, tenantId)).limit(1))[0];
-  return tenant?.id && tenant.ready ? { destination: tenant.id } : null;
+  if (!tenant?.id || !tenant.ready) return null;
+  try {
+    const account = await getStripe().accounts.retrieve(tenant.id);
+    if (!readyFrom(account)) {
+      await db.update(tenants).set({ stripeConnectReady: false }).where(eq(tenants.id, tenantId));
+      return null;
+    }
+  } catch (err) {
+    console.error('[connect] could not check account', err);
+    return null;
+  }
+  return { destination: tenant.id, feeCents: platformFeeCents(amountCents) };
+}
+
+/**
+ * The platform's share of a payment routed to a company's account. By
+ * default it covers card processing (2.9% + 30¢), which Stripe charges the
+ * platform on destination charges; PLATFORM_FEE_BPS and
+ * PLATFORM_FEE_FIXED_CENTS change it.
+ */
+export function platformFeeCents(amountCents: number) {
+  if (amountCents <= 0) return 0;
+  const bps = Number(process.env.PLATFORM_FEE_BPS ?? 290);
+  const fixed = Number(process.env.PLATFORM_FEE_FIXED_CENTS ?? 30);
+  return Math.min(amountCents, Math.max(0, Math.round((amountCents * bps) / 10000) + fixed));
 }
 
 export async function connectDashboardLink(tenantId: string) {

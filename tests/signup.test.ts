@@ -50,7 +50,7 @@ test('open signup: emailed code, wrong codes counted, company created with only 
   // Setup guide puts their stated focus right after the basics.
   const steps = await setupSteps(tenant.id);
   assert.deepEqual(steps.slice(0, 4).map((s) => s.key), ['profile', 'services', 'payments', 'automations']);
-  assert.equal(await connectRouting(tenant.id), null, 'payments stay on the platform account until Connect is ready');
+  assert.equal(await connectRouting(tenant.id, 10000), null, 'payments stay on the platform account until Connect is ready');
   await setSignupOpen(false);
 });
 

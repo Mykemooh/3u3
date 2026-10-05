@@ -4,7 +4,7 @@ import { and, eq } from 'drizzle-orm';
 
 /** The seeded 3U3 tenant and its people (db/seed.ts). */
 export async function seeded() {
-  const tenant = (await db.select().from(tenants).where(eq(tenants.isPlatform, false)).limit(1))[0]!;
+  const tenant = (await db.select().from(tenants).where(eq(tenants.slug, '3u3-cleaning')).limit(1))[0]!;
   const admin = (await db.select().from(users).where(eq(users.email, 'admin@3u3cleaning.com')).limit(1))[0]!;
   const lead = (await db.select().from(users).where(eq(users.email, 'jordan@3u3cleaning.com')).limit(1))[0]!;
   const client = (await db.select().from(users).where(eq(users.phone, '+12815550199')).limit(1))[0]!;

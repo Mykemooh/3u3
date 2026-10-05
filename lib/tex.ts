@@ -1,6 +1,6 @@
 import { db } from '@/db/client';
 import { texMessages, notificationLog, smsMessages, tenants, users } from '@/db/schema';
-import { and, asc, desc, eq, gte, inArray, isNotNull, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNotNull, like, sql } from 'drizzle-orm';
 import { articlesFor, search, type Article } from '@/lib/help';
 import type { Audience } from '@/lib/help/content';
 import { appUrl } from '@/lib/url';
@@ -29,7 +29,8 @@ export class TexError extends Error {
 
 const HUMAN = /\b(human|real person|a person|someone|somebody|agent|representative|manager|owner|call me|speak (to|with)|talk (to|with)|operator)\b/i;
 const PRICE = /(how much|\bprice|\bpricing|\bcost|\brates?\b|\bquote\b|\bestimate\b|\bcharge|\bfees?\b|\$)/i;
-const MONEY_IN_ANSWER = /\$\s?\d/;
+// Any way of writing an amount of money: $120, 120 dollars, 150 USD, "two hundred dollars".
+const MONEY_IN_ANSWER = /\$\s?\d|\b\d[\d,.]*\s?(dollars?|usd|bucks)\b|\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand)\b[\w\s-]{0,30}\b(dollars?|bucks)\b/i;
 
 const LIMIT: Record<TexChannel, number> = { WEB: 900, SMS: 480, VOICE: 420 };
 
@@ -132,19 +133,14 @@ export async function askTex(input: {
   if (!tenant) throw new TexError('Company not found.');
   const company = tenant.name;
 
-  const hourAgo = new Date(Date.now() - 3600_000);
-  const recent = await db
-    .select({ n: sql<number>`count(*)` })
-    .from(texMessages)
-    .where(and(eq(texMessages.tenantId, input.tenantId), eq(texMessages.conversationId, input.conversationId), eq(texMessages.author, 'USER'), gte(texMessages.createdAt, hourAgo)));
-  if (Number(recent[0]?.n ?? 0) >= 30) throw new TexError('That’s a lot of questions — please reach out to the team directly.');
-
-  const history = await db
-    .select()
-    .from(texMessages)
-    .where(and(eq(texMessages.tenantId, input.tenantId), eq(texMessages.conversationId, input.conversationId)))
-    .orderBy(asc(texMessages.createdAt))
-    .limit(40);
+  const history = (
+    await db
+      .select()
+      .from(texMessages)
+      .where(and(eq(texMessages.tenantId, input.tenantId), eq(texMessages.conversationId, input.conversationId)))
+      .orderBy(desc(texMessages.createdAt))
+      .limit(40)
+  ).reverse();
   await db.insert(texMessages).values({
     id: crypto.randomUUID(),
     tenantId: input.tenantId,
@@ -155,6 +151,25 @@ export async function askTex(input: {
     author: 'USER',
     body: message,
   });
+
+  // Limits are counted after this message is saved, so a burst of
+  // parallel requests can't all slip under them: per conversation, per
+  // sender across conversations (web), and per company per day.
+  const hourAgo = new Date(Date.now() - 3600_000);
+  const dayAgo = new Date(Date.now() - 86400_000);
+  const count = async (...where: Parameters<typeof and>) =>
+    Number((await db.select({ n: sql<number>`count(*)` }).from(texMessages).where(and(eq(texMessages.tenantId, input.tenantId), eq(texMessages.author, 'USER'), ...where)))[0]?.n ?? 0);
+  const ownerPrefix = input.conversationId.startsWith('web:') ? input.conversationId.split(':').slice(0, 2).join(':') + ':%' : null;
+  const overLimit =
+    (await count(eq(texMessages.conversationId, input.conversationId), gte(texMessages.createdAt, hourAgo))) > 30 ||
+    (ownerPrefix ? (await count(like(texMessages.conversationId, ownerPrefix), gte(texMessages.createdAt, hourAgo))) > 60 : false);
+  if (overLimit) {
+    const answer = `That’s a lot of questions for me — please call or text ${company} and a person will help.`;
+    await db.insert(texMessages).values({ id: crypto.randomUUID(), tenantId: input.tenantId, conversationId: input.conversationId, channel: input.channel, userId: input.userId ?? null, phone: input.phone ?? null, author: 'TEX', body: answer, handoff: false });
+    return { answer, handoff: false, sources: [], usedModel: false };
+  }
+  // Past the company's daily allowance, Tex still answers — from the articles, without the model.
+  const modelAllowed = (await count(gte(texMessages.createdAt, dayAgo))) <= Number(process.env.TEX_DAILY_LIMIT ?? 2000);
 
   const library = await articlesFor(input.tenantId, input.audience, company);
   const priceQuestion = PRICE.test(message);
@@ -177,7 +192,7 @@ export async function askTex(input: {
         ? `Of course. Let me get someone from ${company} for you.`
         : `Of course — I’ve let the team at ${company} know, and a person will get back to you here as soon as they can.`;
   } else {
-    const llm = await callClaude({
+    const llm = !modelAllowed ? null : await callClaude({
       company,
       channel: input.channel,
       audience: input.audience,

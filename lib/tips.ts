@@ -26,7 +26,7 @@ export async function createTipCheckoutSession(invoiceId: string, amountCents: n
   const { invoice } = data;
 
   const stripe = getStripe();
-  const routing = await connectRouting(invoice.tenantId);
+  const routing = await connectRouting(invoice.tenantId, amountCents);
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
     line_items: [
@@ -41,7 +41,7 @@ export async function createTipCheckoutSession(invoiceId: string, amountCents: n
     ],
     metadata: { invoiceId, kind: 'TIP' },
     // Tips belong to the company's crew, so they follow its connected account too.
-    ...(routing ? { payment_intent_data: { transfer_data: { destination: routing.destination }, on_behalf_of: routing.destination } } : {}),
+    ...(routing ? { payment_intent_data: { transfer_data: { destination: routing.destination }, on_behalf_of: routing.destination, application_fee_amount: routing.feeCents } } : {}),
     success_url: appUrl(`/account/invoices/${invoiceId}?tip=thanks`),
     cancel_url: appUrl(`/account/invoices/${invoiceId}`),
   });

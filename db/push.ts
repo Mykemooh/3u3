@@ -970,6 +970,12 @@ async function main() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
     CREATE INDEX IF NOT EXISTS signup_requests_email_idx ON signup_requests(email);
+    -- One company per texting number (only created if the data already allows it).
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT sms_number FROM tenants WHERE sms_number IS NOT NULL GROUP BY sms_number HAVING count(*) > 1) THEN
+        CREATE UNIQUE INDEX IF NOT EXISTS tenants_sms_number_unique ON tenants(sms_number) WHERE sms_number IS NOT NULL;
+      END IF;
+    END $$;
     CREATE TABLE IF NOT EXISTS heartbeats (
       key TEXT PRIMARY KEY,
       ran_at TIMESTAMPTZ NOT NULL,
