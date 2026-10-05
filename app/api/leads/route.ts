@@ -11,6 +11,8 @@ import { issuePasswordSetupToken } from '@/lib/passwordSetup';
 import { appUrl } from '@/lib/url';
 import { pickedAddressSchema, addressFields } from '@/lib/addresses';
 import { checkServiceArea } from '@/lib/serviceArea';
+import { cookies } from 'next/headers';
+import { recordReferral } from '@/lib/referrals';
 
 const schema = z.object({
   name: z.string().min(1),
@@ -52,6 +54,8 @@ export async function POST(req: Request) {
   if (!user) {
     const id = crypto.randomUUID();
     await db.insert(users).values({ id, tenantId: tenant.id, role: 'CUSTOMER', name, phone, email });
+    // Came in through a client's referral link (app/r/[code])?
+    await recordReferral(id, cookies().get('ref')?.value, tenant.id).catch(() => false);
     user = (await db.select().from(users).where(eq(users.id, id)).limit(1))[0]!;
   } else if (email && !user.email) {
     await db.update(users).set({ email }).where(eq(users.id, user.id));

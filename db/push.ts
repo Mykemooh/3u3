@@ -755,6 +755,7 @@ async function main() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by_user_id TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS credit_cents INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS marketing_opt_out BOOLEAN NOT NULL DEFAULT false;
     CREATE UNIQUE INDEX IF NOT EXISTS users_referral_code_unique ON users(referral_code);
 
     ALTER TABLE jobs ADD COLUMN IF NOT EXISTS started_by_user_id TEXT;

@@ -70,8 +70,23 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
           <p className="text-slate">
             {client.phone} {client.email ? `· ${client.email}` : ''}
           </p>
+          {(client.creditCents > 0 || client.referredByUserId || client.marketingOptOut || client.smsConsent === false) && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {client.creditCents > 0 && <span className="pill bg-green/10 text-green">${(client.creditCents / 100).toFixed(2)} credit — comes off the next invoice</span>}
+              {client.referredByUserId && <span className="pill bg-gold/10 text-gold">Came by referral</span>}
+              {client.smsConsent === false && <span className="pill bg-surface text-slate">Replied STOP to texts</span>}
+              {client.marketingOptOut && <span className="pill bg-surface text-slate">Unsubscribed from news and offers</span>}
+            </div>
+          )}
         </div>
-        <CloseClientButton clientId={client.id} isActive={client.isActive} />
+        <div className="flex flex-wrap items-center gap-2">
+          {client.phone && (
+            <Link href={`/admin/messages?client=${client.id}`} className="btn-secondary !px-4 !py-2 text-sm">
+              Text {client.name.split(' ')[0]}
+            </Link>
+          )}
+          <CloseClientButton clientId={client.id} isActive={client.isActive} />
+        </div>
       </div>
 
       <div className="card max-w-xl">

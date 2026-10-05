@@ -64,13 +64,13 @@ export default async function AdminSettings() {
         <CompanySettingsForm section="payroll" initial={initial} />
       </div>
 
-      <div className="card max-w-2xl">
+      <div id="texting" className="card max-w-2xl scroll-mt-24">
         <h2 className="mb-1 font-semibold text-ink">Texting and Tex</h2>
         <p className="mb-3 text-sm text-slate">Two-way texts with clients come from this number. Tex answers from your help articles and hands off to you when it should.</p>
         <CompanySettingsForm section="texting" initial={initial} />
       </div>
 
-      <div className="card max-w-2xl">
+      <div id="growth" className="card max-w-2xl scroll-mt-24">
         <h2 className="mb-3 font-semibold text-ink">Reviews and referrals</h2>
         <CompanySettingsForm section="growth" initial={initial} />
       </div>

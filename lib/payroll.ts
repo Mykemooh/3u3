@@ -205,7 +205,13 @@ export type PayrollPreviewRow = {
  * any job already counted in a past run — the preview Admin → Payroll
  * shows before committing to "Create payroll run".
  */
-export async function previewPayroll(tenantId: string, startDateISO: string, endDateISO: string): Promise<PayrollPreviewRow[]> {
+export async function previewPayroll(
+  tenantId: string,
+  startDateISO: string,
+  endDateISO: string,
+  // Reports want what the work cost, whether or not it has been paid yet.
+  opts: { includePaid?: boolean } = {},
+): Promise<PayrollPreviewRow[]> {
   const settings = await getPayrollSettings(tenantId);
   const completed = await completedJobsInRange(tenantId, startDateISO, endDateISO);
   const tips = await unclaimedTipsByEmployee(tenantId, settings.tipSplitMethod);
@@ -230,7 +236,7 @@ export async function previewPayroll(tenantId: string, startDateISO: string, end
     const perPersonBasisCents = staffIds.length ? basisCents / staffIds.length : 0;
     const date = r.booking.slotStart.slice(0, 10);
     for (const uid of staffIds) {
-      if (paid.has(`${r.job.id}:${uid}`)) continue; // already in an earlier run
+      if (!opts.includePaid && paid.has(`${r.job.id}:${uid}`)) continue; // already in an earlier run
       const entry = byEmployee.get(uid) ?? { hours: 0, jobCount: 0, days: new Set<string>(), jobIds: [], percentBasisCents: 0 };
       entry.hours += perPersonHours;
       entry.jobCount += 1;

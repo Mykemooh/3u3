@@ -16,6 +16,10 @@ import { getEstimatesForClient } from '@/lib/estimates';
 import { db } from '@/db/client';
 import { reviews } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { getTenant } from '@/lib/data';
+import { automationState } from '@/lib/automations';
+import { ensureReferralCode, referralLink } from '@/lib/referrals';
+import { users } from '@/db/schema';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,12 +32,18 @@ export default async function AccountHome() {
   const user = session?.user as { id: string; name?: string; role?: string };
   if (user.role === 'ADMIN') redirect('/admin');
 
-  const [rows, rates, quoteRows, reviewRows] = await Promise.all([
+  const tenant = await getTenant();
+  const [rows, rates, quoteRows, reviewRows, referralOn, me] = await Promise.all([
     getAccountBookings(user.id),
     getClientRatesFor(user.id),
     getEstimatesForClient(user.id),
     db.select({ bookingId: reviews.bookingId }).from(reviews).where(eq(reviews.clientId, user.id)),
+    tenant ? automationState(tenant.id, 'referral_rewards').then((s) => s.enabled && tenant.referralCreditCents > 0) : false,
+    db.select({ creditCents: users.creditCents }).from(users).where(eq(users.id, user.id)).then((r) => r[0]),
   ]);
+  // Only clients who have had a clean get a referral link to share.
+  const hasCleaned = rows.some((r) => r.job?.status === 'COMPLETE');
+  const code = referralOn && hasCleaned ? await ensureReferralCode(user.id) : null;
   const now = businessNowISO();
 
   // The "live" cleaning: one the crew is driving to or working on, else the
@@ -69,6 +79,7 @@ export default async function AccountHome() {
     balanceCents: needsPayment.reduce((sum, r) => sum + (r.invoice?.totalCents ?? 0), 0),
     unpaidHref: needsPayment[0] ? `/account/invoices/${needsPayment[0].invoice!.id}` : null,
     canBook: rates.length > 0,
+    referral: code && tenant ? { link: referralLink(code), rewardCents: tenant.referralCreditCents, creditCents: me?.creditCents ?? 0 } : null,
   };
 
   return (

@@ -6,7 +6,8 @@
 
 export function formatMoney(cents: number | null | undefined) {
   if (cents == null) return '—';
-  return `$${(cents / 100).toFixed(2)}`;
+  // "−$12.00", not "$-12.00" — credits and losses read naturally.
+  return cents < 0 ? `−$${(-cents / 100).toFixed(2)}` : `$${(cents / 100).toFixed(2)}`;
 }
 
 export const SERVICE_LABELS: Record<string, string> = {

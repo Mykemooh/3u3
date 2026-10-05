@@ -15,7 +15,7 @@ QuickBooks, through that service's own "Connect" sign-in flow).
 | --- | --- | --- | --- | --- |
 | Stripe | Invoices, card on file, autopay, tips, platform subscriptions | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | dashboard.stripe.com/apikeys and /webhooks | Per transaction |
 | Resend | All email (confirmations, reminders, MFA codes, receipts) | `RESEND_API_KEY`, `EMAIL_FROM` | resend.com/api-keys (verify your domain first) | Free tier |
-| Twilio SMS / WhatsApp | Reminders, on-my-way texts, two-way texting, Tex by text | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`, `TWILIO_WHATSAPP_FROM` | console.twilio.com (dashboard shows SID and token) | Per message; US texting needs 10DLC registration |
+| Twilio SMS / WhatsApp | Reminders, on-my-way texts, two-way texting (Admin → Messages), Tex by text | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`, `TWILIO_WHATSAPP_FROM`; point the number's Messaging webhook ("A message comes in", POST) at `/api/twilio/sms` | console.twilio.com (dashboard shows SID and token) | Per message; US texting needs 10DLC registration |
 | Twilio Voice | Tex answers the business line | same Twilio keys; point the number's Voice webhook at `/api/twilio/voice` | console.twilio.com → Phone Numbers | Per minute |
 | Mapbox | Live crew map, ETA, route optimisation, service-area check | `MAPBOX_ACCESS_TOKEN` (+ optional `MAPBOX_SERVER_TOKEN`) | account.mapbox.com/access-tokens | Free tier |
 | QuickBooks Online | Paid invoices sync as sales receipts, no duplicates | `QUICKBOOKS_CLIENT_ID`, `QUICKBOOKS_CLIENT_SECRET`, `QUICKBOOKS_ENVIRONMENT` | developer.intuit.com → My Apps | Free to register |

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { formatMoney } from '@/lib/format';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 import TeamNoteButton from '@/components/account/TeamNoteButton';
+import ReferralLink from '@/components/account/ReferralLink';
 
 type Props = {
   next: { bookingId: string; slotStart: string; slotEnd: string; serviceName: string; note: string | null; onTheWay: boolean } | null;
@@ -10,6 +11,7 @@ type Props = {
   balanceCents: number;
   unpaidHref: string | null;
   canBook: boolean;
+  referral: { link: string; rewardCents: number; creditCents: number } | null;
 };
 
 function Card({ title, big, sub, children }: { title: string; big: string; sub?: string; children?: React.ReactNode }) {
@@ -89,6 +91,22 @@ export default function ClientDashboard(p: Props) {
         <Link href="/account/invoices" className="block font-semibold text-bronze hover:underline">Invoices & receipts</Link>
         <Link href="/account/settings#payment" className="block text-slate hover:text-ink">Card on file & autopay</Link>
       </Card>
+
+      {p.referral && (
+        <div className="sm:col-span-2">
+          <Card
+            title="Share your crew"
+            big={`Give ${formatMoney(p.referral.rewardCents)}, get ${formatMoney(p.referral.rewardCents)}`}
+            sub={
+              p.referral.creditCents > 0
+                ? `You have ${formatMoney(p.referral.creditCents)} credit — it comes off your next invoice.`
+                : 'When a friend books through your link and has their first clean, you both get credit.'
+            }
+          >
+            <ReferralLink link={p.referral.link} />
+          </Card>
+        </div>
+      )}
     </section>
   );
 }

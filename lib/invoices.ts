@@ -1,6 +1,6 @@
 import { db } from '@/db/client';
 import { invoices, invoiceItems, bookings, users, serviceTypes, addresses, tenants } from '@/db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, gte, sql } from 'drizzle-orm';
 import { formatSlotDateLong } from '@/lib/time';
 import { getBookingAddOns } from '@/lib/addons';
 import { getStripe } from '@/lib/stripe';
@@ -94,7 +94,38 @@ export async function createDraftInvoiceForBooking(bookingId: string): Promise<s
     });
   }
 
+  await applyClientCredit(invoiceId);
   return invoiceId;
+}
+
+/**
+ * A client's credit (referral rewards, lib/referrals.ts) comes off their
+ * next invoice as a minus line. The decrement is conditional on the
+ * balance still being there, so two invoices drafted at once can't both
+ * spend the same credit.
+ */
+export async function applyClientCredit(invoiceId: string) {
+  const invoice = (await db.select().from(invoices).where(eq(invoices.id, invoiceId)).limit(1))[0];
+  if (!invoice || invoice.status !== 'DRAFT' || invoice.totalCents <= 0) return 0;
+  const client = (await db.select().from(users).where(eq(users.id, invoice.clientId)).limit(1))[0];
+  if (!client || client.creditCents <= 0) return 0;
+  const apply = Math.min(client.creditCents, invoice.totalCents);
+  const taken = await db
+    .update(users)
+    .set({ creditCents: sql`${users.creditCents} - ${apply}` })
+    .where(and(eq(users.id, client.id), gte(users.creditCents, apply)))
+    .returning({ id: users.id });
+  if (!taken.length) return 0;
+  await db.insert(invoiceItems).values({
+    id: crypto.randomUUID(),
+    invoiceId,
+    description: 'Referral credit',
+    amountCents: -apply,
+    sortOrder: 99,
+    taxable: false,
+  });
+  await db.update(invoices).set({ totalCents: invoice.totalCents - apply }).where(eq(invoices.id, invoiceId));
+  return apply;
 }
 
 async function nextInvoiceNumber(tenantId: string): Promise<number> {
@@ -142,17 +173,21 @@ export async function replaceInvoiceItems(
   if (invoice.status !== 'DRAFT') throw new InvoiceError('Only draft invoices can be edited');
   if (items.length === 0) throw new InvoiceError('An invoice needs at least one line item');
 
+  // Minus lines are credits or discounts (a referral credit, a goodwill
+  // discount); the total itself can never go below zero.
+  const totalCents = items.reduce((sum, i) => sum + Math.round(i.amountCents), 0);
+  if (totalCents < 0) throw new InvoiceError('Credits and discounts can’t add up to more than the invoice.');
   await db.delete(invoiceItems).where(eq(invoiceItems.invoiceId, invoiceId));
   for (let i = 0; i < items.length; i += 1) {
     await db.insert(invoiceItems).values({
       id: crypto.randomUUID(),
       invoiceId,
       description: items[i].description,
-      amountCents: Math.max(0, Math.round(items[i].amountCents)),
+      amountCents: Math.round(items[i].amountCents),
       sortOrder: i,
+      taxable: items[i].amountCents >= 0,
     });
   }
-  const totalCents = items.reduce((sum, i) => sum + Math.max(0, Math.round(i.amountCents)), 0);
   await db.update(invoices).set({ totalCents }).where(eq(invoices.id, invoiceId));
   return totalCents;
 }

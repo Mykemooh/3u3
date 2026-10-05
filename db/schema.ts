@@ -209,6 +209,9 @@ export const users = pgTable('users', {
   referralCode: text('referral_code'),
   referredByUserId: text('referred_by_user_id'),
   creditCents: integer('credit_cents').notNull().default(0),
+  // Marketing email opt-out (campaigns, win-back). Transactional messages
+  // — reminders, invoices, "on the way" — still go out.
+  marketingOptOut: boolean('marketing_opt_out').notNull().default(false),
   ...timestamps,
 }, (t) => ({
   referralCodeUnique: uniqueIndex('users_referral_code_unique').on(t.referralCode),

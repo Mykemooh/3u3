@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { sendBookingReminders, sendQuoteReminders } from '@/lib/reminders';
 import { expireStaleStandbyOffers } from '@/lib/standby';
 import { extendAllSeries } from '@/lib/recurring';
+import { runAutomations } from '@/lib/automations';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,5 +23,11 @@ export async function GET(req: Request) {
   // reminders in the same run.
   const series = await extendAllSeries();
   const [booking, quote, standby] = await Promise.all([sendBookingReminders(), sendQuoteReminders(), expireStaleStandbyOffers()]);
-  return NextResponse.json({ series, booking, quote, standby });
+  // The newer reminders and follow-ups (walkthrough, review request,
+  // unpaid invoice, win-back) — each off until a company turns it on.
+  const automations = await runAutomations().catch((err) => {
+    console.error('[cron] automations failed', err);
+    return null;
+  });
+  return NextResponse.json({ series, booking, quote, standby, automations });
 }

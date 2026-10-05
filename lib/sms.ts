@@ -1,3 +1,5 @@
+import { createHmac, timingSafeEqual } from 'node:crypto';
+
 // Text messages via Twilio (https://www.twilio.com), called over its REST
 // API with fetch — the same no-SDK approach lib/email.ts takes with Resend.
 //
@@ -26,17 +28,50 @@ export function toE164(phone: string): string | null {
   return null;
 }
 
-export async function sendSms(input: { to: string; body: string }): Promise<boolean> {
+export async function sendSms(input: { to: string; body: string; from?: string | null }): Promise<boolean> {
+  return (await sendSmsDetailed(input)).ok;
+}
+
+/**
+ * Like sendSms, but says which number it went from and Twilio's message
+ * id, so the two-way inbox (lib/messaging.ts) can file it in the thread.
+ * `from` is the company's own Twilio number (tenants.smsNumber) when it
+ * has one; otherwise the platform's TWILIO_FROM_NUMBER.
+ */
+export async function sendSmsDetailed(input: { to: string; body: string; from?: string | null }): Promise<{ ok: boolean; sid: string | null; from: string | null; to: string | null }> {
   const to = toE164(input.to);
+  const from = (input.from && toE164(input.from)) || FROM || null;
   if (!smsConfigured()) {
     console.warn(`[sms] Twilio not configured — would have texted ${input.to}: "${input.body}"`);
-    return false;
+    return { ok: false, sid: null, from, to };
   }
   if (!to) {
     console.warn(`[sms] can't text "${input.to}" — not a US phone number`);
-    return false;
+    return { ok: false, sid: null, from, to };
   }
-  return sendTwilioMessage(FROM!, to, input.body, 'sms');
+  const sent = await sendTwilioMessage(from!, to, input.body, 'sms');
+  return { ok: sent.ok, sid: sent.sid, from, to };
+}
+
+/**
+ * Twilio signs every webhook: base64(HMAC-SHA1(auth token, full URL +
+ * each POST param name and value, sorted by name)). Anything unsigned or
+ * mis-signed is refused, so nobody can post fake "inbound texts".
+ * https://www.twilio.com/docs/usage/security#validating-requests
+ */
+export function validTwilioSignature(url: string, params: Record<string, string>, signature: string | null): boolean {
+  if (!AUTH || !signature) return false;
+  const data = url + Object.keys(params).sort().map((k) => k + params[k]).join('');
+  const expected = createHmac('sha1', AUTH).update(data).digest('base64');
+  const a = Buffer.from(expected);
+  const b = Buffer.from(signature);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+/** The last 10 digits of a US number — how texts are matched to a client whatever format their phone was typed in. */
+export function phoneDigits(phone: string | null | undefined) {
+  const d = (phone ?? '').replace(/\D/g, '');
+  return d.length >= 10 ? d.slice(-10) : null;
 }
 
 // WhatsApp joins Email/SMS as a notification channel (My Account →
@@ -65,10 +100,10 @@ export async function sendWhatsApp(input: { to: string; body: string }): Promise
     console.warn(`[whatsapp] can't message "${input.to}" — not a US phone number`);
     return false;
   }
-  return sendTwilioMessage(`whatsapp:${WHATSAPP_FROM}`, `whatsapp:${to}`, input.body, 'whatsapp');
+  return (await sendTwilioMessage(`whatsapp:${WHATSAPP_FROM}`, `whatsapp:${to}`, input.body, 'whatsapp')).ok;
 }
 
-async function sendTwilioMessage(from: string, to: string, body: string, label: 'sms' | 'whatsapp'): Promise<boolean> {
+async function sendTwilioMessage(from: string, to: string, body: string, label: 'sms' | 'whatsapp'): Promise<{ ok: boolean; sid: string | null }> {
   try {
     const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${SID}/Messages.json`, {
       method: 'POST',
@@ -80,11 +115,12 @@ async function sendTwilioMessage(from: string, to: string, body: string, label: 
     });
     if (!res.ok) {
       console.error(`[${label}] Twilio rejected the request:`, await res.text());
-      return false;
+      return { ok: false, sid: null };
     }
-    return true;
+    const data = (await res.json().catch(() => ({}))) as { sid?: string };
+    return { ok: true, sid: data.sid ?? null };
   } catch (err) {
     console.error(`[${label}] send failed:`, err);
-    return false;
+    return { ok: false, sid: null };
   }
 }

@@ -35,6 +35,10 @@ function brandFooter(brand: EmailBrand) {
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FROM_EMAIL = process.env.EMAIL_FROM || '3U3 Cleaning <onboarding@resend.dev>';
 
+export function emailConfigured() {
+  return !!RESEND_API_KEY;
+}
+
 export async function sendEmail(input: { to: string; subject: string; html: string }): Promise<boolean> {
   if (!RESEND_API_KEY) {
     console.warn(`[email] RESEND_API_KEY not set — would have sent "${input.subject}" to ${input.to}`);
@@ -493,7 +497,7 @@ export function passwordSetupEmail(input: { name: string; url: string }) {
 }
 
 /** 3-day / 36-hour heads-up before a booked cleaning (lib/reminders.ts). */
-export function bookingReminderEmail(input: { name: string; serviceName: string; dateLabel: string; timeLabel: string; horizon: '3 days' | '36 hours' }) {
+export function bookingReminderEmail(input: { name: string; serviceName: string; dateLabel: string; timeLabel: string; horizon: string }) {
   return {
     subject: `Reminder: your cleaning is in ${input.horizon}`,
     html: branded(
@@ -506,7 +510,7 @@ export function bookingReminderEmail(input: { name: string; serviceName: string;
   };
 }
 
-export function bookingReminderText(input: { serviceName: string; dateLabel: string; timeLabel: string; horizon: '3 days' | '36 hours' }) {
+export function bookingReminderText(input: { serviceName: string; dateLabel: string; timeLabel: string; horizon: string }) {
   return `3U3 Cleaning: your ${input.serviceName} is in ${input.horizon} — ${input.dateLabel} at ${input.timeLabel}.`;
 }
 

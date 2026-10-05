@@ -1,5 +1,7 @@
 import { db } from '@/db/client';
-import { jobs, jobChecklistItems, jobMedia, bookings, users, serviceTypes, addresses, invoices } from '@/db/schema';
+import { jobs, jobChecklistItems, jobMedia, bookings, users, serviceTypes, addresses, invoices, tenants } from '@/db/schema';
+import { automationState, sendAutomationMessage } from '@/lib/automations';
+import { grantReferralReward } from '@/lib/referrals';
 import { and, eq, isNull } from 'drizzle-orm';
 import { getOwnerEmail } from '@/lib/data';
 import { isOnJob, canLeadJob } from '@/lib/team';
@@ -379,6 +381,15 @@ export async function completeJob(jobId: string, viewer: Viewer | null, position
     .where(eq(jobs.id, jobId));
   await db.update(bookings).set({ status: 'COMPLETED' }).where(eq(bookings.id, job.bookingId));
 
+  // Referral credit (lib/referrals.ts) is granted before the invoice is
+  // drafted, so a referred client's credit comes off this very clean.
+  try {
+    const finished = (await db.select().from(bookings).where(eq(bookings.id, job.bookingId)).limit(1))[0];
+    if (finished) await grantReferralReward(finished.tenantId, finished.clientId);
+  } catch (err) {
+    console.error('[jobs] referral reward failed for booking', job.bookingId, err);
+  }
+
   let invoiceId: string | null = null;
   try {
     invoiceId = await createDraftInvoiceForBooking(job.bookingId);
@@ -434,7 +445,21 @@ async function notifyJobComplete(jobId: string, invoiceId: string | null) {
   const videos = media.filter((m) => m.kind === 'VIDEO').length;
   const rooms = items.filter((i) => i.status === 'COMPLETE').length;
 
-  if (client?.email) {
+  // "All done" is a toggle with editable wording (lib/automations.ts).
+  const doneState = await automationState(booking.tenantId, 'job_complete');
+  if (client && doneState.enabled && doneState.customized) {
+    const tenant = (await db.select({ name: tenants.name }).from(tenants).where(eq(tenants.id, booking.tenantId)).limit(1))[0];
+    await sendAutomationMessage({
+      tenantId: booking.tenantId,
+      tenantName: tenant?.name ?? 'Your cleaning company',
+      key: 'job_complete',
+      state: doneState,
+      client,
+      vars: { service: serviceName, link: galleryUrl },
+      cta: { label: 'See your before and after', url: galleryUrl },
+      relatedBookingId: booking.id,
+    });
+  } else if (client?.email && doneState.enabled) {
     const { subject, html } = jobCompleteCustomerEmail({
       name: client.name,
       serviceName,

@@ -12,7 +12,8 @@ const schema = z.object({
     .array(
       z.object({
         description: z.string().min(1),
-        amountCents: z.number().int().nonnegative(),
+        // A minus amount is a credit or discount; the invoice total can't go below zero.
+        amountCents: z.number().int().min(-10_000_000).max(10_000_000),
       }),
     )
     .min(1),

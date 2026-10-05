@@ -106,8 +106,8 @@ export default function InvoiceEditor({
               <input
                 className="input w-24"
                 type="number"
-                min="0"
                 step="0.01"
+                title="Use a minus amount for a credit or discount"
                 value={toDollarsStr(item.amountCents)}
                 onChange={(e) => updateItem(idx, { amountCents: Math.round(parseFloat(e.target.value || '0') * 100) })}
               />

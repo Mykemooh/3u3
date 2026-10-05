@@ -1,9 +1,10 @@
 import { db } from '@/db/client';
-import { jobs, addresses } from '@/db/schema';
+import { jobs, addresses, tenants } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { JobError, loadJob, requireLead, type Viewer } from '@/lib/jobs';
-import { logNotification } from '@/lib/bookings';
-import { sendEmail, crewEnRouteCustomerEmail } from '@/lib/email';
+import { crewEnRouteCustomerEmail } from '@/lib/email';
+import { notifyClient } from '@/lib/notify';
+import { automationState, sendAutomationMessage } from '@/lib/automations';
 import { appUrl } from '@/lib/url';
 import { formatClock } from '@/lib/time';
 
@@ -229,50 +230,35 @@ async function notifyEnRoute(jobId: string, etaSeconds: number | null) {
   const data = await loadJob(jobId);
   if (!data) return;
   const { booking, client } = data;
+  if (!client) return;
   const trackUrl = appUrl(`/account/jobs/${jobId}`);
   const etaLabel = etaSeconds != null ? formatClock(new Date(Date.now() + etaSeconds * 1000)) : null;
 
-  // There's no per-client notification preference yet, so email always
-  // goes out. When one is added to users (e.g. notification_channel:
-  // 'EMAIL' | 'SMS' | 'WHATSAPP'), branch on it here and in the stubs below.
-  if (client?.email) {
-    const { subject, html } = crewEnRouteCustomerEmail({ name: client.name, etaLabel, trackUrl });
-    const ok = await sendEmail({ to: client.email, subject, html });
-    await logNotification({
+  // A toggle with editable wording (Settings → Reminders & follow-ups).
+  // Sent on the client's chosen channel — email, text or WhatsApp.
+  const state = await automationState(booking.tenantId, 'en_route');
+  if (!state.enabled) return;
+  if (state.customized) {
+    const tenant = (await db.select({ name: tenants.name }).from(tenants).where(eq(tenants.id, booking.tenantId)).limit(1))[0];
+    await sendAutomationMessage({
       tenantId: booking.tenantId,
-      channel: 'EMAIL',
-      recipient: client.email,
-      triggerEvent: ok ? 'CREW_EN_ROUTE_CUSTOMER' : 'CREW_EN_ROUTE_CUSTOMER_NOT_DELIVERED',
+      tenantName: tenant?.name ?? 'Your cleaning company',
+      key: 'en_route',
+      state,
+      client,
+      vars: { eta: etaLabel ? `, arriving around ${etaLabel}` : '', link: trackUrl },
+      cta: { label: 'Follow your crew', url: trackUrl },
       relatedBookingId: booking.id,
     });
+    return;
   }
-
-  // --- SMS (not wired up) ------------------------------------------------
-  // if (client?.phone && client.notificationChannel === 'SMS') {
-  //   const ok = await sendSms({
-  //     to: client.phone,
-  //     body: `3U3 Cleaning: your crew is on the way${etaLabel ? `, arriving around ${etaLabel}` : ''}. Track them: ${trackUrl}`,
-  //   });
-  //   await logNotification({
-  //     tenantId: booking.tenantId,
-  //     channel: 'SMS',
-  //     recipient: client.phone,
-  //     triggerEvent: ok ? 'CREW_EN_ROUTE_CUSTOMER' : 'CREW_EN_ROUTE_CUSTOMER_NOT_DELIVERED',
-  //     relatedBookingId: booking.id,
-  //     costCents: /* provider's per-message cost */ 0,
-  //   });
-  // }
-
-  // --- WhatsApp (not wired up) -------------------------------------------
-  // WhatsApp business messages need a pre-approved template; the ETA and
-  // tracking link go in as template variables. Needs 'WHATSAPP' added to
-  // notification_log.channel's CHECK constraint before logging.
-  // if (client?.phone && client.notificationChannel === 'WHATSAPP') {
-  //   const ok = await sendWhatsAppTemplate({
-  //     to: client.phone,
-  //     template: 'crew_en_route',
-  //     variables: [client.name.split(' ')[0], etaLabel ?? 'shortly', trackUrl],
-  //   });
-  //   await logNotification({ tenantId: booking.tenantId, channel: 'WHATSAPP', ... });
-  // }
+  const { subject, html } = crewEnRouteCustomerEmail({ name: client.name, etaLabel, trackUrl });
+  await notifyClient({
+    tenantId: booking.tenantId,
+    client,
+    triggerEvent: 'CREW_EN_ROUTE_CUSTOMER',
+    relatedBookingId: booking.id,
+    email: { subject, html },
+    text: `Your crew is on the way${etaLabel ? `, arriving around ${etaLabel}` : ''}. Follow them: ${trackUrl}`,
+  });
 }
