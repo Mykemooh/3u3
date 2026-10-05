@@ -1,3 +1,4 @@
+import { adminSession } from '@/lib/adminApi';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { z } from 'zod';
@@ -15,7 +16,7 @@ const schema = z.object({
 // scheduling engine's slot math in lib/scheduling.ts.
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
-  if ((session?.user as any)?.role !== 'ADMIN') {
+  if (!(await adminSession())) {
     return NextResponse.json({ error: 'Admin only' }, { status: 403 });
   }
   const body = await req.json();

@@ -11,7 +11,9 @@
     "db:seed": "tsx --env-file=.env.local db/seed.ts",
     "setup": "npm run db:push && npm run db:seed",
     "bootstrap:platform": "tsx --env-file=.env.local scripts/bootstrap-platform.ts",
-    "verify:storage": "tsx scripts/verify-sigv4.ts"
+    "verify:storage": "tsx scripts/verify-sigv4.ts",
+    "test": "tsx scripts/run-tests.ts",
+    "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

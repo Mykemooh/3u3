@@ -1,3 +1,4 @@
+import { adminSession } from '@/lib/adminApi';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
@@ -6,7 +7,7 @@ import { isStripeConfigured } from '@/lib/stripe';
 
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
-  if ((session?.user as any)?.role !== 'ADMIN') {
+  if (!(await adminSession())) {
     return NextResponse.json({ error: 'Admin only' }, { status: 403 });
   }
 

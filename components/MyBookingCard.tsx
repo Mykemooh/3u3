@@ -2,17 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { CADENCE_LABEL, CLIENT_CADENCES, type Cadence } from '@/lib/cadence';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 
-type Cadence = 'ONE_TIME' | 'BIWEEKLY' | 'MONTHLY';
 type Slot = { start: string; end: string; available: boolean };
 type Day = { date: string; slots: Slot[] };
 
-const CADENCE_LABEL: Record<Cadence, string> = {
-  ONE_TIME: 'One-time',
-  BIWEEKLY: 'Every other week',
-  MONTHLY: 'Monthly',
-};
 
 export default function MyBookingCard({
   booking,
@@ -144,7 +139,7 @@ export default function MyBookingCard({
       {mode === 'cadence' && (
         <div className="mt-4 space-y-3 border-t border-line pt-4">
           <div className="flex flex-wrap gap-2">
-            {(Object.keys(CADENCE_LABEL) as Cadence[]).map((c) => (
+            {CLIENT_CADENCES.map((c) => (
               <button
                 key={c}
                 onClick={() => setCadence(c)}

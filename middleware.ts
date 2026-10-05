@@ -42,6 +42,17 @@ const SESSION_COOKIES = ['__Secure-next-auth.session-token', 'next-auth.session-
 export async function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
 
+  // Hand the path to server components and route handlers, so the admin
+  // layout and lib/adminApi.ts can check the role's permission for it
+  // (lib/permissions.ts permissionForPath) without each page repeating it.
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set('x-3u3-path', pathname);
+  const pass = () => NextResponse.next({ request: { headers: requestHeaders } });
+
+  // API routes answer for themselves (a JSON 403, never a redirect to a
+  // sign-in page a fetch() can't follow) — they only need the path header.
+  if (pathname.startsWith('/api/')) return pass();
+
   const secureCookie = req.nextUrl.protocol === 'https:';
   const token = await getToken({
     req,
@@ -51,14 +62,14 @@ export async function middleware(req: NextRequest) {
 
   const role = (token as { role?: string } | null)?.role;
 
-  if (canAccess(role, pathname)) return NextResponse.next();
+  if (canAccess(role, pathname)) return pass();
 
   if (!role) {
     // Is there a session cookie we simply couldn't read? Then this is our
     // problem, not the visitor's — let the page decide rather than bounce
     // them somewhere they've already been.
     const hasSessionCookie = SESSION_COOKIES.some((name) => req.cookies.has(name));
-    if (hasSessionCookie) return NextResponse.next();
+    if (hasSessionCookie) return pass();
 
     const signin = new URL('/signin', req.url);
     signin.searchParams.set('next', `${pathname}${search}`);
@@ -73,5 +84,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/crew/:path*', '/book/:path*', '/account/:path*'],
+  matcher: ['/admin/:path*', '/crew/:path*', '/book/:path*', '/account/:path*', '/billing', '/api/admin/:path*'],
 };

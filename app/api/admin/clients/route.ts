@@ -1,3 +1,4 @@
+import { adminSession } from '@/lib/adminApi';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { z } from 'zod';
@@ -24,7 +25,7 @@ const schema = z.object({
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
   const tenantId = (session?.user as any)?.tenantId;
-  if ((session?.user as any)?.role !== 'ADMIN') {
+  if (!(await adminSession())) {
     return NextResponse.json({ error: 'Admin only' }, { status: 403 });
   }
 

@@ -1,4 +1,5 @@
-import { pgTable, text, integer, real, doublePrecision, boolean, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, real, doublePrecision, boolean, timestamp, uniqueIndex, index } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 const id = () => text('id').primaryKey().$defaultFn(() => crypto.randomUUID());
 const timestamps = {
@@ -69,6 +70,37 @@ export const tenants = pgTable('tenants', {
   // into the code.
   dashboardHiddenWidgets: text('dashboard_hidden_widgets').notNull().default(''),
   avgSupplyCostCentsPerClean: integer('avg_supply_cost_cents_per_clean').notNull().default(800),
+  // ---- October 2026 build (TrashCan SaaS + 3U3 portals) ------------------
+  // Payroll calendar, so a cleaner's dashboard can show "next payout"
+  // (lib/earnings.ts). payrollAnchorDate is any one real payday
+  // (YYYY-MM-DD); the rest are computed from it and the frequency.
+  payrollFrequency: text('payroll_frequency', { enum: ['WEEKLY', 'BIWEEKLY', 'SEMIMONTHLY', 'MONTHLY'] }).notNull().default('BIWEEKLY'),
+  payrollAnchorDate: text('payroll_anchor_date'),
+  // Two-way texting + Tex (lib/sms.ts, lib/tex.ts): which Twilio number
+  // belongs to this company (how an inbound text/call finds its tenant),
+  // whether Tex answers texts and calls on its own, and where a caller is
+  // transferred when they ask for a person.
+  smsNumber: text('sms_number'),
+  texSmsAutoReply: boolean('tex_sms_auto_reply').notNull().default(true),
+  texVoiceEnabled: boolean('tex_voice_enabled').notNull().default(true),
+  ownerPhone: text('owner_phone'),
+  // Growth (lib/marketing.ts): where a happy client is sent to leave a
+  // public review, what a referral is worth, and when a client counts as
+  // lapsed for the win-back message.
+  googleReviewUrl: text('google_review_url'),
+  referralCreditCents: integer('referral_credit_cents').notNull().default(2500),
+  winbackDays: integer('winback_days').notNull().default(60),
+  // Self-serve signup (app/start) — the six intake answers as JSON, and
+  // which setup-guide steps the owner marked "I don't need this".
+  intakeJson: text('intake_json'),
+  setupSkippedSteps: text('setup_skipped_steps').notNull().default(''),
+  // Stripe Connect (lib/connect.ts): a company's own Stripe account, so
+  // its clients pay it directly. Null = the platform's own account (3U3).
+  stripeConnectAccountId: text('stripe_connect_account_id'),
+  stripeConnectReady: boolean('stripe_connect_ready').notNull().default(false),
+  // MFA policy (lib/mfa.ts): admins always need it; this extends the
+  // requirement to cleaners as well.
+  mfaRequiredForCrew: boolean('mfa_required_for_crew').notNull().default(false),
   ...timestamps,
 }, (t) => ({
   slugUnique: uniqueIndex('tenants_slug_unique').on(t.slug),
@@ -157,8 +189,29 @@ export const users = pgTable('users', {
   // recorded, respected answer, not a re-prompt.
   socialMediaConsent: boolean('social_media_consent'),
   socialMediaConsentAt: timestamp('social_media_consent_at', { withTimezone: true }),
+  // Renameable roles (lib/roles.ts). Null = the tenant's default role for
+  // this user's base role/staffRole, so every existing user keeps working.
+  roleId: text('role_id'),
+  // Google sign-in (lib/auth.ts) links by email; the subject id is kept so
+  // a later email change on the Google side still finds this account.
+  googleSub: text('google_sub'),
+  // MFA (lib/mfa.ts). The TOTP secret is AES-GCM encrypted like entry
+  // codes; backup codes and email codes are only ever stored hashed.
+  mfaSecretEncrypted: text('mfa_secret_encrypted'),
+  mfaEnabledAt: timestamp('mfa_enabled_at', { withTimezone: true }),
+  mfaBackupCodes: text('mfa_backup_codes'),
+  mfaEmailCodeHash: text('mfa_email_code_hash'),
+  mfaEmailCodeExpiresAt: timestamp('mfa_email_code_expires_at', { withTimezone: true }),
+  mfaPromptSnoozedUntil: timestamp('mfa_prompt_snoozed_until', { withTimezone: true }),
+  // Consent to receive texts (10DLC needs it recorded), and referrals.
+  smsConsent: boolean('sms_consent'),
+  smsConsentAt: timestamp('sms_consent_at', { withTimezone: true }),
+  referralCode: text('referral_code'),
+  referredByUserId: text('referred_by_user_id'),
+  creditCents: integer('credit_cents').notNull().default(0),
   ...timestamps,
 }, (t) => ({
+  referralCodeUnique: uniqueIndex('users_referral_code_unique').on(t.referralCode),
   phoneUnique: uniqueIndex('users_phone_unique').on(t.phone),
   passwordSetupTokenUnique: uniqueIndex('users_password_setup_token_unique').on(t.passwordSetupToken),
   emailUnique: uniqueIndex('users_email_unique').on(t.email),
@@ -230,7 +283,7 @@ export const addressRoomNotes = pgTable('address_room_notes', {
 export const serviceTypes = pgTable('service_types', {
   id: id(),
   tenantId: text('tenant_id').notNull().references(() => tenants.id),
-  key: text('key', { enum: ['STANDARD', 'DEEP', 'MOVE_IN_OUT', 'AIRBNB'] }).notNull(),
+  key: text('key', { enum: ['STANDARD', 'DEEP', 'MOVE_IN_OUT', 'AIRBNB', 'POST_CONSTRUCTION', 'COMMERCIAL'] }).notNull(),
   name: text('name').notNull(),
   defaultDurationMinutes: integer('default_duration_minutes').notNull(),
   recurringEligible: boolean('recurring_eligible').notNull().default(false),
@@ -332,7 +385,7 @@ export const bookings = pgTable('bookings', {
   addressId: text('address_id').references(() => addresses.id),
   slotStart: text('slot_start').notNull(),
   slotEnd: text('slot_end').notNull(),
-  cadence: text('cadence', { enum: ['ONE_TIME', 'BIWEEKLY', 'MONTHLY'] }).notNull().default('ONE_TIME'),
+  cadence: text('cadence', { enum: ['ONE_TIME', 'WEEKLY', 'BIWEEKLY', 'EVERY_4_WEEKS', 'MONTHLY', 'CUSTOM'] }).notNull().default('ONE_TIME'),
   status: text('status', { enum: ['REQUESTED', 'CONFIRMED', 'COMPLETED', 'CANCELLED'] }).notNull().default('CONFIRMED'),
   priceCents: integer('price_cents'),
   isQuoteVisit: boolean('is_quote_visit').notNull().default(false),
@@ -350,12 +403,27 @@ export const bookings = pgTable('bookings', {
   // every lead just because nothing's been set up to check against.
   outsideServiceArea: boolean('outside_service_area'),
   serviceAreaDistanceMiles: doublePrecision('service_area_distance_miles'),
+  // Recurring cleans (lib/recurring.ts): the series this visit belongs to,
+  // and the date the series originally put it on. That date never changes
+  // even when this one visit is moved, so the generator can tell a moved
+  // or skipped visit apart from a missing one and never recreates it.
+  seriesId: text('series_id'),
+  seriesOccurrenceDate: text('series_occurrence_date'),
+  isSeriesException: boolean('is_series_exception').notNull().default(false),
+  // Booking notes the client leaves for the crew, and the structured
+  // answers a post-construction or commercial request form collects
+  // (lib/serviceLines.ts), as JSON.
+  clientNotes: text('client_notes'),
+  intakeJson: text('intake_json'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdate(() => new Date()),
   ...timestamps,
 }, (t) => ({
   // No double-booking: a crew cannot hold two active bookings starting at
-  // the same instant (PRD section 8).
-  crewSlotUnique: uniqueIndex('bookings_crew_slot_unique').on(t.crewId, t.slotStart),
+  // the same instant (PRD section 8). Cancelled bookings no longer hold
+  // the slot (the original index counted them, so a cancelled time could
+  // never be booked again).
+  crewSlotUnique: uniqueIndex('bookings_crew_slot_active_unique').on(t.crewId, t.slotStart).where(sql`status <> 'CANCELLED'`),
+  seriesOccurrenceUnique: uniqueIndex('bookings_series_occurrence_unique').on(t.seriesId, t.seriesOccurrenceDate),
 }));
 
 // ---------------------------------------------------------------------------
@@ -397,8 +465,21 @@ export const jobs = pgTable('jobs', {
   routeGeojson: text('route_geojson'),
   routeDurationSeconds: integer('route_duration_seconds'),
   routeUpdatedAt: timestamp('route_updated_at', { withTimezone: true }),
+  // Team clock-in/out (lib/jobs.ts): who tapped Start/Finish and where the
+  // phone was at that moment — the device's own GPS, not a geocoding
+  // result, so it's fine to keep as the timesheet stamp.
+  startedByUserId: text('started_by_user_id'),
+  startLat: doublePrecision('start_lat'),
+  startLng: doublePrecision('start_lng'),
+  finishedByUserId: text('finished_by_user_id'),
+  finishLat: doublePrecision('finish_lat'),
+  finishLng: doublePrecision('finish_lng'),
+  // Capability token for the shareable visit proof page (app/proof).
+  proofToken: text('proof_token'),
   ...timestamps,
-});
+}, (t) => ({
+  proofTokenUnique: uniqueIndex('jobs_proof_token_unique').on(t.proofToken),
+}));
 
 // ---------------------------------------------------------------------------
 // Per-job staffing swaps. A job is staffed by its team's members by
@@ -427,6 +508,9 @@ export const jobChecklistItems = pgTable('job_checklist_items', {
   skipReason: text('skip_reason'),
   beforePhotoPath: text('before_photo_path'),
   afterPhotoPath: text('after_photo_path'),
+  // Per-room count-up timer (lib/roomTimers.ts): started when the crew
+  // opens the room, stopped by completedAt. Feeds time-to-finish reports.
+  startedAt: timestamp('started_at', { withTimezone: true }),
   completedAt: timestamp('completed_at', { withTimezone: true }),
   ...timestamps,
 });
@@ -817,6 +901,8 @@ export const reviews = pgTable('reviews', {
   rating: integer('rating').notNull(),
   comment: text('comment'),
   featured: boolean('featured').notNull().default(false),
+  // A low room score opens a re-clean request for the owner (lib/quality.ts).
+  recleanStatus: text('reclean_status', { enum: ['REQUESTED', 'SCHEDULED', 'DONE', 'DISMISSED'] }),
   ...timestamps,
 }, (t) => ({
   bookingUnique: uniqueIndex('reviews_booking_unique').on(t.bookingId),
@@ -874,3 +960,215 @@ export const promoCodeRedemptions = pgTable('promo_code_redemptions', {
 }, (t) => ({
   oncePerTenant: uniqueIndex('promo_code_redemptions_unique').on(t.promoCodeId, t.tenantId),
 }));
+
+
+// ===========================================================================
+// October 2026 build — TrashCan SaaS foundations and the 3U3 portals.
+// Every table carries tenant_id, enforced in every query (the Phase 3
+// multi-tenant rule), even where 3U3 is the only company today.
+// ===========================================================================
+
+// Renameable roles (lib/roles.ts). baseRole is the access tier the rest of
+// the app already understands (users.role); staffRole keeps the existing
+// lead/cleaner/junior job rules working; permissions is a comma list of
+// lib/permissions.ts keys. Roles under the platform tenant are the
+// template every new company is provisioned with.
+export const roles = pgTable('roles', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  name: text('name').notNull(),
+  baseRole: text('base_role', { enum: ['CUSTOMER', 'CLEANER', 'ADMIN'] }).notNull(),
+  staffRole: text('staff_role', { enum: ['TEAM_LEAD', 'CLEANER', 'JR_CLEANER'] }),
+  permissions: text('permissions').notNull().default(''),
+  // Which built-in default this role started as (ADMIN, TEAM_LEAD,
+  // CLEANER, JR_CLEANER, CLIENT), so a renamed default is still found as
+  // "the default cleaner role". Null for roles a company added itself.
+  defaultKey: text('default_key'),
+  sortOrder: integer('sort_order').notNull().default(0),
+  ...timestamps,
+}, (t) => ({
+  tenantNameUnique: uniqueIndex('roles_tenant_name_unique').on(t.tenantId, t.name),
+}));
+
+// Change history (lib/audit.ts): who changed what, when, on any record.
+export const auditLog = pgTable('audit_log', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  actorUserId: text('actor_user_id'),
+  actorName: text('actor_name'),
+  entityType: text('entity_type').notNull(),
+  entityId: text('entity_id').notNull(),
+  action: text('action').notNull(),
+  summary: text('summary').notNull(),
+  changesJson: text('changes_json'),
+  ...timestamps,
+}, (t) => ({
+  entityIdx: index('audit_log_entity_idx').on(t.tenantId, t.entityType, t.entityId),
+  createdIdx: index('audit_log_created_idx').on(t.tenantId, t.createdAt),
+}));
+
+// Recurring cleans (lib/recurring.ts).
+export const recurringSeries = pgTable('recurring_series', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  clientId: text('client_id').notNull().references(() => users.id),
+  serviceTypeId: text('service_type_id').notNull().references(() => serviceTypes.id),
+  addressId: text('address_id').references(() => addresses.id),
+  crewId: text('crew_id').notNull().references(() => crews.id),
+  pattern: text('pattern', { enum: ['WEEKLY', 'EVERY_2_WEEKS', 'EVERY_4_WEEKS', 'MONTHLY_NTH_WEEKDAY', 'CUSTOM_WEEKDAYS'] }).notNull(),
+  // CUSTOM_WEEKDAYS: comma list of 0–6 (Sun–Sat). MONTHLY_NTH_WEEKDAY:
+  // nth (1–4, or -1 for "last") of startDate's weekday.
+  weekdays: text('weekdays'),
+  nth: integer('nth'),
+  startDate: text('start_date').notNull(),
+  endDate: text('end_date'),
+  startMinutes: integer('start_minutes').notNull(),
+  durationMinutes: integer('duration_minutes').notNull(),
+  priceCents: integer('price_cents'),
+  status: text('status', { enum: ['ACTIVE', 'PAUSED', 'ENDED'] }).notNull().default('ACTIVE'),
+  templateId: text('template_id'),
+  notes: text('notes'),
+  // How far ahead visits have been created (YYYY-MM-DD).
+  generatedThrough: text('generated_through'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdate(() => new Date()),
+  ...timestamps,
+});
+
+// Schedule templates (lib/scheduleTemplates.ts).
+export const scheduleTemplates = pgTable('schedule_templates', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  name: text('name').notNull(),
+  serviceTypeId: text('service_type_id').references(() => serviceTypes.id),
+  durationMinutes: integer('duration_minutes').notNull(),
+  arrivalWindowMinutes: integer('arrival_window_minutes').notNull().default(60),
+  pattern: text('pattern', { enum: ['ONE_TIME', 'WEEKLY', 'EVERY_2_WEEKS', 'EVERY_4_WEEKS', 'MONTHLY_NTH_WEEKDAY', 'CUSTOM_WEEKDAYS'] }).notNull().default('ONE_TIME'),
+  weekdays: text('weekdays'),
+  preferredStartMinutes: integer('preferred_start_minutes').notNull().default(9 * 60),
+  defaultCrewId: text('default_crew_id'),
+  teamSize: integer('team_size'),
+  notes: text('notes'),
+  color: text('color'),
+  sortOrder: integer('sort_order').notNull().default(0),
+  ...timestamps,
+});
+
+// Reminders and follow-ups as settings (lib/automations.ts).
+export const automationSettings = pgTable('automation_settings', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  key: text('key').notNull(),
+  enabled: boolean('enabled').notNull(),
+  offsetMinutes: integer('offset_minutes'),
+  subject: text('subject'),
+  body: text('body'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdate(() => new Date()),
+  ...timestamps,
+}, (t) => ({
+  tenantKeyUnique: uniqueIndex('automation_settings_tenant_key_unique').on(t.tenantId, t.key),
+}));
+
+// One row per automated message actually sent, so no rule ever sends the
+// same thing about the same record twice however often the cron runs.
+export const automationSends = pgTable('automation_sends', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  key: text('key').notNull(),
+  refId: text('ref_id').notNull(),
+  ...timestamps,
+}, (t) => ({
+  keyRefUnique: uniqueIndex('automation_sends_key_ref_unique').on(t.tenantId, t.key, t.refId),
+}));
+
+export const expenses = pgTable('expenses', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  spentOn: text('spent_on').notNull(),
+  category: text('category').notNull(),
+  vendor: text('vendor'),
+  amountCents: integer('amount_cents').notNull(),
+  notes: text('notes'),
+  jobId: text('job_id'),
+  crewId: text('crew_id'),
+  createdByUserId: text('created_by_user_id'),
+  ...timestamps,
+});
+
+// A company's own help articles, alongside the product FAQs and SOPs that
+// ship in code (lib/help/content.ts). Tex reads both.
+export const kbArticles = pgTable('kb_articles', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  audience: text('audience', { enum: ['PUBLIC', 'CLIENT', 'CREW', 'ADMIN'] }).notNull(),
+  kind: text('kind', { enum: ['FAQ', 'SOP'] }).notNull(),
+  title: text('title').notNull(),
+  body: text('body').notNull(),
+  tags: text('tags'),
+  published: boolean('published').notNull().default(true),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdate(() => new Date()),
+  ...timestamps,
+});
+
+// Tex's conversations, on every channel, kept so staff can see what was
+// said and pick up any thread Tex handed off.
+export const texMessages = pgTable('tex_messages', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  conversationId: text('conversation_id').notNull(),
+  channel: text('channel', { enum: ['WEB', 'SMS', 'VOICE'] }).notNull(),
+  userId: text('user_id'),
+  phone: text('phone'),
+  author: text('author', { enum: ['USER', 'TEX', 'STAFF'] }).notNull(),
+  body: text('body').notNull(),
+  sources: text('sources'),
+  handoff: boolean('handoff').notNull().default(false),
+  ...timestamps,
+}, (t) => ({
+  convIdx: index('tex_messages_conversation_idx').on(t.tenantId, t.conversationId),
+}));
+
+// Two-way texting (lib/sms.ts): one thread per client.
+export const smsMessages = pgTable('sms_messages', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  clientId: text('client_id'),
+  direction: text('direction', { enum: ['IN', 'OUT'] }).notNull(),
+  fromNumber: text('from_number').notNull(),
+  toNumber: text('to_number').notNull(),
+  body: text('body').notNull(),
+  twilioSid: text('twilio_sid'),
+  sentByUserId: text('sent_by_user_id'),
+  sentByTex: boolean('sent_by_tex').notNull().default(false),
+  readAt: timestamp('read_at', { withTimezone: true }),
+  ...timestamps,
+}, (t) => ({
+  threadIdx: index('sms_messages_thread_idx').on(t.tenantId, t.fromNumber, t.toNumber),
+}));
+
+// Room-by-room quality score (lib/quality.ts).
+export const roomRatings = pgTable('room_ratings', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  reviewId: text('review_id').notNull().references(() => reviews.id),
+  bookingId: text('booking_id').notNull().references(() => bookings.id),
+  jobChecklistItemId: text('job_checklist_item_id').notNull().references(() => jobChecklistItems.id),
+  roomName: text('room_name').notNull(),
+  rating: integer('rating').notNull(),
+  ...timestamps,
+}, (t) => ({
+  itemUnique: uniqueIndex('room_ratings_item_unique').on(t.jobChecklistItemId),
+}));
+
+// One-off email campaigns (lib/marketing.ts).
+export const campaigns = pgTable('campaigns', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  name: text('name').notNull(),
+  segment: text('segment', { enum: ['ALL_ACTIVE', 'LAPSED', 'RECURRING', 'ONE_TIME', 'LEADS'] }).notNull(),
+  subject: text('subject').notNull(),
+  body: text('body').notNull(),
+  status: text('status', { enum: ['DRAFT', 'SENT'] }).notNull().default('DRAFT'),
+  sentCount: integer('sent_count').notNull().default(0),
+  sentAt: timestamp('sent_at', { withTimezone: true }),
+  ...timestamps,
+});

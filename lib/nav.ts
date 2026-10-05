@@ -25,6 +25,7 @@ export function canAccess(role: string | null | undefined, pathname: string): bo
   if (role === 'SUPER_ADMIN') return pathname.startsWith('/platform');
   if (pathname.startsWith('/platform')) return false;
   if (role === 'ADMIN') return true;
+  if (pathname.startsWith('/billing')) return false;
   if (pathname.startsWith('/admin')) return false;
   if (pathname.startsWith('/crew')) return role === 'CLEANER';
   if (pathname.startsWith('/book')) return role === 'CUSTOMER';

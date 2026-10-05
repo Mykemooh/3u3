@@ -9,6 +9,7 @@ import { formatSlotLabel, formatDateLabel } from '@/lib/scheduling';
 import { getAddressesFor, getUserById, getOwnerEmail, formatMoney } from '@/lib/data';
 import { sendEmail, bookingConfirmedCustomerEmail, newBookingOwnerEmail } from '@/lib/email';
 import { appUrl } from '@/lib/url';
+import type { Cadence } from '@/lib/cadence';
 
 export class DoubleBookingError extends Error {
   constructor() {
@@ -74,9 +75,13 @@ export async function createBooking(input: {
   addressId?: string;
   slotStart: string;
   slotEnd: string;
-  cadence: 'ONE_TIME' | 'BIWEEKLY' | 'MONTHLY';
+  cadence: Cadence;
   priceCents?: number;
   isQuoteVisit?: boolean;
+  seriesId?: string;
+  seriesOccurrenceDate?: string;
+  clientNotes?: string | null;
+  intakeJson?: string | null;
   addOns?: { addOnServiceId: string; name: string; priceCents: number }[];
 }) {
   const dateOnly = input.slotStart.split('T')[0];
@@ -108,6 +113,10 @@ export async function createBooking(input: {
       status: 'CONFIRMED',
       priceCents: input.priceCents,
       isQuoteVisit: input.isQuoteVisit ?? false,
+      seriesId: input.seriesId,
+      seriesOccurrenceDate: input.seriesOccurrenceDate,
+      clientNotes: input.clientNotes ?? null,
+      intakeJson: input.intakeJson ?? null,
     });
 
     // Snapshot each selected add-on's name and price at booking time —

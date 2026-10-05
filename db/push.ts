@@ -698,6 +698,252 @@ async function main() {
     CREATE UNIQUE INDEX IF NOT EXISTS monthly_billing_batches_client_period_unique ON monthly_billing_batches(client_id, period_start);
 
     ALTER TABLE invoices ADD COLUMN IF NOT EXISTS batch_id TEXT REFERENCES monthly_billing_batches(id);
+
+    -- =====================================================================
+    -- October 2026 build (TrashCan SaaS + 3U3 portals). Every statement is
+    -- additive and safe to re-run, same as everything above.
+    -- =====================================================================
+
+    -- Cancelled bookings no longer hold their crew's slot. The original
+    -- unique index counted them, so a cancelled time could never be
+    -- booked again; the replacement only counts live bookings.
+    CREATE UNIQUE INDEX IF NOT EXISTS bookings_crew_slot_active_unique ON bookings(crew_id, slot_start) WHERE status <> 'CANCELLED';
+    DROP INDEX IF EXISTS bookings_crew_slot_unique;
+
+    -- Wider cadence list for recurring series (lib/recurring.ts).
+    ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_cadence_check;
+    ALTER TABLE bookings ADD CONSTRAINT bookings_cadence_check
+      CHECK (cadence IN ('ONE_TIME','WEEKLY','BIWEEKLY','EVERY_4_WEEKS','MONTHLY','CUSTOM'));
+    ALTER TABLE bookings ADD COLUMN IF NOT EXISTS series_id TEXT;
+    ALTER TABLE bookings ADD COLUMN IF NOT EXISTS series_occurrence_date TEXT;
+    ALTER TABLE bookings ADD COLUMN IF NOT EXISTS is_series_exception BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE bookings ADD COLUMN IF NOT EXISTS client_notes TEXT;
+    ALTER TABLE bookings ADD COLUMN IF NOT EXISTS intake_json TEXT;
+    CREATE UNIQUE INDEX IF NOT EXISTS bookings_series_occurrence_unique ON bookings(series_id, series_occurrence_date);
+
+    -- Post-construction and commercial service lines.
+    ALTER TABLE service_types DROP CONSTRAINT IF EXISTS service_types_key_check;
+    ALTER TABLE service_types ADD CONSTRAINT service_types_key_check
+      CHECK (key IN ('STANDARD','DEEP','MOVE_IN_OUT','AIRBNB','POST_CONSTRUCTION','COMMERCIAL'));
+
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS payroll_frequency TEXT NOT NULL DEFAULT 'BIWEEKLY'
+      CHECK (payroll_frequency IN ('WEEKLY','BIWEEKLY','SEMIMONTHLY','MONTHLY'));
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS payroll_anchor_date TEXT;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS sms_number TEXT;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS tex_sms_auto_reply BOOLEAN NOT NULL DEFAULT true;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS tex_voice_enabled BOOLEAN NOT NULL DEFAULT true;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS owner_phone TEXT;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS google_review_url TEXT;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS referral_credit_cents INTEGER NOT NULL DEFAULT 2500;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS winback_days INTEGER NOT NULL DEFAULT 60;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS intake_json TEXT;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS setup_skipped_steps TEXT NOT NULL DEFAULT '';
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS stripe_connect_account_id TEXT;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS stripe_connect_ready BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS mfa_required_for_crew BOOLEAN NOT NULL DEFAULT false;
+
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS role_id TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS mfa_secret_encrypted TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS mfa_enabled_at TIMESTAMPTZ;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS mfa_backup_codes TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS mfa_email_code_hash TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS mfa_email_code_expires_at TIMESTAMPTZ;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS mfa_prompt_snoozed_until TIMESTAMPTZ;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS sms_consent BOOLEAN;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS sms_consent_at TIMESTAMPTZ;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by_user_id TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS credit_cents INTEGER NOT NULL DEFAULT 0;
+    CREATE UNIQUE INDEX IF NOT EXISTS users_referral_code_unique ON users(referral_code);
+
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS started_by_user_id TEXT;
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS start_lat DOUBLE PRECISION;
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS start_lng DOUBLE PRECISION;
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS finished_by_user_id TEXT;
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS finish_lat DOUBLE PRECISION;
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS finish_lng DOUBLE PRECISION;
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS proof_token TEXT;
+    CREATE UNIQUE INDEX IF NOT EXISTS jobs_proof_token_unique ON jobs(proof_token);
+
+    ALTER TABLE job_checklist_items ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ;
+
+    ALTER TABLE reviews ADD COLUMN IF NOT EXISTS reclean_status TEXT
+      CHECK (reclean_status IN ('REQUESTED','SCHEDULED','DONE','DISMISSED'));
+
+    CREATE TABLE IF NOT EXISTS roles (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      name TEXT NOT NULL,
+      base_role TEXT NOT NULL CHECK (base_role IN ('CUSTOMER','CLEANER','ADMIN')),
+      staff_role TEXT CHECK (staff_role IN ('TEAM_LEAD','CLEANER','JR_CLEANER')),
+      permissions TEXT NOT NULL DEFAULT '',
+      default_key TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS roles_tenant_name_unique ON roles(tenant_id, name);
+
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      actor_user_id TEXT,
+      actor_name TEXT,
+      entity_type TEXT NOT NULL,
+      entity_id TEXT NOT NULL,
+      action TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      changes_json TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS audit_log_entity_idx ON audit_log(tenant_id, entity_type, entity_id);
+    CREATE INDEX IF NOT EXISTS audit_log_created_idx ON audit_log(tenant_id, created_at);
+
+    CREATE TABLE IF NOT EXISTS recurring_series (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      client_id TEXT NOT NULL REFERENCES users(id),
+      service_type_id TEXT NOT NULL REFERENCES service_types(id),
+      address_id TEXT REFERENCES addresses(id),
+      crew_id TEXT NOT NULL REFERENCES crews(id),
+      pattern TEXT NOT NULL CHECK (pattern IN ('WEEKLY','EVERY_2_WEEKS','EVERY_4_WEEKS','MONTHLY_NTH_WEEKDAY','CUSTOM_WEEKDAYS')),
+      weekdays TEXT,
+      nth INTEGER,
+      start_date TEXT NOT NULL,
+      end_date TEXT,
+      start_minutes INTEGER NOT NULL,
+      duration_minutes INTEGER NOT NULL,
+      price_cents INTEGER,
+      status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE','PAUSED','ENDED')),
+      template_id TEXT,
+      notes TEXT,
+      generated_through TEXT,
+      updated_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS schedule_templates (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      name TEXT NOT NULL,
+      service_type_id TEXT REFERENCES service_types(id),
+      duration_minutes INTEGER NOT NULL,
+      arrival_window_minutes INTEGER NOT NULL DEFAULT 60,
+      pattern TEXT NOT NULL DEFAULT 'ONE_TIME' CHECK (pattern IN ('ONE_TIME','WEEKLY','EVERY_2_WEEKS','EVERY_4_WEEKS','MONTHLY_NTH_WEEKDAY','CUSTOM_WEEKDAYS')),
+      weekdays TEXT,
+      preferred_start_minutes INTEGER NOT NULL DEFAULT 540,
+      default_crew_id TEXT,
+      team_size INTEGER,
+      notes TEXT,
+      color TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS automation_settings (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      key TEXT NOT NULL,
+      enabled BOOLEAN NOT NULL,
+      offset_minutes INTEGER,
+      subject TEXT,
+      body TEXT,
+      updated_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS automation_settings_tenant_key_unique ON automation_settings(tenant_id, key);
+
+    CREATE TABLE IF NOT EXISTS automation_sends (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      key TEXT NOT NULL,
+      ref_id TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS automation_sends_key_ref_unique ON automation_sends(tenant_id, key, ref_id);
+
+    CREATE TABLE IF NOT EXISTS expenses (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      spent_on TEXT NOT NULL,
+      category TEXT NOT NULL,
+      vendor TEXT,
+      amount_cents INTEGER NOT NULL,
+      notes TEXT,
+      job_id TEXT,
+      crew_id TEXT,
+      created_by_user_id TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS kb_articles (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      audience TEXT NOT NULL CHECK (audience IN ('PUBLIC','CLIENT','CREW','ADMIN')),
+      kind TEXT NOT NULL CHECK (kind IN ('FAQ','SOP')),
+      title TEXT NOT NULL,
+      body TEXT NOT NULL,
+      tags TEXT,
+      published BOOLEAN NOT NULL DEFAULT true,
+      updated_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS tex_messages (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      conversation_id TEXT NOT NULL,
+      channel TEXT NOT NULL CHECK (channel IN ('WEB','SMS','VOICE')),
+      user_id TEXT,
+      phone TEXT,
+      author TEXT NOT NULL CHECK (author IN ('USER','TEX','STAFF')),
+      body TEXT NOT NULL,
+      sources TEXT,
+      handoff BOOLEAN NOT NULL DEFAULT false,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS tex_messages_conversation_idx ON tex_messages(tenant_id, conversation_id);
+
+    CREATE TABLE IF NOT EXISTS sms_messages (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      client_id TEXT,
+      direction TEXT NOT NULL CHECK (direction IN ('IN','OUT')),
+      from_number TEXT NOT NULL,
+      to_number TEXT NOT NULL,
+      body TEXT NOT NULL,
+      twilio_sid TEXT,
+      sent_by_user_id TEXT,
+      sent_by_tex BOOLEAN NOT NULL DEFAULT false,
+      read_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS sms_messages_thread_idx ON sms_messages(tenant_id, from_number, to_number);
+
+    CREATE TABLE IF NOT EXISTS room_ratings (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      review_id TEXT NOT NULL REFERENCES reviews(id),
+      booking_id TEXT NOT NULL REFERENCES bookings(id),
+      job_checklist_item_id TEXT NOT NULL REFERENCES job_checklist_items(id),
+      room_name TEXT NOT NULL,
+      rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS room_ratings_item_unique ON room_ratings(job_checklist_item_id);
+
+    CREATE TABLE IF NOT EXISTS campaigns (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      name TEXT NOT NULL,
+      segment TEXT NOT NULL CHECK (segment IN ('ALL_ACTIVE','LAPSED','RECURRING','ONE_TIME','LEADS')),
+      subject TEXT NOT NULL,
+      body TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT','SENT')),
+      sent_count INTEGER NOT NULL DEFAULT 0,
+      sent_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
   `);
 
   console.log('Schema pushed to Postgres.');

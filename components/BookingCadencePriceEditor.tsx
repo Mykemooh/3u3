@@ -2,14 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { CADENCE_LABEL, ADMIN_CADENCES, type Cadence } from '@/lib/cadence';
 
-type Cadence = 'ONE_TIME' | 'BIWEEKLY' | 'MONTHLY';
 
-const CADENCE_LABEL: Record<Cadence, string> = {
-  ONE_TIME: 'One-time',
-  BIWEEKLY: 'Every other week',
-  MONTHLY: 'Monthly',
-};
 
 // Admin-only inline editor for a booking's cadence/price — no 24-hour
 // cutoff, usable even on a completed/cancelled booking (a correction),
@@ -63,7 +58,7 @@ export default function BookingCadencePriceEditor({
       <div>
         <label className="label !mb-1 !text-xs">Cadence</label>
         <select className="input !py-1.5 !text-sm" value={cadence} onChange={(e) => setCadence(e.target.value as Cadence)}>
-          {(Object.keys(CADENCE_LABEL) as Cadence[]).map((c) => (
+          {ADMIN_CADENCES.map((c) => (
             <option key={c} value={c}>{CADENCE_LABEL[c]}</option>
           ))}
         </select>

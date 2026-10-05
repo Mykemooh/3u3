@@ -21,7 +21,7 @@
  * this is treated as a promise to customers.
  */
 
-export type ServiceKey = 'STANDARD' | 'DEEP' | 'MOVE_IN_OUT' | 'AIRBNB';
+export type ServiceKey = 'STANDARD' | 'DEEP' | 'MOVE_IN_OUT' | 'AIRBNB' | 'POST_CONSTRUCTION' | 'COMMERCIAL';
 
 /**
  * Withdrawn from customer-facing surfaces for now (marketing site, the
