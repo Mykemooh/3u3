@@ -1,3 +1,4 @@
+import { enforceMfa, type SessionUser } from '@/lib/sessionUser';
 import Link from 'next/link';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
@@ -57,6 +58,7 @@ export default async function CrewHome() {
   // Authoritative role check — the middleware guards the edge but can fail
   // open, so the page decides. Admins may look; customers may not.
   if (role !== 'CLEANER' && role !== 'ADMIN') redirect(`${homeForRole(role)}?denied=1`);
+  enforceMfa(session.user as unknown as SessionUser, '/crew');
 
   let myJobs: (typeof jobs.$inferSelect)[] = [];
   if (role === 'CLEANER') {

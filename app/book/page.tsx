@@ -1,3 +1,4 @@
+import { enforceMfa, type SessionUser } from '@/lib/sessionUser';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
@@ -19,6 +20,7 @@ export default async function BookPage() {
   // Staff landing here get sent to their own screen. Bouncing them to the
   // sign-in form looks like a rejected password and explains nothing.
   if (role !== 'CUSTOMER') redirect(`${homeForRole(role)}?denied=1`);
+  enforceMfa(session.user as unknown as SessionUser, '/book');
 
   const tenant = await getTenant();
   if (!tenant) redirect('/');

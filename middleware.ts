@@ -49,18 +49,40 @@ export async function middleware(req: NextRequest) {
   requestHeaders.set('x-3u3-path', pathname);
   const pass = () => NextResponse.next({ request: { headers: requestHeaders } });
 
-  // API routes answer for themselves (a JSON 403, never a redirect to a
-  // sign-in page a fetch() can't follow) — they only need the path header.
-  if (pathname.startsWith('/api/')) return pass();
-
   const secureCookie = req.nextUrl.protocol === 'https:';
   const token = await getToken({
     req,
     secret: process.env.NEXTAUTH_SECRET,
     secureCookie,
-  });
+  }).catch(() => null);
 
   const role = (token as { role?: string } | null)?.role;
+  const mfa = token as { mfaPending?: boolean; mfaSetup?: string; mfaLocked?: boolean } | null;
+  // Signed in with a password but not past the second step yet
+  // (lib/mfa.ts): nothing behind the portals opens until they are.
+  const mfaBlocked = !!(mfa?.mfaLocked || mfa?.mfaPending || mfa?.mfaSetup === 'required');
+
+  // API routes answer for themselves (a JSON 403, never a redirect to a
+  // sign-in page a fetch() can't follow) — they only need the path header,
+  // plus a refusal while the second sign-in step is unfinished.
+  if (pathname.startsWith('/api/')) {
+    if (mfaBlocked) {
+      return NextResponse.json({ error: 'Finish two-step sign-in first.' }, { status: 401 });
+    }
+    return pass();
+  }
+
+  if (role && mfa?.mfaLocked) {
+    const signin = new URL('/signin', req.url);
+    signin.searchParams.set('error', 'MfaLocked');
+    return NextResponse.redirect(signin);
+  }
+  if (role && (mfa?.mfaPending || mfa?.mfaSetup)) {
+    const target = new URL(mfa.mfaPending ? '/mfa' : '/mfa/setup', req.url);
+    if (!mfa.mfaPending && mfa.mfaSetup === 'prompt') target.searchParams.set('optional', '1');
+    target.searchParams.set('next', `${pathname}${search}`);
+    return NextResponse.redirect(target);
+  }
 
   if (canAccess(role, pathname)) return pass();
 
@@ -84,5 +106,8 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/crew/:path*', '/book/:path*', '/account/:path*', '/billing', '/api/admin/:path*'],
+  matcher: [
+    '/admin/:path*', '/crew/:path*', '/book/:path*', '/account/:path*', '/billing', '/platform/:path*', '/security',
+    '/api/admin/:path*', '/api/crew/:path*', '/api/account/:path*', '/api/platform/:path*',
+  ],
 };

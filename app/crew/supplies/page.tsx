@@ -1,3 +1,4 @@
+import { enforceMfa, type SessionUser } from '@/lib/sessionUser';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
@@ -20,6 +21,7 @@ export default async function CrewSuppliesPage() {
   if (!session?.user) redirect('/signin?next=/crew/supplies');
   const role = (session.user as any).role;
   if (role !== 'CLEANER') redirect(`${homeForRole(role)}?denied=1`);
+  enforceMfa(session.user as unknown as SessionUser, '/crew/supplies');
 
   const crew = await getCrewForUser((session.user as any).id);
   const recent = crew ? await getSupplyReportsForCrew(crew.id) : [];

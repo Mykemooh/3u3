@@ -22,6 +22,7 @@ export function homeForRole(role?: string | null): string {
  */
 export function canAccess(role: string | null | undefined, pathname: string): boolean {
   if (!role) return false;
+  if (pathname === '/security') return true;
   if (role === 'SUPER_ADMIN') return pathname.startsWith('/platform');
   if (pathname.startsWith('/platform')) return false;
   if (role === 'ADMIN') return true;

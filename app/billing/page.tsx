@@ -1,3 +1,4 @@
+import { enforceMfa, type SessionUser } from '@/lib/sessionUser';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
@@ -29,6 +30,7 @@ export default async function BillingPage() {
   const tenantId = (session?.user as { tenantId?: string } | undefined)?.tenantId;
   if (!session?.user) redirect('/signin?next=/billing');
   if (role !== 'ADMIN') redirect(`${homeForRole(role)}?denied=1`);
+  enforceMfa(session.user as unknown as SessionUser, '/billing');
 
   const tenant = tenantId ? (await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1))[0] : undefined;
   if (!tenant) redirect('/admin');

@@ -1,3 +1,4 @@
+import { enforceMfa, type SessionUser } from '@/lib/sessionUser';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
@@ -17,6 +18,7 @@ export default async function PlatformLayout({ children }: { children: React.Rea
   const role = (session?.user as { role?: string } | undefined)?.role;
   if (!session?.user) redirect('/signin?next=/platform');
   if (role !== 'SUPER_ADMIN') redirect(`${homeForRole(role)}?denied=1`);
+  enforceMfa(session.user as unknown as SessionUser, '/platform');
 
   return (
     <div className="min-h-screen bg-white">

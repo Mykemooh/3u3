@@ -1,3 +1,4 @@
+import { enforceMfa, type SessionUser } from '@/lib/sessionUser';
 import { getServerSession } from 'next-auth';
 import { redirect, notFound } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
@@ -17,6 +18,7 @@ export default async function CrewJobPage({ params }: { params: { id: string } }
   const session = await getServerSession(authOptions);
   const viewer = viewerFrom(session);
   if (!viewer) redirect(`/signin?next=/crew/jobs/${params.id}`);
+  enforceMfa(session?.user as unknown as SessionUser, `/crew/jobs/${params.id}`);
 
   const data = await loadJob(params.id);
   if (!data) notFound();

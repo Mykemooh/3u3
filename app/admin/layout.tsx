@@ -1,3 +1,4 @@
+import { enforceMfa, type SessionUser } from '@/lib/sessionUser';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
@@ -53,6 +54,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const tenantId = (session?.user as { tenantId?: string } | undefined)?.tenantId;
   if (!session?.user) redirect('/signin?next=/admin');
   if (role !== 'ADMIN') redirect(`${homeForRole(role)}?denied=1`);
+  enforceMfa(session.user as unknown as SessionUser, '/admin');
 
   // Platform access gate (lib/platform.ts) — a lapsed trial, promo code,
   // or subscription locks the admin's own tools, not their customers'

@@ -547,3 +547,32 @@ export function standbyOfferEmail(input: { name: string; serviceName: string; da
 export function standbyOfferText(input: { serviceName: string; dateLabel: string; timeLabel: string; url: string }) {
   return `3U3 Cleaning: a spot opened up for ${input.serviceName} on ${input.dateLabel} at ${input.timeLabel} — claim it: ${input.url}`;
 }
+
+/**
+ * A plain branded message — used by the newer automations (reminders and
+ * follow-ups, MFA codes, campaigns, team invites) whose wording a company
+ * edits itself. Paragraph text is escaped; line breaks are kept.
+ */
+export function simpleEmail(input: {
+  brandName: string;
+  heading: string;
+  body: string;
+  cta?: { label: string; url: string };
+  footer?: string;
+}) {
+  const paragraphs = input.body
+    .split(/\n{2,}/)
+    .map((p) => `<p style="margin:0 0 12px;line-height:1.5;">${esc(p).replace(/\n/g, '<br/>')}</p>`)
+    .join('');
+  const button = input.cta
+    ? `<p style="margin:20px 0;"><a href="${esc(input.cta.url)}" style="background:#016AEE;color:#fff;padding:12px 20px;border-radius:999px;text-decoration:none;font-weight:bold;display:inline-block;">${esc(input.cta.label)}</a></p>`
+    : '';
+  return `
+    <div style="font-family:Inter,Arial,sans-serif;color:#041730;max-width:520px;margin:0 auto;">
+      <h2 style="color:#0157C4;margin:0 0 12px;">${esc(input.heading)}</h2>
+      ${paragraphs}
+      ${button}
+      <p style="color:#5B7085;font-size:13px;margin-top:24px;">${esc(input.footer ?? `— ${input.brandName}`)}</p>
+    </div>
+  `;
+}
