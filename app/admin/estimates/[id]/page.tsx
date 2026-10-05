@@ -1,3 +1,4 @@
+import HistoryPanel from '@/components/admin/HistoryPanel';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getEstimateWithItems, estimateUrl } from '@/lib/estimates';
@@ -16,7 +17,7 @@ export default async function AdminEstimateDetail({ params }: { params: { id: st
   const tenant = await getTenant();
   if (!tenant) return null;
   const data = await getEstimateWithItems(params.id);
-  if (!data) notFound();
+  if (!data || data.quote.tenantId !== tenant.id) notFound();
   const { quote, items, client, service, visit, address } = data;
   const services = await getServiceTypes(tenant.id);
 
@@ -108,6 +109,9 @@ export default async function AdminEstimateDetail({ params }: { params: { id: st
             )}
           </div>
         )}
+      </div>
+      <div className="mt-6">
+        <HistoryPanel tenantId={tenant.id} entityType="quote" entityId={params.id} />
       </div>
     </div>
   );

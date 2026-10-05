@@ -1,3 +1,5 @@
+import HistoryPanel from '@/components/admin/HistoryPanel';
+import { getTenant } from '@/lib/data';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getInvoiceWithItems, invoiceLabel } from '@/lib/invoices';
@@ -9,8 +11,9 @@ import { isStripeConfigured } from '@/lib/stripe';
 import InvoiceEditor from '@/components/InvoiceEditor';
 
 export default async function AdminInvoiceDetail({ params }: { params: { id: string } }) {
+  const tenant = await getTenant();
   const data = await getInvoiceWithItems(params.id);
-  if (!data) notFound();
+  if (!data || !tenant || data.invoice.tenantId !== tenant.id) notFound();
   const { invoice, items, client, booking, address } = data;
   const service = booking?.serviceTypeId ? await getServiceType(booking.serviceTypeId) : undefined;
   const job = booking ? (await db.select().from(jobs).where(eq(jobs.bookingId, booking.id)).limit(1))[0] : undefined;
@@ -110,6 +113,9 @@ export default async function AdminInvoiceDetail({ params }: { params: { id: str
             </div>
           </div>
         )}
+      </div>
+      <div className="mt-6">
+        <HistoryPanel tenantId={tenant.id} entityType="invoice" entityId={data.invoice.id} />
       </div>
     </div>
   );

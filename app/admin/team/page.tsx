@@ -1,6 +1,8 @@
 import { getTenant } from '@/lib/data';
 import { getEmployees, getTeams } from '@/lib/team';
 import TeamBoard from '@/components/team/TeamBoard';
+import Link from 'next/link';
+import { defaultRoleName } from '@/lib/roles';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,15 +12,22 @@ export const dynamic = 'force-dynamic';
 export default async function AdminTeamPage() {
   const tenant = await getTenant();
   if (!tenant) return null;
-  const [teams, employees] = await Promise.all([getTeams(tenant.id), getEmployees(tenant.id)]);
+  const [teams, employees, lead, cleaner, jr] = await Promise.all([
+    getTeams(tenant.id),
+    getEmployees(tenant.id),
+    defaultRoleName(tenant.id, 'TEAM_LEAD'),
+    defaultRoleName(tenant.id, 'CLEANER'),
+    defaultRoleName(tenant.id, 'JR_CLEANER'),
+  ]);
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-ink">Team</h1>
         <p className="text-slate">
-          A Team Lead starts each trip and finishes each job. Customers can book any time a team that takes online
-          bookings is free.
+          Anyone on a job can start the clock when they arrive; a {lead} finishes the job. Customers can book any time
+          a team that takes online bookings is free. Rename roles or add your own under{' '}
+          <Link href="/admin/roles" className="font-semibold text-bronze hover:underline">Roles</Link>.
         </p>
       </div>
       <TeamBoard
@@ -36,6 +45,7 @@ export default async function AdminTeamPage() {
           homeZip: t.homeZip,
         }))}
         employees={employees}
+        roleLabels={{ TEAM_LEAD: lead, CLEANER: cleaner, JR_CLEANER: jr }}
       />
     </div>
   );

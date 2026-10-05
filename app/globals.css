@@ -113,6 +113,23 @@
     transform: translateX(4px);
   }
 
+  /* ---- Admin icon rail (components/admin/AdminShell.tsx) ---------------
+     Labels slide out to the right of an icon on hover or keyboard focus —
+     a blue pill, so the rail stays quiet until you reach for it.          */
+  .rail-item {
+    @apply relative flex items-center transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-light;
+  }
+  .rail-label {
+    @apply pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-y-1/2 whitespace-nowrap rounded-full bg-gold px-3 py-1.5 text-sm font-semibold text-white opacity-0 shadow-gold;
+    transform: translate(-6px, -50%);
+    transition: opacity 120ms ease, transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .group:hover > .rail-label,
+  .group:focus-visible > .rail-label {
+    opacity: 1;
+    transform: translate(0, -50%);
+  }
+
   /* ---- Surfaces --------------------------------------------------------
      One elevation language. The old .card carried a border AND a shadow,
      which is what made everything look slightly muddy.                     */

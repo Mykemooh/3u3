@@ -1,3 +1,5 @@
+import { logChange } from '@/lib/audit';
+import { belongsTo, notFound } from '@/lib/tenantGuard';
 import { adminSession } from '@/lib/adminApi';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
@@ -21,15 +23,18 @@ const schema = z.object({
 // endpoints for a small, admin-only editor.
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
-  if (!(await adminSession())) {
+  const guardAdmin = await adminSession();
+  if (!guardAdmin) {
     return NextResponse.json({ error: 'Admin only' }, { status: 403 });
   }
+  if (!(await belongsTo(guardAdmin.tenantId, 'invoice', params.id))) return notFound();
   const body = await req.json();
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
 
   try {
     const totalCents = await replaceInvoiceItems(params.id, parsed.data.items);
+    await logChange({ tenantId: guardAdmin.tenantId, actor: { id: guardAdmin.userId, name: guardAdmin.name }, entityType: 'invoice', entityId: params.id, action: 'updated', summary: `Edited the line items (total ${(totalCents / 100).toFixed(2)})` });
     return NextResponse.json({ ok: true, totalCents });
   } catch (err) {
     if (err instanceof InvoiceError) return NextResponse.json({ error: err.message }, { status: 400 });

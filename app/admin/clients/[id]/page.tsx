@@ -1,3 +1,4 @@
+import HistoryPanel from '@/components/admin/HistoryPanel';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { db } from '@/db/client';
@@ -40,7 +41,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
   const tenant = await getTenant();
   if (!tenant) return null;
   const client = await getUserById(params.id);
-  if (!client || client.role !== 'CUSTOMER') notFound();
+  if (!client || client.role !== 'CUSTOMER' || client.tenantId !== tenant.id) notFound();
 
   const clientAddresses = await getAddressesFor(client.id);
   const primaryAddress = clientAddresses.find((a) => a.isPrimary) ?? clientAddresses[0];
@@ -265,6 +266,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
           </tbody>
         </table>
       </div>
+      <HistoryPanel tenantId={tenant.id} entityType="client" entityId={client.id} />
     </div>
   );
 }

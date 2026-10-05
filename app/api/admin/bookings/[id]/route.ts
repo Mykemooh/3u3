@@ -1,3 +1,5 @@
+import { logChange, diff } from '@/lib/audit';
+import { belongsTo, notFound } from '@/lib/tenantGuard';
 import { adminSession } from '@/lib/adminApi';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
@@ -11,7 +13,7 @@ import { checkStandbyForFreedDate } from '@/lib/standby';
 const schema = z
   .object({
     status: z.enum(['CONFIRMED', 'COMPLETED', 'CANCELLED']).optional(),
-    cadence: z.enum(['ONE_TIME', 'BIWEEKLY', 'MONTHLY']).optional(),
+    cadence: z.enum(['ONE_TIME', 'WEEKLY', 'BIWEEKLY', 'EVERY_4_WEEKS', 'MONTHLY']).optional(),
     priceDollars: z.number().positive().optional(),
   })
   .refine((v) => v.status !== undefined || v.cadence !== undefined || v.priceDollars !== undefined, {
@@ -27,9 +29,11 @@ const schema = z
 // (PRD section 8).
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
-  if (!(await adminSession())) {
+  const guardAdmin = await adminSession();
+  if (!guardAdmin) {
     return NextResponse.json({ error: 'Admin only' }, { status: 403 });
   }
+  if (!(await belongsTo(guardAdmin.tenantId, 'booking', params.id))) return notFound();
 
   const body = await req.json();
   const parsed = schema.safeParse(body);
@@ -50,6 +54,18 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (parsed.data.priceDollars !== undefined) updates.priceCents = Math.round(parsed.data.priceDollars * 100);
 
   await db.update(bookings).set(updates).where(eq(bookings.id, params.id));
+  const changes = diff(existing, updates, ['status', 'cadence', 'priceCents']);
+  if (changes.length) {
+    await logChange({
+      tenantId: existing.tenantId,
+      actor: { id: guardAdmin.userId, name: guardAdmin.name },
+      entityType: 'booking',
+      entityId: existing.id,
+      action: updates.status === 'CANCELLED' ? 'cancelled' : 'updated',
+      summary: updates.status === 'CANCELLED' ? 'Cancelled the booking' : 'Edited the booking',
+      changes,
+    });
+  }
 
   if (updates.status === 'CANCELLED') {
     await checkStandbyForFreedDate(existing.tenantId, existing.slotStart.slice(0, 10));

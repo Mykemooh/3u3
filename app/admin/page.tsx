@@ -1,146 +1,150 @@
 import Link from 'next/link';
-import { db } from '@/db/client';
-import { invoices, jobs } from '@/db/schema';
-import { eq, inArray } from 'drizzle-orm';
-import { getTenant, getAllBookings, getPrimaryCrew, getClientsForTenant, formatMoney, getUnreadAdminAlerts } from '@/lib/data';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { getTenant, getUnreadAdminAlerts } from '@/lib/data';
 import AdminAlertsPanel from '@/components/AdminAlertsPanel';
-import { businessNowISO, businessTodayISO } from '@/lib/time';
+import ProgressRing from '@/components/admin/ProgressRing';
+import { businessTodayISO } from '@/lib/time';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
-import { invoiceLabel } from '@/lib/invoices';
+import { getAdminToday, type TodayVisit } from '@/lib/adminToday';
+import { setupProgress } from '@/lib/setupGuide';
+
+const STATUS: Record<TodayVisit['status'], { label: string; cls: string }> = {
+  PENDING: { label: 'Scheduled', cls: 'bg-surface text-slate' },
+  EN_ROUTE: { label: 'On the way', cls: 'bg-gold/10 text-bronze' },
+  IN_PROGRESS: { label: 'Cleaning now', cls: 'bg-green-light text-green' },
+  COMPLETE: { label: 'Done', cls: 'bg-green text-white' },
+  QUOTE_VISIT: { label: 'Walkthrough', cls: 'bg-cream text-bronze ring-1 ring-line' },
+};
+
+function greeting() {
+  const hour = Number(new Intl.DateTimeFormat('en-US', { hour: 'numeric', hour12: false, timeZone: process.env.BUSINESS_TIMEZONE || 'America/Chicago' }).format(new Date()));
+  return hour < 12 ? 'Morning' : hour < 17 ? 'Afternoon' : 'Evening';
+}
 
 /**
- * The owner's morning view: what needs a decision first (drafts to send,
- * jobs underway), then what's coming. Every number links to where it's
- * dealt with.
+ * The Admin portal's landing page: a workflow strip in the order a
+ * cleaning day runs (today's cleans → new bookings → quotes → unpaid), each
+ * with what needs attention, then today's visits and anything unassigned.
  */
-export default async function AdminOverview() {
+export default async function AdminToday() {
   const tenant = await getTenant();
   if (!tenant) return null;
-  const [allBookings, crew, clients, invoiceRows, alerts] = await Promise.all([
-    getAllBookings(tenant.id),
-    getPrimaryCrew(tenant.id),
-    getClientsForTenant(tenant.id),
-    db.select().from(invoices).where(eq(invoices.tenantId, tenant.id)),
-    getUnreadAdminAlerts(tenant.id),
-  ]);
-
-  const now = businessNowISO();
+  const session = await getServerSession(authOptions);
+  const firstName = (session?.user?.name ?? '').split(/[\s(]/)[0];
+  const [data, alerts, setup] = await Promise.all([getAdminToday(tenant.id), getUnreadAdminAlerts(tenant.id), setupProgress(tenant.id)]);
   const today = businessTodayISO();
-  const live = allBookings.filter((b) => b.status !== 'CANCELLED');
-  const upcomingQuoteVisits = live.filter((b) => b.isQuoteVisit && b.slotEnd >= now);
-  const cleaning = live.filter((b) => !b.isQuoteVisit);
-  const upcomingJobs = cleaning.filter((b) => b.slotEnd >= now && b.status !== 'COMPLETED');
-
-  const jobRows = cleaning.length ? await db.select().from(jobs).where(inArray(jobs.bookingId, cleaning.map((b) => b.id))) : [];
-  const inProgress = jobRows.filter((j) => j.status === 'IN_PROGRESS' || j.status === 'EN_ROUTE');
-  const drafts = invoiceRows.filter((i) => i.status === 'DRAFT');
-  const unpaid = invoiceRows.filter((i) => i.status === 'SENT');
-  const clientName = new Map(clients.map((c) => [c.id, c.name]));
-  const bookingById = new Map(cleaning.map((b) => [b.id, b]));
-
-  const stats = [
-    { label: 'Invoices to review', value: drafts.length, href: '/admin/invoices', hot: drafts.length > 0 },
-    { label: 'Awaiting payment', value: formatMoney(unpaid.reduce((s, i) => s + i.totalCents, 0)), href: '/admin/invoices', hot: false },
-    { label: 'Upcoming cleanings', value: upcomingJobs.length, href: '/admin/schedule', hot: false },
-    { label: 'Upcoming quote visits', value: upcomingQuoteVisits.length, href: '/admin/leads', hot: false },
-  ];
-
-  const nextUp = [...upcomingQuoteVisits, ...upcomingJobs].sort((a, b) => a.slotStart.localeCompare(b.slotStart)).slice(0, 6);
+  const homes = data.visits.filter((v) => !v.isQuoteVisit).length;
 
   return (
     <div className="space-y-8">
-      <div>
-        <p className="eyebrow">{formatDateLabel(today)}</p>
-        <h1 className="mt-1 text-2xl font-bold text-ink">Good to see you</h1>
-        <p className="text-slate">{clients.length} client{clients.length === 1 ? "" : "s"} on file.</p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {stats.map((s) => (
-          <Link key={s.label} href={s.href} className={`card-interactive block p-5 ${s.hot ? 'border-gold bg-cream/40' : ''}`}>
-            <p className="text-3xl font-black text-bronze">{s.value}</p>
-            <p className="text-sm text-slate">{s.label}</p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="eyebrow">{formatDateLabel(today)}</p>
+          <h2 className="mt-1 font-display text-2xl font-bold text-ink md:text-3xl">
+            {greeting()}{firstName ? `, ${firstName}` : ''}. {homes === 0 ? 'No homes on the calendar today.' : `${homes} home${homes === 1 ? '' : 's'} today.`}
+          </h2>
+        </div>
+        {setup.remaining > 0 && (
+          <Link href="/admin/setup" className="rounded-full border border-line bg-white px-4 py-2 text-sm font-semibold text-bronze hover:border-gold">
+            Finish setup · {setup.done}/{setup.total}
           </Link>
-        ))}
+        )}
       </div>
 
-      {alerts.length > 0 && (
-        <section className="card">
-          <h2 className="mb-3 font-semibold text-ink">Alerts</h2>
-          <AdminAlertsPanel
-            alerts={alerts.map((a) => ({ id: a.id, triggerEvent: a.triggerEvent, createdAt: a.createdAt.toISOString() }))}
-          />
-        </section>
-      )}
-
-      {(drafts.length > 0 || inProgress.length > 0) && (
-        <section className="card">
-          <h2 className="mb-3 font-semibold text-ink">Needs you</h2>
-          <ul className="divide-y divide-line">
-            {inProgress.map((j) => {
-              const b = bookingById.get(j.bookingId);
-              return (
-                <li key={j.id} className="flex items-center justify-between gap-3 py-3 text-sm">
-                  <span>
-                    <span className="pill mr-2 bg-gold/20 text-bronze">{j.status === 'EN_ROUTE' ? 'On the way' : 'Cleaning now'}</span>
-                    {b ? clientName.get(b.clientId) : 'Job'}
-                  </span>
-                  <Link href={`/crew/jobs/${j.id}`} className="font-semibold text-bronze hover:underline">
-                    Watch progress
+      <section aria-label="Workflow" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {data.cards.map((card) => (
+          <div key={card.key} className="relative overflow-hidden rounded-2xl border border-line bg-white p-5">
+            <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1" style={{ backgroundImage: 'linear-gradient(90deg, #016AEE, #2DBD91)' }} />
+            <div className="flex items-start justify-between gap-3">
+              <Link href={card.href} className="group">
+                <p className="text-sm font-semibold text-slate group-hover:text-bronze">{card.title}</p>
+                <p className="mt-1 font-display text-4xl font-extrabold tracking-tight text-ink">{card.big}</p>
+                <p className="text-xs text-muted">{card.caption}</p>
+              </Link>
+              {card.progress != null && (
+                <div className="flex flex-col items-center">
+                  <ProgressRing value={card.progress} label={card.progressLabel} />
+                  {card.progressLabel && <span className="mt-1 max-w-[90px] text-center text-[10px] leading-tight text-muted">{card.progressLabel}</span>}
+                </div>
+              )}
+            </div>
+            <ul className="mt-4 space-y-1.5 border-t border-line pt-3">
+              {card.links.map((l) => (
+                <li key={l.label}>
+                  <Link href={l.href} className="flex items-center justify-between text-sm hover:text-bronze">
+                    <span className={l.hot ? 'font-semibold text-ink' : 'text-slate'}>{l.label}</span>
+                    <span className={`min-w-[1.75rem] rounded-full px-2 py-0.5 text-center text-xs font-bold ${l.hot ? 'bg-amber-100 text-amber-800' : 'bg-surface text-muted'}`}>
+                      {l.count}
+                    </span>
                   </Link>
                 </li>
-              );
-            })}
-            {drafts.map((i) => (
-              <li key={i.id} className="flex items-center justify-between gap-3 py-3 text-sm">
-                <span>
-                  <span className="pill mr-2 bg-surface text-slate">Draft</span>
-                  {invoiceLabel(i)} · {clientName.get(i.clientId)} · {formatMoney(i.totalCents)}
-                </span>
-                <Link href={`/admin/invoices/${i.id}`} className="font-semibold text-bronze hover:underline">
-                  Review and send
-                </Link>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </section>
+
+      {data.unassignedTotal > 0 && (
+        <section className="rounded-2xl border border-amber-300 bg-amber-50 p-5">
+          <h3 className="font-semibold text-amber-900">
+            {data.unassignedTotal} upcoming clean{data.unassignedTotal === 1 ? ' has' : 's have'} no one assigned
+          </h3>
+          <ul className="mt-2 space-y-1 text-sm text-amber-900">
+            {data.unassigned.map((u) => (
+              <li key={u.bookingId} className="flex justify-between gap-3">
+                <span>{u.clientName}</span>
+                <span>{formatDateLabel(u.start.slice(0, 10))} · {formatSlotLabel(u.start, u.end)}</span>
               </li>
             ))}
           </ul>
+          <Link href="/admin/schedule" className="mt-3 inline-block text-sm font-semibold text-amber-900 underline">Assign a team</Link>
         </section>
       )}
 
-      <section className="card">
-        <h2 className="mb-3 font-semibold text-ink">Next up</h2>
-        {nextUp.length === 0 ? (
-          <p className="text-sm text-muted">Nothing scheduled yet.</p>
-        ) : (
-          <ul className="divide-y divide-line">
-            {nextUp.map((b) => (
-              <li key={b.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
-                <span>
-                  <span className={`pill mr-2 ${b.isQuoteVisit ? 'bg-cream text-bronze' : 'bg-surface text-slate'}`}>
-                    {b.isQuoteVisit ? 'Quote visit' : 'Cleaning'}
-                  </span>
-                  {clientName.get(b.clientId) ?? ''}
-                </span>
-                <span className="text-slate">
-                  {b.slotStart.startsWith(today) ? 'Today' : formatDateLabel(b.slotStart.slice(0, 10))} · {formatSlotLabel(b.slotStart, b.slotEnd)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <section className="card lg:col-span-2">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="font-semibold text-ink">Today's visits</h3>
+            <Link href="/admin/schedule" className="text-sm font-semibold text-bronze hover:underline">Open calendar</Link>
+          </div>
+          {data.visits.length === 0 ? (
+            <p className="text-sm text-muted">Nothing booked today.</p>
+          ) : (
+            <ul className="divide-y divide-line">
+              {data.visits.map((v) => (
+                <li key={v.bookingId} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
+                  <div className="flex items-center gap-3">
+                    <span className="w-28 shrink-0 text-muted">{formatSlotLabel(v.start, v.end)}</span>
+                    <span className="font-semibold text-ink">{v.clientName}</span>
+                    {v.late && <span className="pill bg-red-50 text-red-700">Late</span>}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {!v.isQuoteVisit && (
+                      <span className={`text-xs ${v.staffCount === 0 ? 'font-semibold text-amber-700' : 'text-muted'}`}>
+                        {v.staffCount === 0 ? 'No one assigned' : `${v.crewName ?? 'Team'} · ${v.staffCount} cleaner${v.staffCount === 1 ? '' : 's'}`}
+                      </span>
+                    )}
+                    <span className={`pill ${STATUS[v.status].cls}`}>{STATUS[v.status].label}</span>
+                    {v.jobId && (
+                      <Link href={`/crew/jobs/${v.jobId}`} className="font-semibold text-bronze hover:underline">Open</Link>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
-      {crew && (
-        <div className="card">
-          <h2 className="mb-2 font-semibold text-ink">Crew schedule (default)</h2>
-          <p className="text-sm text-slate">
-            {Math.floor(crew.workStartMinutes / 60)}:00 – {Math.floor(crew.workEndMinutes / 60)}:00 · {crew.homesPerDay} homes a day ·{' '}
-            {crew.commuteBufferMinutes} min between homes
-          </p>
-          <Link href="/admin/crew" className="mt-3 inline-block text-sm font-semibold text-bronze underline">
-            Adjust settings
-          </Link>
-        </div>
-      )}
+        <section className="card">
+          <h3 className="mb-3 font-semibold text-ink">Alerts</h3>
+          {alerts.length === 0 ? (
+            <p className="text-sm text-muted">Nothing new from clients.</p>
+          ) : (
+            <AdminAlertsPanel alerts={alerts.map((a) => ({ id: a.id, triggerEvent: a.triggerEvent, createdAt: a.createdAt.toISOString() }))} />
+          )}
+        </section>
+      </div>
     </div>
   );
 }

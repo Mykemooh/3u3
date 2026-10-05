@@ -1,3 +1,4 @@
+import { belongsTo, notFound } from '@/lib/tenantGuard';
 import { adminSession } from '@/lib/adminApi';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
@@ -16,9 +17,11 @@ const schema = z.object({
 // scheduling engine's slot math in lib/scheduling.ts.
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
-  if (!(await adminSession())) {
+  const guardAdmin = await adminSession();
+  if (!guardAdmin) {
     return NextResponse.json({ error: 'Admin only' }, { status: 403 });
   }
+  if (!(await belongsTo(guardAdmin.tenantId, 'service', params.id))) return notFound();
   const body = await req.json();
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: 'Invalid settings' }, { status: 400 });

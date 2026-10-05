@@ -1,3 +1,4 @@
+import { belongsTo, notFound } from '@/lib/tenantGuard';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
@@ -7,7 +8,9 @@ import { adminSession, forbidden } from '@/lib/adminApi';
 
 /** Admin-only: require a before photo, or skip photo documentation for this job entirely. */
 export async function POST(req: Request, { params }: { params: { jobId: string } }) {
-  if (!(await adminSession())) return forbidden();
+  const guardAdmin = await adminSession();
+  if (!guardAdmin) return forbidden();
+  if (!(await belongsTo(guardAdmin.tenantId, 'job', params.jobId))) return notFound();
   try {
     const viewer = viewerFrom(await getServerSession(authOptions));
     const body = await req.json().catch(() => ({}));

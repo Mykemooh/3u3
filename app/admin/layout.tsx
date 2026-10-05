@@ -3,9 +3,12 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { signOutLink, homeForRole } from '@/lib/nav';
-import SignOutButton from '@/components/SignOutButton';
-import Logo from '@/components/Logo';
+import { homeForRole } from '@/lib/nav';
+import { headers } from 'next/headers';
+import AdminShell from '@/components/admin/AdminShell';
+import { ADMIN_SECTIONS, QUICK_CREATE } from '@/lib/adminNav';
+import { permissionForPath, ADMIN_PERMISSIONS } from '@/lib/permissions';
+import { getUserRole } from '@/lib/roles';
 import AccessNotice from '@/components/AccessNotice';
 import { db } from '@/db/client';
 import { tenants } from '@/db/schema';
@@ -16,31 +19,6 @@ import { isPlatformAccessActive } from '@/lib/platform';
 // crew). Setting this here cascades to all nested /admin pages, so none of
 // them ever get baked into a static build-time snapshot.
 export const dynamic = 'force-dynamic';
-
-const NAV = [
-  { href: '/admin', label: 'Overview' },
-  { href: '/admin/dashboard', label: 'Dashboard' },
-  { href: '/admin/pipeline', label: 'Pipeline' },
-  { href: '/admin/leads', label: 'Leads' },
-  { href: '/admin/estimates', label: 'Estimates' },
-  { href: '/admin/clients', label: 'Clients' },
-  { href: '/admin/schedule', label: 'Schedule' },
-  { href: '/admin/routes', label: 'Routes' },
-  { href: '/admin/team', label: 'Team' },
-  { href: '/admin/bookings', label: 'Bookings' },
-  { href: '/crew', label: 'Jobs & photos' },
-  { href: '/admin/invoices', label: 'Invoices' },
-  { href: '/admin/services', label: 'Services' },
-  { href: '/admin/addons', label: 'Add-ons' },
-  { href: '/admin/rates', label: 'Rates' },
-  { href: '/admin/reviews', label: 'Reviews' },
-  { href: '/admin/supplies', label: 'Supplies' },
-  { href: '/admin/notifications', label: 'Notifications' },
-  { href: '/admin/payroll', label: 'Payroll' },
-  { href: '/admin/integrations', label: 'Integrations' },
-  { href: '/admin/settings', label: 'Settings' },
-  { href: '/billing', label: 'Billing' },
-];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);
@@ -80,35 +58,46 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     );
   }
 
+  // What this person's role may open (lib/roles.ts): the rail only shows
+  // those sections, and a page they can't use explains why instead of
+  // half-loading. The API enforces the same rules (lib/adminApi.ts).
+  const userId = (session.user as { id?: string }).id!;
+  const { role: userRole, permissions } = await getUserRole(userId);
+  const allowed = (perm?: string | null) => !perm || permissions.has(perm as never);
+  const sections = ADMIN_SECTIONS.filter((s) => allowed(s.perm)).map((s) => ({
+    ...s,
+    pages: s.pages.filter((p) => allowed(p.perm ?? s.perm)),
+  }));
+  const quickCreate = QUICK_CREATE.filter((q) => allowed(q.perm));
+  const path = headers().get('x-3u3-path') ?? '/admin';
+  const needed = permissionForPath(path);
+  const blocked = needed && !permissions.has(needed);
+
   return (
-    <div className="min-h-screen bg-white">
-      <header className="bg-ink text-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
-          <div className="flex items-center gap-3">
-            <Logo variant="light" size="sm" />
-            <span className="text-xs font-semibold uppercase tracking-widest text-white/50">Admin</span>
-          </div>
-          <div className="flex items-center gap-4 text-sm">
-            <span className="text-white/60">{session?.user?.name}</span>
-            <SignOutButton />
-          </div>
+    <AdminShell
+      sections={sections}
+      quickCreate={quickCreate}
+      brand={{
+        name: tenant?.name ?? 'Admin',
+        logoUrl: tenant?.logoUrl ?? null,
+        useBrandLogo: !tenant?.logoUrl && /3u3/i.test(tenant?.name ?? ''),
+      }}
+      userName={session.user?.name ?? ''}
+    >
+      <AccessNotice />
+      {blocked ? (
+        <div className="card mx-auto mt-10 max-w-md text-center">
+          <h2 className="text-lg font-bold text-ink">This part of the admin isn't on your role</h2>
+          <p className="mt-2 text-sm text-slate">
+            {userRole?.name ?? 'Your role'} doesn't include{' '}
+            <strong>{ADMIN_PERMISSIONS.find((p) => p.key === needed)?.label ?? needed}</strong>. Ask an owner to add it under
+            Team → Roles.
+          </p>
+          <Link href="/admin" className="btn-primary btn-sm mt-5">Back to today</Link>
         </div>
-        <nav className="mx-auto flex max-w-6xl flex-wrap gap-1 px-6 pb-2">
-          {NAV.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="rounded-lg px-3 py-1.5 text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-      </header>
-      <main className="mx-auto max-w-6xl px-6 py-8">
-        <AccessNotice />
-        {children}
-      </main>
-    </div>
+      ) : (
+        children
+      )}
+    </AdminShell>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { createContext, useContext, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -36,6 +36,9 @@ export type BoardTeam = {
 };
 
 export const ROLE_LABELS: Record<StaffRole, string> = { TEAM_LEAD: 'Team Lead', CLEANER: 'Cleaner', JR_CLEANER: 'Jr. Cleaner' };
+// The company may have renamed these (Team → Roles); the page passes the
+// current names down so every picker shows them.
+const RoleLabels = createContext<Record<StaffRole, string>>(ROLE_LABELS);
 export const ROLE_STYLES: Record<StaffRole, string> = {
   TEAM_LEAD: 'bg-gold/15 text-bronze',
   CLEANER: 'bg-surface text-slate',
@@ -49,7 +52,7 @@ const NONE = 'none';
  * card to move them (one team each); change their role on the card. Saves
  * straight away, and puts the card back if the server refuses.
  */
-export default function TeamBoard({ teams, employees: initial }: { teams: BoardTeam[]; employees: BoardEmployee[] }) {
+export default function TeamBoard({ teams, employees: initial, roleLabels }: { teams: BoardTeam[]; employees: BoardEmployee[]; roleLabels?: Partial<Record<StaffRole, string>> }) {
   const router = useRouter();
   const [employees, setEmployees] = useState(initial);
   const [error, setError] = useState('');
@@ -114,6 +117,7 @@ export default function TeamBoard({ teams, employees: initial }: { teams: BoardT
   ];
 
   return (
+    <RoleLabels.Provider value={{ ...ROLE_LABELS, ...roleLabels }}>
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-2">
         <button onClick={newTeam} className="btn-secondary btn-sm">
@@ -147,6 +151,7 @@ export default function TeamBoard({ teams, employees: initial }: { teams: BoardT
         </div>
       </DndContext>
     </div>
+    </RoleLabels.Provider>
   );
 }
 
@@ -268,6 +273,7 @@ function TeamColumn({
 }
 
 function EmployeeCard({ employee, onRole }: { employee: BoardEmployee; onRole: (userId: string, role: StaffRole) => void }) {
+  const labels = useContext(RoleLabels);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: employee.id });
   return (
     <li
@@ -297,7 +303,7 @@ function EmployeeCard({ employee, onRole }: { employee: BoardEmployee; onRole: (
       >
         {(Object.keys(ROLE_LABELS) as StaffRole[]).map((r) => (
           <option key={r} value={r}>
-            {ROLE_LABELS[r]}
+            {labels[r]}
           </option>
         ))}
       </select>
@@ -312,6 +318,7 @@ const PAY_TYPE_OPTIONS: { value: 'HOURLY' | 'PER_CLEAN' | 'DAY_RATE'; label: str
 ];
 
 function AddEmployeeForm({ teams, onDone }: { teams: BoardTeam[]; onDone: () => void }) {
+  const labels = useContext(RoleLabels);
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -373,7 +380,7 @@ function AddEmployeeForm({ teams, onDone }: { teams: BoardTeam[]; onDone: () => 
           <select className="input" value={form.staffRole} onChange={set('staffRole')}>
             {(Object.keys(ROLE_LABELS) as StaffRole[]).map((r) => (
               <option key={r} value={r}>
-                {ROLE_LABELS[r]}
+                {labels[r]}
               </option>
             ))}
           </select>

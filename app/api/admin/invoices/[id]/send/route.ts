@@ -1,3 +1,5 @@
+import { logChange } from '@/lib/audit';
+import { belongsTo, notFound } from '@/lib/tenantGuard';
 import { adminSession } from '@/lib/adminApi';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
@@ -7,9 +9,11 @@ import { isStripeConfigured } from '@/lib/stripe';
 
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
-  if (!(await adminSession())) {
+  const guardAdmin = await adminSession();
+  if (!guardAdmin) {
     return NextResponse.json({ error: 'Admin only' }, { status: 403 });
   }
+  if (!(await belongsTo(guardAdmin.tenantId, 'invoice', params.id))) return notFound();
 
   if (!isStripeConfigured()) {
     return NextResponse.json(
@@ -20,6 +24,7 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
 
   try {
     const { url } = await sendInvoice(params.id);
+    await logChange({ tenantId: guardAdmin.tenantId, actor: { id: guardAdmin.userId, name: guardAdmin.name }, entityType: 'invoice', entityId: params.id, action: 'sent', summary: 'Sent the invoice' });
     return NextResponse.json({ ok: true, url });
   } catch (err) {
     if (err instanceof InvoiceError) return NextResponse.json({ error: err.message }, { status: 400 });
