@@ -111,6 +111,7 @@ const PATH_RULES: [string, AdminPermission][] = [
   ['/admin/supplies', 'supplies.manage'],
   ['/api/admin/supplies', 'supplies.manage'],
   ['/api/admin/kb', 'help.manage'],
+  ['/api/admin/tex', 'messages.manage'],
   ['/admin/settings', 'settings.manage'],
   ['/admin/services', 'settings.manage'],
   ['/admin/integrations', 'settings.manage'],

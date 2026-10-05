@@ -3,6 +3,7 @@ import { Inter, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import Providers from './providers';
 import BrandWatermark from '@/components/BrandWatermark';
+import TexWidget from '@/components/TexWidget';
 
 /**
  * Two faces, per the brand book: Inter for body/UI text, Plus Jakarta Sans
@@ -33,7 +34,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <BrandWatermark />
         <div className="relative z-10">
-          <Providers>{children}</Providers>
+          <Providers>
+            {children}
+            <TexWidget />
+          </Providers>
         </div>
       </body>
     </html>

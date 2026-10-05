@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-export type Tab = { href: string; label: string; icon: 'home' | 'calendar' | 'receipt' | 'list' | 'grid' };
+export type Tab = { href: string; label: string; icon: 'home' | 'calendar' | 'receipt' | 'list' | 'grid' | 'help' };
 
 const ICONS: Record<Tab['icon'], JSX.Element> = {
   home: <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5Z" />,
@@ -15,6 +15,12 @@ const ICONS: Record<Tab['icon'], JSX.Element> = {
   ),
   receipt: <path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Zm3 5h6M9 12h6" />,
   list: <path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" />,
+  help: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5h.01" />
+    </>
+  ),
   grid: (
     <>
       <rect x="3" y="3" width="7" height="7" rx="1.5" />

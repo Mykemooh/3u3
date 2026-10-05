@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { receiveInbound } from '@/lib/messaging';
 import { validTwilioSignature } from '@/lib/sms';
 import { appUrl } from '@/lib/url';
+import { texReplyToText } from '@/lib/tex';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +28,11 @@ export async function POST(req: Request) {
   if (!candidates.some((url) => validTwilioSignature(url, params, signature))) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 403 });
   }
-  await receiveInbound({ from: params.From ?? '', to: params.To ?? '', body: params.Body ?? '', sid: params.MessageSid ?? null });
+  const got = await receiveInbound({ from: params.From ?? '', to: params.To ?? '', body: params.Body ?? '', sid: params.MessageSid ?? null });
+  // Tex answers if the company turned it on — never to STOP/START, which
+  // Twilio and the carriers answer themselves.
+  if (got && !got.consent && got.tenant.texSmsAutoReply) {
+    await texReplyToText({ tenant: got.tenant, client: got.client, from: params.From ?? '', body: params.Body ?? '' }).catch((err) => console.error('[twilio/sms] Tex reply failed', err));
+  }
   return twiml();
 }

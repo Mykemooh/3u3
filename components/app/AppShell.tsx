@@ -8,10 +8,12 @@ export const CUSTOMER_TABS: Tab[] = [
   { href: '/account', label: 'Home', icon: 'home' },
   { href: '/book', label: 'Book', icon: 'calendar' },
   { href: '/account/invoices', label: 'Invoices', icon: 'receipt' },
+  { href: '/help', label: 'Help', icon: 'help' },
 ];
 
 export const CREW_TABS: Tab[] = [
   { href: '/crew', label: 'Jobs', icon: 'list' },
+  { href: '/crew/help', label: 'How-to', icon: 'help' },
 ];
 
 /**
