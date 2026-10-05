@@ -115,7 +115,7 @@ export default async function AdminToday() {
               {data.visits.map((v) => (
                 <li key={v.bookingId} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
                   <div className="flex items-center gap-3">
-                    <span className="w-28 shrink-0 text-muted">{formatSlotLabel(v.start, v.end)}</span>
+                    <span className="w-36 shrink-0 whitespace-nowrap text-muted">{formatSlotLabel(v.start, v.end)}</span>
                     <span className="font-semibold text-ink">{v.clientName}</span>
                     {v.late && <span className="pill bg-red-50 text-red-700">Late</span>}
                   </div>

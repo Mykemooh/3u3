@@ -1028,6 +1028,8 @@ export const recurringSeries = pgTable('recurring_series', {
   status: text('status', { enum: ['ACTIVE', 'PAUSED', 'ENDED'] }).notNull().default('ACTIVE'),
   templateId: text('template_id'),
   notes: text('notes'),
+  // Skip US federal holidays the business is closed (lib/recurring.ts).
+  skipHolidays: boolean('skip_holidays').notNull().default(false),
   // How far ahead visits have been created (YYYY-MM-DD).
   generatedThrough: text('generated_through'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdate(() => new Date()),

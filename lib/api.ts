@@ -15,3 +15,16 @@ export function mfaApiError(err: unknown) {
   console.error(err);
   return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 });
 }
+
+/** Errors that carry their own HTTP status (series, templates, roles…) become their message. */
+export function statusApiError(err: unknown) {
+  const e = err as { status?: number; message?: string } | null;
+  if (e && typeof e.status === 'number' && e.status >= 400 && e.status < 500 && e.message) {
+    return NextResponse.json({ error: e.message }, { status: e.status });
+  }
+  if (err instanceof Error && ['DoubleBookingError', 'DispatchError', 'TemplateError', 'SeriesError'].includes(err.constructor.name)) {
+    return NextResponse.json({ error: err.message }, { status: 400 });
+  }
+  console.error(err);
+  return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 });
+}

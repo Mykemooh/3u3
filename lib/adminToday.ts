@@ -154,7 +154,7 @@ export async function getAdminToday(tenantId: string) {
       title: 'Quotes',
       big: String(sent.length),
       caption: 'Waiting on the client',
-      progress: decided.length + sent.length ? approved.length / Math.max(1, decided.length) : null,
+      progress: decided.length ? approved.length / decided.length : null,
       progressLabel: decided.length ? `${Math.round((approved.length / decided.length) * 100)}% won` : undefined,
       href: '/admin/estimates',
       links: [

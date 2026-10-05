@@ -24,7 +24,7 @@ export async function makeUser(tenantId: string, role: 'ADMIN' | 'CLEANER' | 'CU
     role,
     name: `Test ${role} ${n}`,
     email: `test-${role.toLowerCase()}-${n}-${id.slice(0, 6)}@example.com`,
-    phone: role === 'CUSTOMER' ? `+1281555${String(1000 + n).padStart(4, '0')}${id.slice(0, 1).replace(/\D/, '0')}`.slice(0, 12) : null,
+    phone: role === 'CUSTOMER' ? `+1${String(Math.floor(2000000000 + Math.random() * 7999999999))}` : null,
     staffRole: role === 'CLEANER' ? 'CLEANER' : null,
     ...extra,
   });

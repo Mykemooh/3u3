@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { sendBookingReminders, sendQuoteReminders } from '@/lib/reminders';
 import { expireStaleStandbyOffers } from '@/lib/standby';
+import { extendAllSeries } from '@/lib/recurring';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +18,9 @@ export async function GET(req: Request) {
   if (!secret || req.headers.get('authorization') !== `Bearer ${secret}`) {
     return NextResponse.json({ error: 'Not allowed' }, { status: 401 });
   }
+  // Top up recurring cleans first, so today's new visits get their
+  // reminders in the same run.
+  const series = await extendAllSeries();
   const [booking, quote, standby] = await Promise.all([sendBookingReminders(), sendQuoteReminders(), expireStaleStandbyOffers()]);
-  return NextResponse.json({ booking, quote, standby });
+  return NextResponse.json({ series, booking, quote, standby });
 }

@@ -213,11 +213,13 @@ export async function rescheduleBooking(
     if (clash) throw new DispatchError(`${crew.name} is already booked ${clash.slotStart.slice(11, 16)}–${clash.slotEnd.slice(11, 16)} that day`);
 
     try {
-      await tx.update(bookings).set({ crewId, slotStart, slotEnd }).where(eq(bookings.id, bookingId));
+      // A moved visit in a recurring series becomes an exception, so the
+      // series never puts it back where it was (lib/recurring.ts).
+      await tx.update(bookings).set({ crewId, slotStart, slotEnd, isSeriesException: true }).where(eq(bookings.id, bookingId));
     } catch (err: any) {
-      // bookings_crew_slot_unique also counts cancelled bookings.
+      // The no-double-booking index (live bookings only) caught a race.
       if (err?.cause?.code === '23505' || err?.code === '23505') {
-        throw new DispatchError(`${crew.name} has a cancelled booking held at exactly that start time — start a few minutes later`);
+        throw new DispatchError(`${crew.name} was just booked at exactly that start time — pick another`);
       }
       throw err;
     }

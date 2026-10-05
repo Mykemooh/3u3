@@ -407,7 +407,7 @@ export async function rescheduleBookingByClient(input: {
 
         await tx
           .update(bookings)
-          .set({ crewId: team.id, slotStart: input.slotStart, slotEnd: input.slotEnd })
+          .set({ crewId: team.id, slotStart: input.slotStart, slotEnd: input.slotEnd, isSeriesException: true })
           .where(eq(bookings.id, booking.id));
 
         return { ...booking, crewId: team.id, slotStart: input.slotStart, slotEnd: input.slotEnd };

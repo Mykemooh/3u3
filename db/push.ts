@@ -822,6 +822,8 @@ async function main() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 
+    ALTER TABLE recurring_series ADD COLUMN IF NOT EXISTS skip_holidays BOOLEAN NOT NULL DEFAULT false;
+
     CREATE TABLE IF NOT EXISTS schedule_templates (
       id TEXT PRIMARY KEY,
       tenant_id TEXT NOT NULL REFERENCES tenants(id),
