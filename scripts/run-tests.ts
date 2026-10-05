@@ -32,7 +32,7 @@ async function main() {
     NEXTAUTH_SECRET: 'test-secret-0123456789abcdef',
     NEXTAUTH_URL: 'http://localhost:3000',
     HOME_PROFILE_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64'),
-    NODE_ENV: 'test',
+    NODE_ENV: 'test' as const,
   };
   for (const script of ['db/push.ts', 'db/seed.ts']) {
     const r = spawnSync('npx', ['tsx', script], { env, stdio: 'inherit' });
