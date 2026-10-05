@@ -21,20 +21,11 @@ export default function ServicesIndex() {
       <main>
         <section className="px-6 pb-12 pt-12 text-center md:pt-16">
           <div className="container-narrow">
-            <h1 className="mt-4 flex flex-wrap items-baseline justify-center gap-x-1.5 gap-y-2">
-              <span className="text-7xl font-black leading-none text-ink md:text-9xl">3</span>
-              <span className="text-2xl font-semibold leading-none text-slate md:text-3xl">Services</span>
-              <span className="leading-none">
-                <span className="bg-gradient-to-br from-gold to-green-light bg-clip-text text-7xl font-black text-transparent md:text-9xl">
-                  U
-                </span>
-                <span className="text-2xl font-semibold text-slate md:text-3xl">nder</span>
-              </span>
-              <span className="text-7xl font-black leading-none text-ink md:text-9xl">3</span>
-              <span className="text-2xl font-semibold leading-none text-slate md:text-3xl">Hours.</span>
-            </h1>
-            <p className="lead measure mx-auto mt-8">
-              3 sparkling options, each designed to deliver a professionally cleaned space in Under 3 Hours.
+            <p className="eyebrow">Our services</p>
+            <h1 className="display mx-auto mt-4 max-w-2xl">Cleaning, priced at your door.</h1>
+            <p className="lead measure mx-auto mt-6">
+              Every home is walked and priced in person — never a guess from a form — then cleaned room by room,
+              with before-and-after photos waiting in your account when the crew leaves.
             </p>
           </div>
         </section>

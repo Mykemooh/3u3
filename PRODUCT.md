@@ -18,7 +18,7 @@ web
 
 ## Positioning
 
-The name is the mechanism: **"Three cleaners. Under three hours."** — a crew of three works a home together (kitchen / bathrooms / floors+bedrooms) and most homes are done inside three hours, so a homeowner gets a day back, not just a clean house. Paired with **price-at-the-door, never a guessed online quote** — a real person walks the home and prices it on the spot, with the honest caveat that a first deep clean, empty move-out, or larger home can run longer, said before booking, not discovered after.
+**Price-at-the-door, never a guessed online quote** — a real person walks the home and prices it on the spot, and says before booking (not after) when a first deep clean, empty move-out, or larger home will run longer. A crew works the home together and times each room, so visit lengths are quoted from real numbers rather than a slogan. The company makes **no fixed promise about crew size or hours per home** (the earlier "three cleaners, under three hours" line is retired).
 
 Family-owned (not a franchise or a route-based service): the founders (Betty & Mike) and their family's name are on every job. The business explicitly commits to only making claims it can already stand behind — no "insured and bonded," no customer counts, no manufactured testimonials — until verifiably true.
 
@@ -33,7 +33,7 @@ Family-owned (not a franchise or a route-based service): the founders (Betty & M
 
 - Stack: Next.js (App Router) + Drizzle ORM/Postgres, NextAuth, Tailwind, Stripe (Payment Element, Invoices), Vercel Blob, Mapbox (geocoding/directions/nav).
 - Roles: `CUSTOMER`, `CLEANER` (with `TEAM_LEAD` / `CLEANER` / `JR_CLEANER` sub-roles), `ADMIN`, `SUPER_ADMIN`.
-- The schema has latent multi-tenant plumbing (`tenants.isPlatform`, `SUPER_ADMIN`) for a possible future parent product ("TrashCan") that would let other cleaning businesses run on this stack — but that platform/super-admin layer is explicitly **out of scope for 3U3 product work** right now and is being designed separately. 3U3 itself is built and positioned as a single cleaning company's product, not a multi-tenant SaaS pitch, until that decision changes.
+- **TrashCan** is the SaaS product this codebase now is: a multi-tenant platform (`tenants.isPlatform`, `SUPER_ADMIN`) that any cleaning company can sign up for and run on. 3U3 Cleaning is its first tenant and the reference customer. Each company renames its own roles (defaults: Admin, Team Lead, Cleaner, Jr. Cleaner, Client), brands its portals, and turns integrations on with its own keys.
 - Legal/compliance constraints that shape the product, not just the code: tips are taxable wages (IRS Topic 761), not gifts — payroll logic must treat them as such; geocoded coordinates are never persisted beyond a single trip's cache, per Mapbox's free-tier ToS.
 - No service pricing is ever published on the public site — pricing is confirmed in person by design, not a placeholder gap.
 
@@ -58,7 +58,7 @@ Family-owned (not a franchise or a route-based service): the founders (Betty & M
 1. Trust is earned by specificity, not adjectives — every claim on the product must be one the business can already stand behind.
 2. Price is a conversation at the door, never a number printed or guessed online.
 3. The crew's tools (offline-first app, fair/configurable pay, supply reporting) are as much the product as the customer-facing site — a cleaning company that treats its crew well is the actual differentiator behind the trust claims.
-4. The 3U3 product and the future multi-tenant/SaaS platform layer (TrashCan) are deliberately kept separate; do not let platform/SUPER_ADMIN concerns leak into 3U3-facing design.
+4. TrashCan is the platform; each company's portals are theirs. Platform/SUPER_ADMIN concerns stay on /platform and never leak into a company's own admin, crew or client screens, which carry that company's name and brand.
 
 ## Accessibility & Inclusion
 

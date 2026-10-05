@@ -12,7 +12,7 @@ white composition, which is a perfectly good place to launch from.
 
 ## The story, in one line
 
-Three cleaners arrive, are welcomed in, work through the home, leave — and
+A small crew arrives, is welcomed in, work through the home, leave — and
 the homeowner walks back into a house that feels different.
 
 Quiet and unhurried. Nobody rushes, nobody mugs at the camera. The feeling

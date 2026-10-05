@@ -54,23 +54,24 @@ export const ABOUT_CLOSING =
   "If those sound like the people you'd want in your home, start with a free walkthrough. We come out, look at the actual house, tell you honestly what it needs, and give you a price on the spot.";
 
 /**
- * Where the name comes from — the most commercially useful fact on the page,
- * so it gets its own band rather than a line buried in the story.
+ * How a visit works — the most commercially useful fact on the page, so it
+ * gets its own band rather than a line buried in the story.
  *
- * It is written as a promise with its exceptions attached. A claim a customer
- * can catch you failing is worth less than the same claim with the honest
- * caveat already said out loud.
+ * It makes no promise about crew size or a fixed number of hours: how long
+ * a home takes depends on the home, and the walkthrough is where that gets
+ * said. Room timers in the crew app give the company real numbers to quote
+ * from instead of a slogan.
  */
 export const NAME_STORY = {
-  heading: 'Three cleaners. Under three hours.',
+  heading: 'A crew, not a stranger for the day.',
   body: [
-    "That is the whole idea, and it is why we will never send one person to spend a day in your house. A crew of three moves through a home together — one takes the kitchen, one the bathrooms, one the floors and bedrooms — and most homes are finished and gone inside three hours.",
-    "So you get your Saturday back, not just a clean house. Nobody is in your space long enough for it to feel like an intrusion, and no one's day gets stretched out past what the job is worth.",
+    "We send a small crew that works through your home together, each person taking a part of it, so nobody is in your space all day and you get your time back — not just a clean house.",
+    "Every room is checked off and photographed before and after, and the crew times each room as they go. That is how we can tell you honestly how long your home takes, and how we keep getting better at it without cutting corners.",
   ],
   caveat:
-    "The honest exceptions: a first deep clean, an empty move-out, or a larger home can run longer. The walkthrough is where we tell you which one you are — before you book, not after.",
+    "How long a visit runs depends on your home: a first deep clean, an empty move-out or a larger home takes longer. The walkthrough is where we tell you what to expect — before you book, not after.",
 };
 
 /** The shorter version, for the block on the home page. */
 export const ABOUT_TEASER =
-  "The name is the promise — three cleaners, under three hours, and your Saturday back. We're parents of three young boys, raising them in Katy and building this around them: on faith, on family, and on a future worth handing to somebody.";
+  "A crew, not a stranger for the day — and your time back, not just a clean house. We're parents of three young boys, raising them in Katy and building this around them: on faith, on family, and on a future worth handing to somebody.";
