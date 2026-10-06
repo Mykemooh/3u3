@@ -13,6 +13,9 @@ const TYPES: { key: AuditEntity | 'all'; label: string }[] = [
   { key: 'role', label: 'Roles' },
   { key: 'payroll_run', label: 'Payroll' },
   { key: 'settings', label: 'Settings' },
+  { key: 'integration', label: 'Integrations' },
+  { key: 'api_key', label: 'API keys' },
+  { key: 'webhook', label: 'Webhooks' },
 ];
 
 /** Change history across the company — who changed what, when. */

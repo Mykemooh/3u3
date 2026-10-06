@@ -1,3 +1,4 @@
+import { reviewEvent } from '@/lib/events';
 import { db } from '@/db/client';
 import { reviews, bookings, users } from '@/db/schema';
 import { and, desc, eq } from 'drizzle-orm';
@@ -54,6 +55,7 @@ export async function submitReview(input: { tenantId: string; bookingId: string;
   } catch (err) {
     console.warn('[reviews] owner notification failed:', err);
   }
+  await reviewEvent(id);
 
   return id;
 }

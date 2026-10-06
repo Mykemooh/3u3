@@ -1,3 +1,4 @@
+import { walkthroughLeadEvent } from '@/lib/events';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/db/client';
@@ -158,6 +159,8 @@ export async function POST(req: Request) {
       });
       await sendEmail({ to: ownerEmail, subject, html });
     }
+
+    await walkthroughLeadEvent(bookingId);
 
     return NextResponse.json({ bookingId, slotStart, slotEnd, customerEmailSent });
   } catch (err) {

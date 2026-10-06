@@ -1,3 +1,4 @@
+import { bookingEvent, bookingsCancelled, flushEvents } from '@/lib/events';
 import { db } from '@/db/client';
 import { recurringSeries, bookings, jobs, crews, users, serviceTypes, clientRates, addresses } from '@/db/schema';
 import { and, eq, gte, inArray } from 'drizzle-orm';
@@ -323,6 +324,8 @@ export async function generateVisits(seriesId: string, through?: string) {
   if (!series.generatedThrough || until > series.generatedThrough) {
     await db.update(recurringSeries).set({ generatedThrough: until }).where(eq(recurringSeries.id, seriesId));
   }
+  // booking.created webhooks were queued per visit; send them together.
+  if (created.length) await flushEvents(series.tenantId);
   return { created, conflicts };
 }
 
@@ -360,6 +363,7 @@ export async function skipVisit(tenantId: string, bookingId: string, actor?: Act
   const job = (await db.select().from(jobs).where(eq(jobs.bookingId, bookingId)).limit(1))[0];
   if (job && job.status !== 'PENDING') throw new SeriesError('This visit has already started.');
   await db.update(bookings).set({ status: 'CANCELLED', isSeriesException: true }).where(eq(bookings.id, bookingId));
+  await bookingEvent('booking.cancelled', bookingId);
   await logChange({ tenantId, actor, entityType: booking.seriesId ? 'series' : 'booking', entityId: booking.seriesId ?? booking.id, action: 'visit_skipped', summary: `Skipped the visit on ${booking.slotStart.slice(0, 10)}` });
   return booking;
 }
@@ -391,6 +395,7 @@ export async function changeFuture(tenantId: string, seriesId: string, fromDate:
   const replaced = await unstartedVisits(seriesId, fromDate);
   if (replaced.length) {
     await db.update(bookings).set({ status: 'CANCELLED' }).where(inArray(bookings.id, replaced.map((b) => b.id)));
+    await bookingsCancelled(tenantId, replaced.map((b) => b.id));
   }
 
   const isFirst = fromDate <= old.startDate;
@@ -441,7 +446,10 @@ export async function setSeriesStatus(tenantId: string, seriesId: string, status
   let removed = 0;
   if (status !== 'ACTIVE') {
     const upcoming = await unstartedVisits(seriesId, today);
-    if (upcoming.length) await db.update(bookings).set({ status: 'CANCELLED' }).where(inArray(bookings.id, upcoming.map((b) => b.id)));
+    if (upcoming.length) {
+      await db.update(bookings).set({ status: 'CANCELLED' }).where(inArray(bookings.id, upcoming.map((b) => b.id)));
+      await bookingsCancelled(tenantId, upcoming.map((b) => b.id));
+    }
     removed = upcoming.length;
   }
   await db

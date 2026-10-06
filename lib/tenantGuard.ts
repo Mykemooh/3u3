@@ -1,5 +1,5 @@
 import { db } from '@/db/client';
-import { bookings, invoices, quotes, serviceTypes, addOnServices, users, jobs } from '@/db/schema';
+import { bookings, invoices, quotes, serviceTypes, addOnServices, users, jobs, apiKeys, webhookEndpoints, webhookDeliveries } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
@@ -9,7 +9,7 @@ import { NextResponse } from 'next/server';
  * change another's records by guessing an id (the Phase 3 multi-tenant
  * rule). A job is checked through its booking.
  */
-export type GuardedRecord = 'booking' | 'invoice' | 'quote' | 'service' | 'addon' | 'user' | 'job';
+export type GuardedRecord = 'booking' | 'invoice' | 'quote' | 'service' | 'addon' | 'user' | 'job' | 'api_key' | 'webhook' | 'webhook_delivery';
 
 export async function belongsTo(tenantId: string, kind: GuardedRecord, id: string): Promise<boolean> {
   switch (kind) {
@@ -25,6 +25,12 @@ export async function belongsTo(tenantId: string, kind: GuardedRecord, id: strin
       return (await db.select({ t: addOnServices.tenantId }).from(addOnServices).where(eq(addOnServices.id, id)).limit(1))[0]?.t === tenantId;
     case 'user':
       return (await db.select({ t: users.tenantId }).from(users).where(eq(users.id, id)).limit(1))[0]?.t === tenantId;
+    case 'api_key':
+      return (await db.select({ t: apiKeys.tenantId }).from(apiKeys).where(eq(apiKeys.id, id)).limit(1))[0]?.t === tenantId;
+    case 'webhook':
+      return (await db.select({ t: webhookEndpoints.tenantId }).from(webhookEndpoints).where(eq(webhookEndpoints.id, id)).limit(1))[0]?.t === tenantId;
+    case 'webhook_delivery':
+      return (await db.select({ t: webhookDeliveries.tenantId }).from(webhookDeliveries).where(eq(webhookDeliveries.id, id)).limit(1))[0]?.t === tenantId;
     case 'job': {
       const job = (await db.select({ b: jobs.bookingId }).from(jobs).where(eq(jobs.id, id)).limit(1))[0];
       return job ? belongsTo(tenantId, 'booking', job.b) : false;

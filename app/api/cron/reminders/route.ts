@@ -4,6 +4,7 @@ import { sendBookingReminders, sendQuoteReminders } from '@/lib/reminders';
 import { expireStaleStandbyOffers } from '@/lib/standby';
 import { extendAllSeries } from '@/lib/recurring';
 import { runAutomations } from '@/lib/automations';
+import { processDueDeliveries } from '@/lib/webhooks';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,6 +31,11 @@ export async function GET(req: Request) {
     console.error('[cron] automations failed', err);
     return null;
   });
+  // Webhook retries that came due since the last event (lib/webhooks.ts).
+  const webhooks = await processDueDeliveries({ limit: 200 }).catch((err) => {
+    console.error('[cron] webhook retries failed', err);
+    return 0;
+  });
   await recordHeartbeat('cron:reminders', automations !== null, { booking, quote, standby, automations });
-  return NextResponse.json({ series, booking, quote, standby, automations });
+  return NextResponse.json({ series, booking, quote, standby, automations, webhooks });
 }

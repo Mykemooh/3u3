@@ -1,3 +1,4 @@
+import { jobEvent } from '@/lib/events';
 import { db } from '@/db/client';
 import { jobs, jobChecklistItems, jobMedia, bookings, users, serviceTypes, addresses, invoices, tenants } from '@/db/schema';
 import { automationState, sendAutomationMessage } from '@/lib/automations';
@@ -168,6 +169,7 @@ export async function startJob(
     .update(jobs)
     .set({ status: 'IN_PROGRESS', startedAt, cleanerNotesAckAt, ...stamp, ...CLEAR_TRACKING })
     .where(eq(jobs.id, jobId));
+  await jobEvent('job.started', jobId);
   return { ...job, ...CLEAR_TRACKING, ...stamp, status: 'IN_PROGRESS' as const, startedAt, cleanerNotesAckAt };
 }
 
@@ -430,6 +432,7 @@ export async function completeJob(jobId: string, viewer: Viewer | null, position
   } catch (err) {
     console.error('[jobs] completion notifications failed for job', jobId, err);
   }
+  await jobEvent('job.completed', jobId);
 
   return { alreadyComplete: false as const, invoiceId };
 }

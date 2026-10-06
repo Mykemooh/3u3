@@ -99,6 +99,7 @@ export const ADMIN_SECTIONS: NavSection[] = [
       { href: '/admin/services', label: 'Services' },
       { href: '/admin/automations', label: 'Reminders & follow-ups' },
       { href: '/admin/integrations', label: 'Integrations' },
+      { href: '/admin/developers', label: 'API and webhooks' },
       { href: '/billing', label: 'Billing', perm: 'billing.manage' },
     ],
   },

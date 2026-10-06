@@ -1,3 +1,4 @@
+import { invoiceEvent } from '@/lib/events';
 import { db } from '@/db/client';
 import { invoices, invoiceItems, bookings, users, serviceTypes, addresses, tenants } from '@/db/schema';
 import { and, eq, gte, sql } from 'drizzle-orm';
@@ -349,6 +350,7 @@ export async function sendInvoice(invoiceId: string): Promise<{ url: string }> {
       relatedBookingId: invoice.bookingId,
     });
   }
+  await invoiceEvent('invoice.sent', invoiceId);
 
   return { url: hostedUrl };
 }
@@ -379,6 +381,7 @@ export async function confirmInvoicePaid(stripeInvoice: Stripe.Invoice) {
     .update(invoices)
     .set({ status: 'PAID', paidAt: new Date(), stripePaymentIntentId: paymentIntentId, receiptUrl })
     .where(eq(invoices.id, invoice.id));
+  await invoiceEvent('invoice.paid', invoice.id);
 
   const client = (await db.select().from(users).where(eq(users.id, invoice.clientId)).limit(1))[0];
   const items = await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoice.id));

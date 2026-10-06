@@ -123,6 +123,8 @@ const PATH_RULES: [string, AdminPermission][] = [
   ['/api/admin/automations', 'settings.manage'],
   ['/api/admin/dashboard-settings', 'settings.manage'],
   ['/api/admin/connect', 'settings.manage'],
+  ['/admin/developers', 'settings.manage'],
+  ['/api/admin/developers', 'settings.manage'],
   ['/billing', 'billing.manage'],
   ['/api/admin/billing', 'billing.manage'],
 ];

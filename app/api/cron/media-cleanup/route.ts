@@ -1,3 +1,4 @@
+import { processDueDeliveries } from '@/lib/webhooks';
 import { NextResponse } from 'next/server';
 import { recordHeartbeat } from '@/lib/health';
 import { cleanupExpiredMedia, enforceStorageBudget } from '@/lib/mediaRetention';
@@ -20,6 +21,8 @@ export async function GET(req: Request) {
   try {
     const expired = await cleanupExpiredMedia();
     const budget = await enforceStorageBudget();
+    // A second daily pass at webhook retries (the reminders job does one too).
+    await processDueDeliveries({ limit: 200 }).catch((err) => console.error('[cron] webhook retries failed', err));
     await recordHeartbeat('cron:media-cleanup', true, { expired, budget });
     return NextResponse.json({ expired, budget });
   } catch (err) {

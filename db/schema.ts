@@ -1215,3 +1215,59 @@ export const heartbeats = pgTable('heartbeats', {
   ok: boolean('ok').notNull(),
   detail: text('detail'),
 });
+
+// ---------------------------------------------------------------------------
+// Developers: company API keys and outgoing webhooks (lib/apiKeys.ts,
+// lib/webhooks.ts). A key is stored only as its sha256 — the full key is
+// shown once, when it's made. Webhook signing secrets are sealed with
+// lib/secretBox.ts (encrypted when HOME_PROFILE_ENCRYPTION_KEY is set).
+// ---------------------------------------------------------------------------
+export const apiKeys = pgTable('api_keys', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  name: text('name').notNull(),
+  prefix: text('prefix').notNull(),
+  keyHash: text('key_hash').notNull(),
+  createdByUserId: text('created_by_user_id'),
+  lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  ...timestamps,
+}, (t) => ({
+  hashUnique: uniqueIndex('api_keys_hash_unique').on(t.keyHash),
+  tenantIdx: index('api_keys_tenant_idx').on(t.tenantId),
+}));
+
+export const webhookEndpoints = pgTable('webhook_endpoints', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  url: text('url').notNull(),
+  description: text('description'),
+  // Comma-separated event types, or "*" for every event.
+  events: text('events').notNull().default('*'),
+  secret: text('secret').notNull(),
+  active: boolean('active').notNull().default(true),
+  createdByUserId: text('created_by_user_id'),
+  ...timestamps,
+  updatedAt: timestamp('updated_at', { withTimezone: true }),
+}, (t) => ({
+  tenantIdx: index('webhook_endpoints_tenant_idx').on(t.tenantId),
+}));
+
+export const webhookDeliveries = pgTable('webhook_deliveries', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  endpointId: text('endpoint_id').notNull().references(() => webhookEndpoints.id, { onDelete: 'cascade' }),
+  eventId: text('event_id').notNull(),
+  eventType: text('event_type').notNull(),
+  payload: text('payload').notNull(),
+  status: text('status', { enum: ['PENDING', 'SUCCEEDED', 'FAILED'] }).notNull().default('PENDING'),
+  attempts: integer('attempts').notNull().default(0),
+  nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }),
+  lastStatusCode: integer('last_status_code'),
+  lastError: text('last_error'),
+  deliveredAt: timestamp('delivered_at', { withTimezone: true }),
+  ...timestamps,
+}, (t) => ({
+  dueIdx: index('webhook_deliveries_due_idx').on(t.status, t.nextAttemptAt),
+  tenantIdx: index('webhook_deliveries_tenant_idx').on(t.tenantId, t.createdAt),
+}));

@@ -1,3 +1,4 @@
+import { bookingEvent } from '@/lib/events';
 import { db } from '@/db/client';
 import {
   bookings, jobs, jobChecklistItems, checklistTemplates, checklistTemplateItems,
@@ -88,7 +89,7 @@ export async function createBooking(input: {
   const newStart = toMinutes(input.slotStart);
   const newEnd = toMinutes(input.slotEnd);
 
-  return db.transaction(async (tx) => {
+  const createdId = await db.transaction(async (tx) => {
     const sameCrewBookings = await tx.select().from(bookings).where(eq(bookings.crewId, input.crewId));
     const sameDayBookings = sameCrewBookings.filter(
       (b) => b.status !== 'CANCELLED' && b.slotStart.startsWith(dateOnly),
@@ -217,6 +218,11 @@ export async function createBooking(input: {
 
     return bookingId;
   });
+  // Webhooks (lib/events.ts). A walkthrough is reported as lead.created
+  // by the lead form instead; recurring visits are queued and sent once
+  // the whole batch exists.
+  if (!input.isQuoteVisit) await bookingEvent('booking.created', createdId, { sendNow: !input.seriesId });
+  return createdId;
 }
 
 /**
@@ -446,5 +452,6 @@ export async function updateBookingCadenceByClient(input: {
 export async function cancelBookingByClient(input: { bookingId: string; clientId: string }) {
   const booking = await loadEditableClientBooking(input.bookingId, input.clientId);
   await db.update(bookings).set({ status: 'CANCELLED' }).where(eq(bookings.id, booking.id));
+  await bookingEvent('booking.cancelled', booking.id);
   return booking;
 }

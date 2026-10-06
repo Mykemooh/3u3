@@ -1,6 +1,6 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '@/db/client';
-import { integrations, tenants } from '@/db/schema';
+import { apiKeys, integrations, tenants, webhookEndpoints } from '@/db/schema';
 
 /**
  * Admin → Settings → Integrations: every outside service a company can
@@ -78,6 +78,20 @@ export const INTEGRATIONS: IntegrationDef[] = [
     ],
     getFrom: { label: 'developer.intuit.com', url: 'https://developer.intuit.com/app/developer/myapps' },
     status: (c) => (c.providers.has('QUICKBOOKS') ? 'connected' : 'needs_connect'),
+  },
+  {
+    key: 'zapier',
+    name: 'Zapier, Make and n8n',
+    group: 'Leads and automation',
+    does: 'API keys to send leads in, and signed webhooks out when a lead, booking, job, invoice or review changes. No outside keys needed.',
+    env: [],
+    steps: [
+      'Open Settings → API and webhooks.',
+      'To send leads in (Angi, Thumbtack, Facebook Lead Ads, a website form): create an API key and use it in a Zapier "Webhooks by Zapier → POST" step to <site>/api/hooks/leads.',
+      'To get events out: add a webhook address (for example a Zapier "Catch Hook" URL) and pick the events.',
+    ],
+    manage: { label: 'Settings → API and webhooks', href: '/admin/developers' },
+    status: (c) => ((c.counts.apiKeys ?? 0) + (c.counts.webhooks ?? 0) > 0 ? 'connected' : 'not_used'),
   },
   {
     key: 'resend',
@@ -164,7 +178,10 @@ export function statusOf(def: IntegrationDef, ctx: StatusContext): IntegrationSt
 }
 
 /** Small per-company counts some statuses read. */
-const COUNTERS: Record<string, (tenantId: string, userId: string | null) => Promise<number>> = {};
+const COUNTERS: Record<string, (tenantId: string, userId: string | null) => Promise<number>> = {
+  apiKeys: async (t) => (await db.select({ id: apiKeys.id }).from(apiKeys).where(and(eq(apiKeys.tenantId, t), isNull(apiKeys.revokedAt)))).length,
+  webhooks: async (t) => (await db.select({ id: webhookEndpoints.id }).from(webhookEndpoints).where(and(eq(webhookEndpoints.tenantId, t), eq(webhookEndpoints.active, true)))).length,
+};
 
 export async function statusContext(tenantId: string, userId: string | null): Promise<StatusContext> {
   const [tenant] = await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1);
