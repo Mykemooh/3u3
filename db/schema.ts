@@ -1365,6 +1365,7 @@ export const backgroundChecks = pgTable('background_checks', {
 }, (t) => ({
   candidateIdx: index('background_checks_candidate_idx').on(t.candidateId),
   tenantUserIdx: index('background_checks_tenant_user_idx').on(t.tenantId, t.userId),
+}));
 
 // Changes Tex has proposed and is waiting to confirm (lib/texActions.ts):
 // a reschedule, a cancellation, an account update, or proving who's on
