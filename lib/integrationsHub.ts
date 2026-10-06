@@ -1,6 +1,6 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '@/db/client';
-import { apiKeys, integrations, tenants, webhookEndpoints } from '@/db/schema';
+import { apiKeys, calendarConnections, integrations, tenants, webhookEndpoints } from '@/db/schema';
 
 /**
  * Admin → Settings → Integrations: every outside service a company can
@@ -94,6 +94,22 @@ export const INTEGRATIONS: IntegrationDef[] = [
     status: (c) => ((c.counts.apiKeys ?? 0) + (c.counts.webhooks ?? 0) > 0 ? 'connected' : 'not_used'),
   },
   {
+    key: 'google_calendar',
+    name: 'Google Calendar',
+    group: 'Maps and schedule',
+    does: 'Each person’s jobs (and, for the office, walkthroughs) appear in their own Google Calendar and move, disappear or change when the schedule does. One way: edits in Google don’t change the schedule.',
+    env: [{ name: 'GOOGLE_CLIENT_ID' }, { name: 'GOOGLE_CLIENT_SECRET' }],
+    steps: [
+      'Uses the same Google Cloud OAuth client as Google sign-in.',
+      'In that Google Cloud project, enable the Google Calendar API (APIs & Services → Library).',
+      'On the OAuth consent screen, add the scope …/auth/calendar.events. Until Google verifies the app, add each staff member as a test user.',
+      'Add the redirect URI <site>/api/calendar/google/callback to the OAuth client.',
+      'Each person then clicks Connect Google Calendar — office staff here, crew on their Today screen.',
+    ],
+    getFrom: { label: 'console.cloud.google.com/apis/library/calendar-json.googleapis.com', url: 'https://console.cloud.google.com/apis/library/calendar-json.googleapis.com' },
+    status: (c) => ((c.counts.calendarMine ?? 0) > 0 ? 'connected' : 'needs_connect'),
+  },
+  {
     key: 'resend',
     name: 'Resend email',
     group: 'Messages',
@@ -180,6 +196,8 @@ export function statusOf(def: IntegrationDef, ctx: StatusContext): IntegrationSt
 /** Small per-company counts some statuses read. */
 const COUNTERS: Record<string, (tenantId: string, userId: string | null) => Promise<number>> = {
   apiKeys: async (t) => (await db.select({ id: apiKeys.id }).from(apiKeys).where(and(eq(apiKeys.tenantId, t), isNull(apiKeys.revokedAt)))).length,
+  calendarMine: async (_t, u) => (u ? (await db.select({ id: calendarConnections.id }).from(calendarConnections).where(eq(calendarConnections.userId, u))).length : 0),
+  calendarTeam: async (t) => (await db.select({ id: calendarConnections.id }).from(calendarConnections).where(eq(calendarConnections.tenantId, t))).length,
   webhooks: async (t) => (await db.select({ id: webhookEndpoints.id }).from(webhookEndpoints).where(and(eq(webhookEndpoints.tenantId, t), eq(webhookEndpoints.active, true)))).length,
 };
 

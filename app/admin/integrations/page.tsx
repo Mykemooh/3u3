@@ -6,6 +6,8 @@ import { quickbooksConnection } from '@/lib/quickbooks';
 import { integrationOverview, STATUS_LABEL, type IntegrationStatus } from '@/lib/integrationsHub';
 import { appUrl } from '@/lib/url';
 import DisconnectQuickbooksButton from '@/components/admin/DisconnectQuickbooksButton';
+import CalendarConnectCard from '@/components/CalendarConnectCard';
+import { calendarConnection } from '@/lib/googleCalendar';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +36,11 @@ export default async function AdminIntegrations({ searchParams }: { searchParams
   const user = session?.user as { tenantId?: string; id?: string } | undefined;
   if (!user?.tenantId) redirect('/admin');
 
-  const [items, qb] = await Promise.all([integrationOverview(user.tenantId, user.id ?? null), quickbooksConnection(user.tenantId)]);
+  const [items, qb, cal] = await Promise.all([
+    integrationOverview(user.tenantId, user.id ?? null),
+    quickbooksConnection(user.tenantId),
+    user.id ? calendarConnection(user.id) : null,
+  ]);
   const site = appUrl('').replace(/\/$/, '');
   const fill = (text: string) => text.split("<site>").join(site);
   const working = items.filter((i) => i.status === 'connected' || i.status === 'built_in').length;
@@ -86,6 +92,15 @@ export default async function AdminIntegrations({ searchParams }: { searchParams
                       ) : (
                         <a href="/api/admin/integrations/quickbooks/connect" className="btn-primary btn-sm">Connect QuickBooks</a>
                       )}
+                    </div>
+                  )}
+
+                  {i.key === 'google_calendar' && i.status !== 'missing_keys' && (
+                    <div className="mt-3">
+                      <CalendarConnectCard
+                        compact
+                        connection={cal ? { accountEmail: cal.accountEmail, lastSyncedAt: cal.lastSyncedAt?.toISOString() ?? null, lastError: cal.lastError } : null}
+                      />
                     </div>
                   )}
 

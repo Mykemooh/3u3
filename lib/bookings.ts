@@ -1,4 +1,4 @@
-import { bookingEvent } from '@/lib/events';
+import { bookingEvent, scheduleChanged } from '@/lib/events';
 import { db } from '@/db/client';
 import {
   bookings, jobs, jobChecklistItems, checklistTemplates, checklistTemplateItems,
@@ -222,6 +222,8 @@ export async function createBooking(input: {
   // by the lead form instead; recurring visits are queued and sent once
   // the whole batch exists.
   if (!input.isQuoteVisit) await bookingEvent('booking.created', createdId, { sendNow: !input.seriesId });
+  // A recurring batch syncs calendars once, after the last visit (lib/recurring.ts).
+  if (!input.seriesId) await scheduleChanged(input.tenantId);
   return createdId;
 }
 
@@ -314,7 +316,7 @@ export async function createQuoteVisitBooking(input: {
   /** Post-construction / commercial answers (lib/intake.ts), as JSON. */
   intakeJson?: string | null;
 }) {
-  return db.transaction(async (tx) => {
+  const visitId = await db.transaction(async (tx) => {
     const existing = await tx.select().from(bookings).where(eq(bookings.tenantId, input.tenantId));
     const conflict = existing.some(
       (b) => b.isQuoteVisit && b.status !== 'CANCELLED' && b.slotStart === input.slotStart,
@@ -338,6 +340,8 @@ export async function createQuoteVisitBooking(input: {
 
     return bookingId;
   });
+  await scheduleChanged(input.tenantId);
+  return visitId;
 }
 
 export async function logNotification(input: {
@@ -400,7 +404,7 @@ export async function rescheduleBookingByClient(input: {
 
   for (const team of teams) {
     try {
-      return await db.transaction(async (tx) => {
+      const moved = await db.transaction(async (tx) => {
         const dateOnly = input.slotStart.split('T')[0];
         const newStart = toMinutes(input.slotStart);
         const newEnd = toMinutes(input.slotEnd);
@@ -421,6 +425,8 @@ export async function rescheduleBookingByClient(input: {
 
         return { ...booking, crewId: team.id, slotStart: input.slotStart, slotEnd: input.slotEnd };
       });
+      await scheduleChanged(booking.tenantId);
+      return moved;
     } catch (err) {
       if (!(err instanceof DoubleBookingError)) throw err;
       // That team was just taken — try the next one free for this slot.
@@ -453,5 +459,6 @@ export async function cancelBookingByClient(input: { bookingId: string; clientId
   const booking = await loadEditableClientBooking(input.bookingId, input.clientId);
   await db.update(bookings).set({ status: 'CANCELLED' }).where(eq(bookings.id, booking.id));
   await bookingEvent('booking.cancelled', booking.id);
+  await scheduleChanged(booking.tenantId);
   return booking;
 }

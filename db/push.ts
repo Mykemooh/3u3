@@ -1051,6 +1051,34 @@ async function main() {
     CREATE INDEX IF NOT EXISTS inbound_leads_tenant_idx ON inbound_leads(tenant_id, status);
     CREATE INDEX IF NOT EXISTS inbound_leads_phone_idx ON inbound_leads(tenant_id, phone_key);
     CREATE INDEX IF NOT EXISTS inbound_leads_email_idx ON inbound_leads(tenant_id, email);
+
+    -- Google Calendar sync (lib/googleCalendar.ts).
+    CREATE TABLE IF NOT EXISTS calendar_connections (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      user_id TEXT NOT NULL REFERENCES users(id),
+      provider TEXT NOT NULL DEFAULT 'GOOGLE',
+      account_email TEXT,
+      refresh_token TEXT NOT NULL,
+      access_token TEXT,
+      expires_at TIMESTAMPTZ,
+      calendar_id TEXT NOT NULL DEFAULT 'primary',
+      last_synced_at TIMESTAMPTZ,
+      last_error TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS calendar_connections_user_unique ON calendar_connections(user_id);
+    CREATE INDEX IF NOT EXISTS calendar_connections_tenant_idx ON calendar_connections(tenant_id);
+    CREATE TABLE IF NOT EXISTS calendar_event_links (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      user_id TEXT NOT NULL REFERENCES users(id),
+      booking_id TEXT NOT NULL REFERENCES bookings(id),
+      event_id TEXT NOT NULL,
+      content_hash TEXT NOT NULL,
+      synced_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS calendar_event_links_user_booking_unique ON calendar_event_links(user_id, booking_id);
   `);
 
   console.log('Schema pushed to Postgres.');

@@ -5,6 +5,7 @@ import { expireStaleStandbyOffers } from '@/lib/standby';
 import { extendAllSeries } from '@/lib/recurring';
 import { runAutomations } from '@/lib/automations';
 import { processDueDeliveries } from '@/lib/webhooks';
+import { syncAllCalendars } from '@/lib/googleCalendar';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +37,11 @@ export async function GET(req: Request) {
     console.error('[cron] webhook retries failed', err);
     return 0;
   });
+  // Google Calendar: a full pass catches anything an edit path missed.
+  const calendars = await syncAllCalendars().catch((err) => {
+    console.error('[cron] calendar sync failed', err);
+    return null;
+  });
   await recordHeartbeat('cron:reminders', automations !== null, { booking, quote, standby, automations });
-  return NextResponse.json({ series, booking, quote, standby, automations, webhooks });
+  return NextResponse.json({ series, booking, quote, standby, automations, webhooks, calendars });
 }

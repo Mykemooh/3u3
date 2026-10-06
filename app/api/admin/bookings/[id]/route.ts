@@ -1,4 +1,4 @@
-import { bookingEvent } from '@/lib/events';
+import { bookingEvent, scheduleChanged } from '@/lib/events';
 import { logChange, diff } from '@/lib/audit';
 import { belongsTo, notFound } from '@/lib/tenantGuard';
 import { adminSession } from '@/lib/adminApi';
@@ -70,6 +70,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   if (updates.status === 'CANCELLED') {
     await bookingEvent('booking.cancelled', existing.id);
+    await scheduleChanged(existing.tenantId);
     await checkStandbyForFreedDate(existing.tenantId, existing.slotStart.slice(0, 10));
   }
 

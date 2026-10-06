@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { addresses, bookings, invoices, jobs, reviews, serviceTypes, users } from '@/db/schema';
+import { syncTenantCalendars } from '@/lib/googleCalendar';
 import { emitEvent, hasSubscriber, processDueDeliveries, type WebhookEventType } from '@/lib/webhooks';
 
 /**
@@ -136,4 +137,14 @@ export const bookingsCancelled = (tenantId: string, bookingIds: string[]) =>
 export const flushEvents = (tenantId: string) =>
   safely(async () => {
     await processDueDeliveries({ tenantId, limit: 100 });
+  });
+
+/**
+ * Something on the schedule moved, was added, cancelled or restaffed:
+ * bring connected Google Calendars in step (lib/googleCalendar.ts). A
+ * no-op unless someone in the company connected a calendar.
+ */
+export const scheduleChanged = (tenantId: string | null | undefined) =>
+  safely(async () => {
+    if (tenantId) await syncTenantCalendars(tenantId);
   });

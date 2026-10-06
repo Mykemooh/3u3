@@ -15,6 +15,8 @@ import AppShell, { CREW_TABS } from '@/components/app/AppShell';
 import ServiceWorkerRegistrar from '@/components/crew/ServiceWorkerRegistrar';
 import CrewDashboardCards from '@/components/crew/CrewDashboardCards';
 import { crewDashboard } from '@/lib/earnings';
+import CalendarConnectCard from '@/components/CalendarConnectCard';
+import { calendarConfigured, calendarConnection } from '@/lib/googleCalendar';
 
 // Reads the signed-in cleaner's own jobs — live data, per-session.
 export const dynamic = 'force-dynamic';
@@ -51,6 +53,9 @@ async function loadRows(myJobs: (typeof jobs.$inferSelect)[]) {
     .filter((r): r is NonNullable<typeof r> => r !== null)
     .sort((a, b) => a.booking.slotStart.localeCompare(b.booking.slotStart));
 }
+
+const serializeConnection = (c: Awaited<ReturnType<typeof calendarConnection>>) =>
+  c ? { accountEmail: c.accountEmail, lastSyncedAt: c.lastSyncedAt?.toISOString() ?? null, lastError: c.lastError } : null;
 
 export default async function CrewHome() {
   const session = await getServerSession(authOptions);
@@ -121,6 +126,11 @@ export default async function CrewHome() {
         <Section title="Coming up" rows={upcoming} showDate />
         <Section title="Recently finished" rows={completed} showDate muted />
         {rows.length === 0 && <p className="card text-slate">No jobs assigned yet. New bookings will show up here.</p>}
+        {role === 'CLEANER' && calendarConfigured() && (
+          <section className="card !p-5" aria-label="Google Calendar">
+            <CalendarConnectCard connection={serializeConnection(await calendarConnection(userId))} />
+          </section>
+        )}
       </div>
     </AppShell>
   );

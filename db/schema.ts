@@ -1300,3 +1300,36 @@ export const inboundLeads = pgTable('inbound_leads', {
   phoneIdx: index('inbound_leads_phone_idx').on(t.tenantId, t.phoneKey),
   emailIdx: index('inbound_leads_email_idx').on(t.tenantId, t.email),
 }));
+
+// Google Calendar sync (lib/googleCalendar.ts): one connection per staff
+// member, and which calendar event stands for which booking on it, so a
+// re-sync updates or removes the same event instead of adding another.
+export const calendarConnections = pgTable('calendar_connections', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  userId: text('user_id').notNull().references(() => users.id),
+  provider: text('provider').notNull().default('GOOGLE'),
+  accountEmail: text('account_email'),
+  refreshToken: text('refresh_token').notNull(),
+  accessToken: text('access_token'),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  calendarId: text('calendar_id').notNull().default('primary'),
+  lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }),
+  lastError: text('last_error'),
+  ...timestamps,
+}, (t) => ({
+  userUnique: uniqueIndex('calendar_connections_user_unique').on(t.userId),
+  tenantIdx: index('calendar_connections_tenant_idx').on(t.tenantId),
+}));
+
+export const calendarEventLinks = pgTable('calendar_event_links', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  userId: text('user_id').notNull().references(() => users.id),
+  bookingId: text('booking_id').notNull().references(() => bookings.id),
+  eventId: text('event_id').notNull(),
+  contentHash: text('content_hash').notNull(),
+  syncedAt: timestamp('synced_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  userBookingUnique: uniqueIndex('calendar_event_links_user_booking_unique').on(t.userId, t.bookingId),
+}));

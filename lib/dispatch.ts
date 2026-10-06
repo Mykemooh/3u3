@@ -1,3 +1,4 @@
+import { scheduleChanged } from '@/lib/events';
 import { db } from '@/db/client';
 import { businessTodayISO } from '@/lib/time';
 import { bookings, jobs, jobStaff, users, serviceTypes, crews, addresses } from '@/db/schema';
@@ -173,7 +174,7 @@ export async function rescheduleBooking(
   bookingId: string,
   patch: { crewId?: string; date?: string; startTime?: string; endTime?: string },
 ) {
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const booking = (await tx.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1))[0];
     if (!booking) throw new DispatchError('Booking not found');
     if (booking.isQuoteVisit) throw new DispatchError('Quote visits are on your own calendar, not a team’s');
@@ -235,4 +236,6 @@ export async function rescheduleBooking(
       slotEnd,
     };
   });
+  if (result.moved) await scheduleChanged(result.booking.tenantId);
+  return result;
 }

@@ -1,4 +1,4 @@
-import { bookingEvent, bookingsCancelled, flushEvents } from '@/lib/events';
+import { bookingEvent, bookingsCancelled, flushEvents, scheduleChanged } from '@/lib/events';
 import { db } from '@/db/client';
 import { recurringSeries, bookings, jobs, crews, users, serviceTypes, clientRates, addresses } from '@/db/schema';
 import { and, eq, gte, inArray } from 'drizzle-orm';
@@ -325,7 +325,10 @@ export async function generateVisits(seriesId: string, through?: string) {
     await db.update(recurringSeries).set({ generatedThrough: until }).where(eq(recurringSeries.id, seriesId));
   }
   // booking.created webhooks were queued per visit; send them together.
-  if (created.length) await flushEvents(series.tenantId);
+  if (created.length) {
+    await flushEvents(series.tenantId);
+    await scheduleChanged(series.tenantId);
+  }
   return { created, conflicts };
 }
 
@@ -364,6 +367,7 @@ export async function skipVisit(tenantId: string, bookingId: string, actor?: Act
   if (job && job.status !== 'PENDING') throw new SeriesError('This visit has already started.');
   await db.update(bookings).set({ status: 'CANCELLED', isSeriesException: true }).where(eq(bookings.id, bookingId));
   await bookingEvent('booking.cancelled', bookingId);
+  await scheduleChanged(tenantId);
   await logChange({ tenantId, actor, entityType: booking.seriesId ? 'series' : 'booking', entityId: booking.seriesId ?? booking.id, action: 'visit_skipped', summary: `Skipped the visit on ${booking.slotStart.slice(0, 10)}` });
   return booking;
 }
@@ -449,6 +453,7 @@ export async function setSeriesStatus(tenantId: string, seriesId: string, status
     if (upcoming.length) {
       await db.update(bookings).set({ status: 'CANCELLED' }).where(inArray(bookings.id, upcoming.map((b) => b.id)));
       await bookingsCancelled(tenantId, upcoming.map((b) => b.id));
+      await scheduleChanged(tenantId);
     }
     removed = upcoming.length;
   }
