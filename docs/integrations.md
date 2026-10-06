@@ -63,6 +63,31 @@ tests, and is listed on Admin → Settings → Integrations with its status.
 11. **Xero** — the QuickBooks sync's twin for companies on Xero
     (`XERO_CLIENT_ID`, `XERO_CLIENT_SECRET`, developer.xero.com).
 
+## Muse — Tex's marketing agent (saved Oct 6 2026, build after items 1–11)
+
+A "Muse AI"-style marketing agent that lives in Tex's backend (`lib/muse.ts`,
+tools in `lib/museTools.ts`, office-only, Admin → Marketing → Muse). Phased,
+each phase shippable on its own:
+
+1. **Ideas and copy (no new keys, uses `ANTHROPIC_API_KEY`).** Muse drafts
+   campaign ideas, ad concepts and copy variants (headline, primary text,
+   call to action) from the company's own data: services offered, seasons,
+   past-client segments, referral program. Output lands as *drafts* in the
+   existing `campaigns` table and a new `ad_concepts` table. Never states
+   prices; a human edits and approves everything.
+2. **Audience and timing.** Suggests segments from `lib/marketing.ts`
+   (lapsed clients, recurring upsells, referral asks) and a send calendar.
+3. **Creative assets.** Optional image/video generation through a provider
+   adapter (candidates: Higgsfield, plus an image model) — keys in Vercel
+   env only, off until configured. Provider to be confirmed by the owner.
+4. **Meta (Facebook/Instagram) ads.** Marketing API via the *owner's own*
+   ad account (OAuth, `META_APP_ID`, `META_APP_SECRET`). Muse prepares the
+   campaign; the owner approves in-app before anything is created, and ads
+   are created **paused**. Spend caps required. Other channels later.
+
+Rules: nothing is published or spent without an explicit owner approval in
+the app; no API keys in code or the database; tenant-scoped like Tex.
+
 ## Usable today with no key
 
 - Open-Meteo weather (no account).

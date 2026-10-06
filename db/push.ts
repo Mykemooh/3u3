@@ -976,6 +976,22 @@ async function main() {
         CREATE UNIQUE INDEX IF NOT EXISTS tenants_sms_number_unique ON tenants(sms_number) WHERE sms_number IS NOT NULL;
       END IF;
     END $$;
+    CREATE TABLE IF NOT EXISTS tex_actions (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      conversation_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      kind TEXT NOT NULL CHECK (kind IN ('RESCHEDULE','CANCEL','UPDATE_ACCOUNT','VERIFY')),
+      payload_json TEXT,
+      summary TEXT NOT NULL,
+      code_hash TEXT,
+      expires_at TIMESTAMPTZ NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING','DONE','EXPIRED','CANCELLED','FAILED')),
+      done_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS tex_actions_conversation_idx ON tex_actions(tenant_id, conversation_id);
     CREATE TABLE IF NOT EXISTS heartbeats (
       key TEXT PRIMARY KEY,
       ran_at TIMESTAMPTZ NOT NULL,

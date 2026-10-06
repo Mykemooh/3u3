@@ -401,7 +401,8 @@ Happy clients (4 stars or more on every room) are offered your Google review lin
     tags: ['text', 'sms', 'messages', 'tex', 'inbox', 'reply', 'stop', 'phone', 'calls'],
     body: `Messages → Texts is a two-way inbox from your business number. Reminders and Tex's replies appear in each client's thread.
 
-- Tex answers client texts and calls from your help articles when you turn it on (Settings → Texting and Tex). It never quotes prices, and it hands off to you when it can't help.
+- Tex answers client chats, texts and calls from your help articles when you turn it on (Settings → Texting and Tex). It never quotes prices, and it hands off to you when it can't help.
+- Tex can also help a client who is signed in, or whose phone number matches their account: look up their cleans and invoices, move or cancel a clean (same 24-hour rule and open times as their account), and update notes like pets and parking. Changes are always two steps — Tex says exactly what will change and the client confirms. By text or phone the client must read back a one-time code texted to the number on file. You get the usual "client updated their account" email.
 - Once you reply to a thread yourself, Tex stays quiet in it for a while so you're not talking over each other.
 - Clients who reply STOP can't be texted until they text START.
 - Every Tex conversation is in Messages → Tex conversations. Ones marked Needs you are waiting on a person.`,

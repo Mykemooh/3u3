@@ -1365,4 +1365,25 @@ export const backgroundChecks = pgTable('background_checks', {
 }, (t) => ({
   candidateIdx: index('background_checks_candidate_idx').on(t.candidateId),
   tenantUserIdx: index('background_checks_tenant_user_idx').on(t.tenantId, t.userId),
+
+// Changes Tex has proposed and is waiting to confirm (lib/texActions.ts):
+// a reschedule, a cancellation, an account update, or proving who's on
+// the line. By text or phone, a one-time code goes to the number on file
+// and must be given back before anything changes. Codes are hashed.
+export const texActions = pgTable('tex_actions', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  conversationId: text('conversation_id').notNull(),
+  userId: text('user_id').notNull(),
+  kind: text('kind', { enum: ['RESCHEDULE', 'CANCEL', 'UPDATE_ACCOUNT', 'VERIFY'] }).notNull(),
+  payloadJson: text('payload_json'),
+  summary: text('summary').notNull(),
+  codeHash: text('code_hash'),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  attempts: integer('attempts').notNull().default(0),
+  status: text('status', { enum: ['PENDING', 'DONE', 'EXPIRED', 'CANCELLED', 'FAILED'] }).notNull().default('PENDING'),
+  doneAt: timestamp('done_at', { withTimezone: true }),
+  ...timestamps,
+}, (t) => ({
+  convIdx: index('tex_actions_conversation_idx').on(t.tenantId, t.conversationId),
 }));
