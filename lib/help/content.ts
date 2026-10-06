@@ -533,3 +533,89 @@ export const SECTIONS_ORDER = [
   'Team',
   'Setup',
 ];
+
+// ------------------------------------------------------------------ Spanish
+//
+// Spanish versions of the articles cleaners read at /crew/help (audience
+// CREW), keyed by slug, plus the section names they sit under. Same body
+// format and {company} placeholder as above. An article missing here is
+// shown in English. When you change a crew article above, change it here
+// too. (Client and office articles aren't translated yet.)
+
+export const HELP_ARTICLES_ES: Record<string, { title: string; body: string }> = {
+  'sop-crew-day': {
+    title: 'Tu día en la app',
+    body: `Tu pantalla de inicio muestra las limpiezas de hoy, la semana que viene y con quién vas a trabajar, lo que has ganado en este periodo de pago y tu próximo día de pago.
+
+1. Abre la primera limpieza del día para ver la dirección, las notas del cliente y la lista de tareas.
+2. Toca Empezar a manejar cuando salgas — al cliente se le avisa que vas en camino.
+3. Cuando llegues, toca Ya llegué — empezar trabajo. Cualquiera del equipo puede empezar el reloj.
+4. Trabaja cuarto por cuarto (mira Cuartos, fotos y cronómetros).
+5. El líder de equipo termina el trabajo cuando todos los cuartos están listos.`,
+  },
+  'sop-rooms-photos': {
+    title: 'Cuartos, fotos y cronómetros',
+    body: `Cada cuarto de la lista tiene sus propias fotos de antes y después y su cronómetro.
+
+1. Abre el cuarto — su cronómetro empieza a contar.
+2. Toma la foto de antes desde la puerta, que se vea todo el cuarto.
+3. Limpia el cuarto siguiendo la lista.
+4. Toma la foto de después desde el mismo lugar.
+5. Marca el cuarto como listo — el cronómetro se detiene.
+
+## Si no puedes limpiar un cuarto
+Omítelo y di por qué (cerrado con llave, el cliente lo pidió, no es seguro). El cliente y la oficina ven el motivo.
+
+## Por qué importa
+Las fotos son la prueba de la limpieza para el cliente y te protegen si alguien tiene una duda. Los tiempos por cuarto muestran cuánto tardan de verdad las casas, para que los horarios y el pago sean justos.`,
+  },
+  'sop-finishing': {
+    title: 'Terminar un trabajo',
+    body: `1. Revisa que todos los cuartos estén listos u omitidos con un motivo.
+2. Da una vuelta por la casa: luces, puertas, y regresa a su lugar lo que hayas movido.
+3. Cierra tal como dice el perfil de la casa, y pon la alarma si hay una.
+4. El líder de equipo toca Terminar trabajo. Al cliente le llegan las fotos de antes y después de inmediato y se prepara la factura.
+
+Cuando hay un líder en el trabajo, solo el líder puede terminarlo.`,
+  },
+  'sop-offline': {
+    title: 'Sin señal en la casa',
+    body: `Sigue trabajando. La app guarda tus fotos, marcas y cronómetros en el teléfono y los envía cuando vuelvas a tener señal. No cierres la app ni la quites de la memoria hasta que la fila muestre que todo se sincronizó.`,
+  },
+  'sop-entry-safety': {
+    title: 'Códigos de entrada, llaves y seguridad',
+    body: `- Los códigos de entrada están ocultos en la página del trabajo hasta que tocas para verlos. Nunca los escribas ni los compartas.
+- Lee el perfil de la casa antes de entrar: mascotas, alarmas, cosas que no se tocan, alergias.
+- Nunca mezcles productos de limpieza, y mantenlos lejos del alcance de niños y mascotas.
+- Si no te sientes seguro, sal y llama a la oficina. Tu seguridad va antes que la limpieza.
+- Si rompes o dañas algo, tómale una foto y avísale a la oficina el mismo día.`,
+  },
+  'sop-supplies': {
+    title: 'Cuando se acaban los suministros',
+    body: `Reporta los suministros que se están acabando desde la pestaña de Suministros en cuanto lo notes — antes de que se acaben. La oficina ve cada reporte y lo marca como resuelto cuando se reponen.`,
+  },
+  'sop-pay': {
+    title: 'Cómo funcionan tu pago y tus propinas',
+    body: `Tu panel muestra lo que has ganado en este periodo de pago y tu próximo día de pago, con los mismos números que usa la nómina.
+
+- El pago es por hora, por limpieza, por día o un porcentaje — lo que tu compañía haya configurado para ti.
+- Las propinas de los clientes se reparten entre el equipo de esa limpieza y se pagan con tu salario. Las propinas son salario que paga impuestos.
+- Las preguntas sobre un pago van a la oficina, que puede ver cada limpieza incluida.`,
+  },
+  'sop-security': {
+    title: 'Seguridad al iniciar sesión',
+    body: `Los dueños y el personal de oficina inician sesión con una contraseña (o Google) más una app de autenticación. También se puede pedir para los limpiadores en Configuración → Seguridad al iniciar sesión.
+
+- Guarda los códigos de respaldo cuando lo configures — cada uno sirve una vez si pierdes tu teléfono.
+- También puedes recibir un código de un solo uso por correo.
+- Los dispositivos de confianza no piden el código por 30 días.`,
+  },
+};
+
+/** Section names in Spanish, for the sections crew articles use. */
+export const SECTIONS_ES: Record<string, string> = {
+  'Doing the job': 'Haciendo el trabajo',
+  'Homes and clients': 'Casas y clientes',
+  Pay: 'Pago',
+  Team: 'Equipo',
+};

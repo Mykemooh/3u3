@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { rich } from '@/lib/i18n/rich';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import JourneyRail from '@/components/app/JourneyRail';
@@ -10,6 +11,9 @@ import { useOfflineSync, registerCrewServiceWorker, isNetworkError } from '@/lib
 import { enqueueAction, removePendingAction, offlineQueueSupported } from '@/lib/offlineQueue';
 import OfflineBanner from '@/components/crew/OfflineBanner';
 import CrewDirectionsMap from '@/components/crew/CrewDirectionsMap';
+import { useLocale, useT } from '@/components/i18n/LocaleProvider';
+import { intlLocale, type Locale } from '@/lib/i18n';
+import { crewMessages } from '@/lib/i18n/messages/crew';
 
 export type CrewMedia = {
   id: string;
@@ -71,6 +75,9 @@ type Upload = { key: string; itemId: string; phase: Phase; kind: Kind; progress:
 
 export default function CrewJob(props: Props) {
   const router = useRouter();
+  const t = useT(crewMessages);
+  const locale = useLocale();
+  const clock = (d: string | number | Date) => new Date(d).toLocaleTimeString(intlLocale(locale), { hour: 'numeric', minute: '2-digit' });
   const [status, setStatus] = useState<JobStatus>(props.job.status);
   const [startedLabel, setStartedLabel] = useState(props.job.startedLabel);
   const [items, setItems] = useState(props.items);
@@ -101,22 +108,22 @@ export default function CrewJob(props: Props) {
   const steps = useMemo(
     () => [
       {
-        label: 'Start',
+        label: t('jobStepStart'),
         state: notStarted ? ('current' as const) : ('done' as const),
-        detail: status === 'EN_ROUTE' ? 'Driving' : startedLabel ?? undefined,
+        detail: status === 'EN_ROUTE' ? t('statusDriving') : startedLabel ?? undefined,
       },
       {
-        label: 'Rooms',
+        label: t('jobStepRooms'),
         state: notStarted ? ('todo' as const) : status === 'COMPLETE' || allDone ? ('done' as const) : ('current' as const),
         detail: `${done}/${items.length}`,
       },
       {
-        label: 'Finish',
+        label: t('jobStepFinish'),
         state: status === 'COMPLETE' ? ('done' as const) : allDone && open ? ('current' as const) : ('todo' as const),
         detail: props.job.completedLabel ?? undefined,
       },
     ],
-    [status, notStarted, startedLabel, done, items.length, allDone, open, props.job.completedLabel],
+    [status, notStarted, startedLabel, done, items.length, allDone, open, props.job.completedLabel, t],
   );
 
   function applyItem(updated: CrewItem | null | undefined) {
@@ -165,7 +172,7 @@ export default function CrewJob(props: Props) {
     onJobStatusSynced: (action, data) => {
       if (action === 'start') {
         setStatus('IN_PROGRESS');
-        setStartedLabel(new Date(data.startedAt ?? Date.now()).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }));
+        setStartedLabel(clock(data.startedAt ?? Date.now()));
       } else if (action === 'en-route') {
         setStatus('EN_ROUTE');
       } else if (action === 'complete') {
@@ -201,15 +208,15 @@ export default function CrewJob(props: Props) {
       });
       const data = await res.json().catch(() => ({}));
       setBusy(null);
-      if (!res.ok) return setError(data.error || 'Could not start driving.');
+      if (!res.ok) return setError(data.error || t('jobErrStartDriving'));
       setStatus('EN_ROUTE');
     } catch (err) {
       setBusy(null);
-      if (!isNetworkError(err) || !offlineQueueSupported()) return setError('Could not start driving.');
+      if (!isNetworkError(err) || !offlineQueueSupported()) return setError(t('jobErrStartDriving'));
       try {
         await enqueueAction({ kind: 'JOB_STATUS', jobId: props.job.id, action: 'en-route', body });
       } catch {
-        return setError("Couldn't save this on your phone — try again, or free up some storage.");
+        return setError(t('jobErrSaveOffline'));
       }
       offline.refreshPendingCount();
       setStatus('EN_ROUTE');
@@ -217,7 +224,7 @@ export default function CrewJob(props: Props) {
   }
 
   async function start() {
-    if (notesBlockStart) return setError('Please review the cleaner notes below first.');
+    if (notesBlockStart) return setError(t('jobErrReviewNotes'));
     setBusy('start');
     setError('');
     // The clock-in stamp: where the phone is when the team starts (a few
@@ -232,22 +239,20 @@ export default function CrewJob(props: Props) {
       });
       const data = await res.json().catch(() => ({}));
       setBusy(null);
-      if (!res.ok) return setError(data.error || 'Could not start the job.');
+      if (!res.ok) return setError(data.error || t('jobErrStart'));
       setStatus('IN_PROGRESS');
-      setStartedLabel(
-        new Date(data.startedAt ?? Date.now()).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-      );
+      setStartedLabel(clock(data.startedAt ?? Date.now()));
     } catch (err) {
       setBusy(null);
-      if (!isNetworkError(err) || !offlineQueueSupported()) return setError('Could not start the job.');
+      if (!isNetworkError(err) || !offlineQueueSupported()) return setError(t('jobErrStart'));
       try {
         await enqueueAction({ kind: 'JOB_STATUS', jobId: props.job.id, action: 'start', body });
       } catch {
-        return setError("Couldn't save this on your phone — try again, or free up some storage.");
+        return setError(t('jobErrSaveOffline'));
       }
       offline.refreshPendingCount();
       setStatus('IN_PROGRESS');
-      setStartedLabel(new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }));
+      setStartedLabel(clock(Date.now()));
     }
   }
 
@@ -290,7 +295,7 @@ export default function CrewJob(props: Props) {
             offline.refreshPendingCount();
           } catch {
             // Likely IndexedDB storage full — a video can be tens of MB.
-            setError("Couldn't save this on your phone (storage may be full) — try a photo instead, or free up space.");
+            setError(t('jobErrSaveMediaOffline'));
           }
         } else {
           setError((err as Error).message);
@@ -302,7 +307,7 @@ export default function CrewJob(props: Props) {
   }
 
   async function remove(m: CrewMedia) {
-    if (!confirm(`Remove this ${m.kind === 'VIDEO' ? 'video' : 'photo'}?`)) return;
+    if (!confirm(t(m.kind === 'VIDEO' ? 'jobConfirmRemoveVideo' : 'jobConfirmRemovePhoto'))) return;
     if (m.id.startsWith('pending:')) {
       // Still queued, not yet uploaded anywhere — just drop it locally.
       await removePendingAction(m.id.slice('pending:'.length));
@@ -313,7 +318,7 @@ export default function CrewJob(props: Props) {
     }
     const res = await fetch(`/api/crew/jobs/${props.job.id}/media/${m.id}`, { method: 'DELETE' });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) return setError(data.error || 'Could not remove it.');
+    if (!res.ok) return setError(data.error || t('jobErrRemove'));
     setMedia((all) => all.filter((x) => x.id !== m.id));
     applyItem(data.item);
   }
@@ -328,7 +333,7 @@ export default function CrewJob(props: Props) {
     });
     const data = await res.json().catch(() => ({}));
     setPolicyBusy(false);
-    if (!res.ok) return setError(data.error || 'Could not update photo settings.');
+    if (!res.ok) return setError(data.error || t('jobErrPolicy'));
     setPolicy({ requireBeforePhoto: data.job.requireBeforePhoto, noPhotosNeeded: data.job.noPhotosNeeded });
     setItems(data.items.map((i: any) => ({ id: i.id, roomName: i.roomName, taskDetail: i.taskDetail, status: i.status, skipReason: i.skipReason })));
   }
@@ -340,14 +345,14 @@ export default function CrewJob(props: Props) {
     try {
       const res = await fetch(`/api/crew/jobs/${props.job.id}/items/${itemId}`, { method: 'POST', body: form });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) return setError(data.error || 'Could not update the room.');
+      if (!res.ok) return setError(data.error || t('jobErrRoom'));
       applyItem(data.item);
     } catch (err) {
-      if (!isNetworkError(err) || !offlineQueueSupported()) return setError('Could not update the room.');
+      if (!isNetworkError(err) || !offlineQueueSupported()) return setError(t('jobErrRoom'));
       try {
         await enqueueAction({ kind: 'CHECKLIST', jobId: props.job.id, itemId, action });
       } catch {
-        return setError("Couldn't save this on your phone — try again, or free up some storage.");
+        return setError(t('jobErrSaveOffline'));
       }
       offline.refreshPendingCount();
       setItems((prev) => prev.map((i) => (i.id === itemId ? { ...i, status: done ? 'COMPLETE' : 'PENDING' } : i)));
@@ -362,14 +367,14 @@ export default function CrewJob(props: Props) {
     try {
       const res = await fetch(`/api/crew/jobs/${props.job.id}/items/${itemId}`, { method: 'POST', body: form });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) return setError(data.error || 'Could not update the room.');
+      if (!res.ok) return setError(data.error || t('jobErrRoom'));
       applyItem(data.item);
     } catch (err) {
-      if (!isNetworkError(err) || !offlineQueueSupported()) return setError('Could not update the room.');
+      if (!isNetworkError(err) || !offlineQueueSupported()) return setError(t('jobErrRoom'));
       try {
         await enqueueAction({ kind: 'CHECKLIST', jobId: props.job.id, itemId, action, skipReason: reason ?? undefined });
       } catch {
-        return setError("Couldn't save this on your phone — try again, or free up some storage.");
+        return setError(t('jobErrSaveOffline'));
       }
       offline.refreshPendingCount();
       setItems((prev) => prev.map((i) => (i.id === itemId ? { ...i, status: reason ? 'SKIPPED' : 'PENDING', skipReason: reason } : i)));
@@ -401,20 +406,20 @@ export default function CrewJob(props: Props) {
       });
       const data = await res.json().catch(() => ({}));
       setBusy(null);
-      if (!res.ok) return setError(data.error || 'Could not finish the job.');
+      if (!res.ok) return setError(data.error || t('jobErrFinish'));
       setStatus('COMPLETE');
       setFinished({ invoiceId: data.invoiceId ?? null });
       window.scrollTo({ top: 0, behavior: 'smooth' });
       router.refresh();
     } catch (err) {
       setBusy(null);
-      if (!isNetworkError(err) || !offlineQueueSupported()) return setError('Could not finish the job.');
+      if (!isNetworkError(err) || !offlineQueueSupported()) return setError(t('jobErrFinish'));
       // Queued behind any not-yet-synced room/photo updates, so it only
       // actually completes on the server once those land first.
       try {
         await enqueueAction({ kind: 'JOB_STATUS', jobId: props.job.id, action: 'complete', body: {} });
       } catch {
-        return setError("Couldn't save this on your phone — try again, or free up some storage.");
+        return setError(t('jobErrSaveOffline'));
       }
       offline.refreshPendingCount();
       setStatus('COMPLETE');
@@ -446,7 +451,7 @@ export default function CrewJob(props: Props) {
   return (
     <div className="space-y-5">
       <Link href="/crew" className="inline-flex items-center gap-1 text-sm font-semibold text-muted hover:text-ink">
-        <span aria-hidden="true">←</span> All jobs
+        <span aria-hidden="true">←</span> {t('jobAllJobs')}
       </Link>
 
       <OfflineBanner isOnline={offline.isOnline} pendingCount={offline.pendingCount} syncing={offline.syncing} onSyncNow={offline.flush} />
@@ -463,24 +468,24 @@ export default function CrewJob(props: Props) {
           {address ? (
             <button type="button" onClick={() => setShowDirections(true)} className="quick-action">
               <Icon d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21Zm0-9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" />
-              Directions
+              {t('jobDirections')}
             </button>
           ) : (
-            <span className="quick-action opacity-40">No address</span>
+            <span className="quick-action opacity-40">{t('jobNoAddress')}</span>
           )}
           {props.client.phone ? (
             <>
               <a href={`tel:${props.client.phone}`} className="quick-action">
                 <Icon d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2Z" />
-                Call
+                {t('jobCall')}
               </a>
               <a href={`sms:${props.client.phone}`} className="quick-action">
                 <Icon d="M4 5h16v11H8l-4 4V5Z" />
-                Text
+                {t('jobText')}
               </a>
             </>
           ) : (
-            <span className="quick-action col-span-2 opacity-40">No phone on file</span>
+            <span className="quick-action col-span-2 opacity-40">{t('jobNoPhone')}</span>
           )}
         </div>
       </section>
@@ -491,7 +496,7 @@ export default function CrewJob(props: Props) {
 
       {props.isAdmin && status !== 'COMPLETE' && (
         <section className="card space-y-3">
-          <h2 className="text-sm font-bold text-ink">Photo requirements for this job</h2>
+          <h2 className="text-sm font-bold text-ink">{t('jobPhotoReqTitle')}</h2>
           <label className="flex items-center gap-2 text-sm text-slate">
             <input
               type="checkbox"
@@ -499,7 +504,7 @@ export default function CrewJob(props: Props) {
               disabled={policy.noPhotosNeeded || policyBusy}
               onChange={(e) => updatePolicy({ requireBeforePhoto: e.target.checked })}
             />
-            Require a before photo for each room
+            {t('jobRequireBefore')}
           </label>
           <label className="flex items-center gap-2 text-sm text-slate">
             <input
@@ -508,30 +513,32 @@ export default function CrewJob(props: Props) {
               disabled={policyBusy}
               onChange={(e) => updatePolicy({ noPhotosNeeded: e.target.checked })}
             />
-            No pictures needed for this job
+            {t('jobNoPhotosNeeded')}
           </label>
         </section>
       )}
 
       {(finished || status === 'COMPLETE') && (
         <section className="card border-green/30 bg-emerald-50">
-          <h2 className="text-lg font-bold text-green">Job complete</h2>
+          <h2 className="text-lg font-bold text-green">{t('jobCompleteTitle')}</h2>
           <p className="mt-1 text-slate">
             {finished
-              ? 'The client has been emailed their before-and-after photos, and the invoice is drafted for the office to review.'
-              : `Finished${props.job.completedLabel ? ` at ${props.job.completedLabel}` : ''}. Photos are locked.`}
+              ? t('jobCompleteJustNow')
+              : props.job.completedLabel
+              ? t('jobFinishedAt', { time: props.job.completedLabel })
+              : t('jobFinished')}
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Link href="/crew" className="btn-primary btn-sm">
-              Next job
+              {t('jobNextJob')}
             </Link>
             {props.isAdmin && finished?.invoiceId && (
               <Link href={`/admin/invoices/${finished.invoiceId}`} className="btn-secondary btn-sm">
-                Review invoice
+                {t('jobReviewInvoice')}
               </Link>
             )}
             <Link href={`/account/jobs/${props.job.id}`} className="btn-secondary btn-sm">
-              See what the client sees
+              {t('jobSeeClientView')}
             </Link>
           </div>
         </section>
@@ -540,12 +547,9 @@ export default function CrewJob(props: Props) {
       {!props.canLead && (status === 'PENDING' || status === 'EN_ROUTE') && (
         <p className="rounded-xl bg-cream px-4 py-3 text-sm text-bronze">
           {status === 'EN_ROUTE' ? (
-            <>Your Team Lead is driving over and sharing the trip with the client.</>
+            <>{t('jobLeadDriving')}</>
           ) : (
-            <>
-              Your <strong>Team Lead</strong> starts the trip. When you get there, anyone on the team can tap{' '}
-              <strong>I've arrived</strong> to start the clock for everyone.
-            </>
+            <>{rich(t('jobNotLeadPending'), { teamLead: <strong>{t('jobBoldTeamLead')}</strong>, arrived: <strong>{t('jobBoldArrived')}</strong> })}</>
           )}
         </p>
       )}
@@ -554,48 +558,48 @@ export default function CrewJob(props: Props) {
         <section className="card border-gold/50 bg-gold/5 space-y-3">
           <div className="flex items-center gap-2">
             <Icon d="M12 9v4m0 4h.01M10.3 3.9 2.7 17.5a1.5 1.5 0 0 0 1.3 2.3h16a1.5 1.5 0 0 0 1.3-2.3L13.7 3.9a1.5 1.5 0 0 0-2.6 0Z" />
-            <h2 className="font-bold text-ink">Cleaner needs to know</h2>
+            <h2 className="font-bold text-ink">{t('jobNotesTitle')}</h2>
           </div>
           {props.cleanerNotes && <p className="whitespace-pre-wrap text-sm text-ink">{props.cleanerNotes}</p>}
           {props.homeProfile && (
             <dl className="grid gap-2 text-sm sm:grid-cols-2">
               {props.homeProfile.pets && (
                 <div>
-                  <dt className="font-semibold text-bronze">Pets</dt>
+                  <dt className="font-semibold text-bronze">{t('jobPets')}</dt>
                   <dd className="text-ink">{props.homeProfile.pets}</dd>
                 </div>
               )}
               {props.homeProfile.parkingNotes && (
                 <div>
-                  <dt className="font-semibold text-bronze">Parking</dt>
+                  <dt className="font-semibold text-bronze">{t('jobParking')}</dt>
                   <dd className="text-ink">{props.homeProfile.parkingNotes}</dd>
                 </div>
               )}
               {props.homeProfile.allergyNotes && (
                 <div>
-                  <dt className="font-semibold text-bronze">Product allergies</dt>
+                  <dt className="font-semibold text-bronze">{t('jobAllergies')}</dt>
                   <dd className="text-ink">{props.homeProfile.allergyNotes}</dd>
                 </div>
               )}
               {props.homeProfile.doNotTouch && (
                 <div>
-                  <dt className="font-semibold text-bronze">Do not touch</dt>
+                  <dt className="font-semibold text-bronze">{t('jobDoNotTouch')}</dt>
                   <dd className="text-ink">{props.homeProfile.doNotTouch}</dd>
                 </div>
               )}
               {props.homeProfile.entryCodeSet && (
                 <div>
-                  <dt className="font-semibold text-bronze">Entry / alarm code</dt>
+                  <dt className="font-semibold text-bronze">{t('jobEntryCode')}</dt>
                   <dd className="text-ink">
                     {props.homeProfile.entryCode ? (
                       <span className="inline-flex items-center gap-2">
                         <span className="font-mono">{showEntryCode ? props.homeProfile.entryCode : '••••••'}</span>
                         <button type="button" onClick={() => setShowEntryCode((v) => !v)} className="text-xs font-semibold text-bronze underline">
-                          {showEntryCode ? 'Hide' : 'Show'}
+                          {showEntryCode ? t('jobHide') : t('jobShow')}
                         </button>
                       </span>
                     ) : (
-                      <span className="text-muted">On file, but couldn't be decrypted — contact the office.</span>
+                      <span className="text-muted">{t('jobEntryCodeError')}</span>
                     )}
                   </dd>
                 </div>
@@ -616,7 +620,7 @@ export default function CrewJob(props: Props) {
                 checked={notesAcknowledged}
                 onChange={(e) => setNotesAcknowledged(e.target.checked)}
               />
-              I've read this
+              {t('jobNotesRead')}
             </label>
           )}
         </section>
@@ -625,48 +629,28 @@ export default function CrewJob(props: Props) {
       {status === 'EN_ROUTE' && props.canLead && (
         <p className="rounded-xl bg-cream px-4 py-3 text-sm text-bronze" aria-live="polite">
           {location === 'denied' ? (
-            <>
-              <strong>Location is blocked</strong> for this site, so the client can't see you on the map. Allow location in your browser settings, then
-              reload this page. They've still been told you're on the way.
-            </>
+            <>{rich(t('jobLocDenied'), { bold: <strong>{t('jobLocDeniedBold')}</strong> })}</>
           ) : location === 'unavailable' ? (
             <>
-              <strong>Can't get your location right now</strong>, so the client's map isn't updating — we'll keep trying. They've still been told
-              you're on the way. On a phone, check Location is on. On a Mac, turn on your browser in System Settings → Privacy &amp; Security →
-              Location Services.
-              {locationDetail && <span className="mt-1 block text-xs opacity-80">Browser said: {locationDetail}</span>}
+              {rich(t('jobLocUnavailable'), { bold: <strong>{t('jobLocUnavailableBold')}</strong> })}
+              {locationDetail && <span className="mt-1 block text-xs opacity-80">{t('jobBrowserSaid', { detail: locationDetail })}</span>}
             </>
           ) : (
-            <>
-              <strong>The client has been told you're on the way</strong> and can follow you on a map. Keep this page open with the screen on while you
-              drive. Tap <strong>I've arrived</strong> when you pull up.
-            </>
+            <>{rich(t('jobLocSharing'), { bold: <strong>{t('jobLocSharingBold')}</strong>, arrived: <strong>{t('jobBoldArrived')}</strong> })}</>
           )}
         </p>
       )}
 
       {status === 'PENDING' && props.canLead && (
         <p className="rounded-xl bg-cream px-4 py-3 text-sm text-bronze">
-          Tap <strong>Start driving</strong> when you leave — the client gets a heads-up and can follow you on a map.{' '}
-          {policy.noPhotosNeeded ? (
-            <>
-              No pictures are needed for this job — just mark each room done as you finish it.
-            </>
-          ) : policy.requireBeforePhoto ? (
-            <>
-              On site, take a before photo of each room first, and an after photo when it's done.
-            </>
-          ) : (
-            <>
-              On site, take an after photo of each room when it's done — a before photo is optional.
-            </>
-          )}
+          {rich(t('jobLeadPending'), { startDriving: <strong>{t('jobStartDriving')}</strong> })}{' '}
+          {policy.noPhotosNeeded ? t('jobTipNoPhotos') : policy.requireBeforePhoto ? t('jobTipBeforeAfter') : t('jobTipAfterOnly')}
         </p>
       )}
 
       {props.visitNote && (
         <p className="rounded-xl border border-gold/30 bg-gold/5 px-4 py-3 text-sm text-ink">
-          <span className="font-semibold text-bronze">Note for this visit: </span>
+          <span className="font-semibold text-bronze">{t('jobVisitNote')} </span>
           <span className="whitespace-pre-wrap">{props.visitNote}</span>
         </p>
       )}
@@ -705,10 +689,10 @@ export default function CrewJob(props: Props) {
             {status === 'PENDING' && props.canLead ? (
               <div className="flex gap-2">
                 <button onClick={startDriving} disabled={busy !== null} className="btn-primary flex-1">
-                  {busy === 'drive' ? 'Letting the client know…' : 'Start driving'}
+                  {busy === 'drive' ? t('jobLettingClientKnow') : t('jobStartDriving')}
                 </button>
                 <button onClick={start} disabled={busy !== null || notesBlockStart} className="btn-secondary">
-                  {busy === 'start' ? 'Starting…' : 'Already here'}
+                  {busy === 'start' ? t('jobStarting') : t('jobAlreadyHere')}
                 </button>
               </div>
             ) : status === 'PENDING' || status === 'EN_ROUTE' ? (
@@ -716,20 +700,18 @@ export default function CrewJob(props: Props) {
                 {status === 'EN_ROUTE' && props.canLead && (
                   <p className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate">
                     <span className={`h-2 w-2 rounded-full ${location === 'sharing' ? 'bg-green' : 'bg-amber-500'}`} aria-hidden="true" />
-                    {location === 'sharing' ? 'Sharing your location with the client' : location === 'locating' ? 'Finding your location…' : 'Location not shared'}
+                    {location === 'sharing' ? t('jobLocSharingShort') : location === 'locating' ? t('jobLocating') : t('jobLocNotShared')}
                   </p>
                 )}
                 <button onClick={start} disabled={busy === 'start' || notesBlockStart} className="btn-primary w-full">
-                  {busy === 'start' ? 'Starting…' : notesBlockStart ? 'Review cleaner notes above first' : "I've arrived — start job"}
+                  {busy === 'start' ? t('jobStarting') : notesBlockStart ? t('jobReviewNotesFirst') : t('jobArrivedStart')}
                 </button>
               </>
             ) : (
               <>
                 <div className="mb-2 flex items-center justify-between text-xs font-semibold text-slate">
-                  <span>
-                    {done} of {items.length} rooms documented
-                  </span>
-                  {uploads.length > 0 && <span className="text-bronze">Uploading {uploads.length}…</span>}
+                  <span>{t('jobRoomsDocumented', { done, total: items.length })}</span>
+                  {uploads.length > 0 && <span className="text-bronze">{t('jobUploading', { count: uploads.length })}</span>}
                 </div>
                 <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-line">
                   <div className="journey-fill h-full rounded-full bg-gold" style={{ width: `${items.length ? (done / items.length) * 100 : 0}%` }} />
@@ -737,14 +719,14 @@ export default function CrewJob(props: Props) {
                 {props.canLead ? (
                   <button onClick={finish} disabled={!allDone || busy === 'finish' || uploads.length > 0} className="btn-dark w-full">
                     {busy === 'finish'
-                      ? 'Finishing…'
+                      ? t('jobFinishing')
                       : allDone
-                      ? 'Finish job and notify client'
-                      : `${items.length - done} room${items.length - done === 1 ? '' : 's'} to go`}
+                      ? t('jobFinishNotify')
+                      : t(items.length - done === 1 ? 'jobRoomsToGoOne' : 'jobRoomsToGoMany', { count: items.length - done })}
                   </button>
                 ) : (
                   <p className="text-center text-sm font-semibold text-slate">
-                    {allDone ? 'All rooms done — your Team Lead will finish the job.' : `${items.length - done} room${items.length - done === 1 ? '' : 's'} to go`}
+                    {allDone ? t('jobAllDoneLeadFinishes') : t(items.length - done === 1 ? 'jobRoomsToGoOne' : 'jobRoomsToGoMany', { count: items.length - done })}
                   </p>
                 )}
               </>
@@ -760,11 +742,11 @@ export default function CrewJob(props: Props) {
             style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="eyebrow">Directions</p>
+            <p className="eyebrow">{t('jobDirections')}</p>
             <div className="mt-3">
               <CrewDirectionsMap jobId={props.job.id} addressLabel={address} />
             </div>
-            <p className="mb-2 mt-4 text-xs font-bold uppercase tracking-wide text-muted">Or open in your phone's maps app</p>
+            <p className="mb-2 mt-4 text-xs font-bold uppercase tracking-wide text-muted">{t('jobOpenInMaps')}</p>
             <div className="space-y-2">
               {directionLinks.map((link) => (
                 <a
@@ -784,11 +766,11 @@ export default function CrewJob(props: Props) {
                 onClick={copyAddress}
                 className="flex w-full items-center justify-between rounded-xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:border-gold hover:bg-cream/60"
               >
-                {addressCopied ? 'Address copied' : 'Copy address'}
+                {addressCopied ? t('jobAddressCopied') : t('jobCopyAddress')}
               </button>
             </div>
             <button type="button" onClick={() => setShowDirections(false)} className="btn-secondary mt-4 w-full">
-              Close
+              {t('jobClose')}
             </button>
           </div>
         </div>
@@ -797,8 +779,9 @@ export default function CrewJob(props: Props) {
   );
 }
 
-function mediaTimestampLabel(createdAt: string): string {
-  return new Date(createdAt).toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+/** Fills a sentence's {placeholders} with elements, e.g. a bold button name: rich(t('key'), { bold: <strong>…</strong> }). */
+function mediaTimestampLabel(createdAt: string, locale: Locale): string {
+  return new Date(createdAt).toLocaleString(intlLocale(locale), { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
 function Icon({ d }: { d: string }) {
@@ -840,6 +823,7 @@ function RoomCard({
   onMarkDone: (done: boolean) => void;
   onStartTimer?: () => void;
 }) {
+  const t = useT(crewMessages);
   const [showSkip, setShowSkip] = useState(false);
   const [reason, setReason] = useState('');
   const tone =
@@ -870,32 +854,32 @@ function RoomCard({
             item.status === 'COMPLETE' ? 'bg-emerald-100 text-green' : item.status === 'SKIPPED' ? 'bg-amber-100 text-amber-800' : 'bg-surface text-muted'
           }`}
         >
-          {item.status === 'COMPLETE' ? 'Done' : item.status === 'SKIPPED' ? 'Skipped' : 'To do'}
+          {item.status === 'COMPLETE' ? t('roomDone') : item.status === 'SKIPPED' ? t('roomSkipped') : t('roomToDo')}
         </span>
       </header>
 
       {item.status === 'SKIPPED' ? (
         <div className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          Skipped: {item.skipReason}
+          {t('roomSkippedReason', { reason: item.skipReason })}
           {open && (
             <button onClick={() => onSkip(null)} className="ml-2 font-semibold underline">
-              Undo
+              {t('roomUndo')}
             </button>
           )}
         </div>
       ) : noPhotosNeeded ? (
         <div className="flex items-center justify-between gap-3 rounded-xl bg-surface px-4 py-3">
           <span className="text-sm text-slate">
-            {item.status === 'COMPLETE' ? 'Marked done — no pictures needed.' : 'No pictures needed here. Mark it done when finished.'}
+            {item.status === 'COMPLETE' ? t('roomDoneNoPics') : t('roomNoPicsHint')}
           </span>
           {open &&
             (item.status === 'COMPLETE' ? (
               <button onClick={() => onMarkDone(false)} className="shrink-0 text-sm font-semibold underline">
-                Undo
+                {t('roomUndo')}
               </button>
             ) : (
               <button onClick={() => onMarkDone(true)} className="btn-dark btn-sm shrink-0">
-                Mark done
+                {t('roomMarkDone')}
               </button>
             ))}
         </div>
@@ -922,7 +906,7 @@ function RoomCard({
         <div className="mt-4">
           {!showSkip ? (
             <button onClick={() => setShowSkip(true)} className="text-sm font-medium text-muted underline-offset-2 hover:text-slate hover:underline">
-              Can't do this room?
+              {t('roomCantDo')}
             </button>
           ) : (
             <form
@@ -932,9 +916,9 @@ function RoomCard({
                 if (reason.trim()) onSkip(reason.trim());
               }}
             >
-              <input className="input py-2 text-sm" placeholder="Reason, e.g. door locked" value={reason} onChange={(e) => setReason(e.target.value)} autoFocus />
+              <input className="input py-2 text-sm" placeholder={t('roomSkipPlaceholder')} value={reason} onChange={(e) => setReason(e.target.value)} autoFocus />
               <button type="submit" className="btn-dark btn-sm shrink-0" disabled={!reason.trim()}>
-                Skip room
+                {t('roomSkip')}
               </button>
             </form>
           )}
@@ -965,18 +949,20 @@ function PhaseColumn({
   onAdd: (kind: Kind, files: FileList | null) => void;
   onRemove: (m: CrewMedia) => void;
 }) {
+  const t = useT(crewMessages);
+  const locale = useLocale();
   const photoInput = useRef<HTMLInputElement>(null);
   const videoInput = useRef<HTMLInputElement>(null);
   const hasPhoto = media.some((m) => m.kind === 'PHOTO');
   const full = media.length + uploads.length >= perPhase;
-  const label = phase === 'BEFORE' ? 'Before' : 'After';
+  const label = phase === 'BEFORE' ? t('phaseBefore') : t('phaseAfter');
 
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-sm font-bold">{label}</h3>
         <span className={`text-xs font-semibold ${hasPhoto ? 'text-green' : 'text-muted'}`}>
-          {hasPhoto ? 'Photo added' : required ? 'Photo needed' : 'Optional'}
+          {hasPhoto ? t('phasePhotoAdded') : required ? t('phasePhotoNeeded') : t('phaseOptional')}
         </span>
       </div>
 
@@ -984,7 +970,7 @@ function PhaseColumn({
         {media.map((m) => (
           <div key={m.id} className="group relative aspect-square overflow-hidden rounded-xl bg-surface">
             {m.kind === 'PHOTO' ? (
-              <img src={m.url} alt={`${label} photo`} className="h-full w-full object-cover" loading="lazy" />
+              <img src={m.url} alt={phase === 'BEFORE' ? t('phaseBeforePhotoAlt') : t('phaseAfterPhotoAlt')} className="h-full w-full object-cover" loading="lazy" />
             ) : (
               <>
                 <video src={`${m.url}#t=0.1`} className="h-full w-full object-cover" muted playsInline preload="metadata" />
@@ -993,14 +979,14 @@ function PhaseColumn({
                 </span>
                 {/* Photos get their timestamp burned into the image itself (lib/clientUpload.ts); video can't be stamped client-side, so it shows one here instead. */}
                 <span className="pointer-events-none absolute bottom-1 left-1 rounded bg-ink/70 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                  {mediaTimestampLabel(m.createdAt)}
+                  {mediaTimestampLabel(m.createdAt, locale)}
                 </span>
               </>
             )}
             {open && (
               <button
                 onClick={() => onRemove(m)}
-                aria-label={`Remove ${m.kind === 'VIDEO' ? 'video' : 'photo'}`}
+                aria-label={m.kind === 'VIDEO' ? t('phaseRemoveVideo') : t('phaseRemovePhoto')}
                 className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-ink/75 text-sm text-white"
               >
                 ×
@@ -1010,7 +996,7 @@ function PhaseColumn({
         ))}
         {uploads.map((u) => (
           <div key={u.key} className="flex aspect-square flex-col items-center justify-center rounded-xl border-2 border-dashed border-gold/50 bg-cream/50 px-2">
-            <span className="text-[11px] font-semibold text-bronze">{u.kind === 'VIDEO' ? 'Video' : 'Photo'}</span>
+            <span className="text-[11px] font-semibold text-bronze">{u.kind === 'VIDEO' ? t('phaseVideo') : t('phasePhoto')}</span>
             <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-white">
               <div className="h-full bg-gold transition-all" style={{ width: `${Math.max(8, u.progress * 100)}%` }} />
             </div>
@@ -1023,20 +1009,20 @@ function PhaseColumn({
                 <path d="M4 8h3l2-3h6l2 3h3v11H4V8Z" strokeLinejoin="round" />
                 <circle cx="12" cy="13" r="3.5" />
               </svg>
-              Photo
+              {t('phasePhoto')}
             </button>
             <button type="button" onClick={() => videoInput.current?.click()} className="media-add">
               <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={1.8} aria-hidden="true">
                 <rect x="3" y="6" width="13" height="12" rx="2" />
                 <path d="m16 10 5-3v10l-5-3" strokeLinejoin="round" />
               </svg>
-              Video
+              {t('phaseVideo')}
             </button>
           </>
         )}
         {!open && media.length === 0 && uploads.length === 0 && (
           <div className="col-span-3 flex aspect-[3/1] items-center justify-center rounded-xl border-2 border-dashed border-line text-xs text-muted">
-            No {label.toLowerCase()} photos
+            {phase === 'BEFORE' ? t('phaseNoBeforePhotos') : t('phaseNoAfterPhotos')}
           </div>
         )}
       </div>
@@ -1064,7 +1050,7 @@ function PhaseColumn({
           e.target.value = '';
         }}
       />
-      {open && !full && <p className="mt-1.5 text-[11px] text-muted">Videos up to {videoSeconds} seconds.</p>}
+      {open && !full && <p className="mt-1.5 text-[11px] text-muted">{t('phaseVideoLimit', { seconds: videoSeconds })}</p>}
     </div>
   );
 }
@@ -1074,19 +1060,20 @@ function PhaseColumn({
  * frozen at how long it took. Feeds the time-to-finish report.
  */
 function RoomTimer({ item, open, onStart }: { item: CrewItem; open: boolean; onStart?: () => void }) {
+  const t = useT(crewMessages);
   const [now, setNow] = useState(() => Date.now());
   const running = !!item.startedAt && item.status === 'PENDING' && open;
   useEffect(() => {
     if (!running) return;
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
+    const tick = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(tick);
   }, [running]);
 
   if (item.status === 'SKIPPED') return null;
   if (!item.startedAt) {
     return open && item.status === 'PENDING' && onStart ? (
       <button type="button" onClick={onStart} className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-bronze hover:underline">
-        <span aria-hidden="true">⏱</span> Start room timer
+        <span aria-hidden="true">⏱</span> {t('timerStart')}
       </button>
     ) : null;
   }
@@ -1094,7 +1081,7 @@ function RoomTimer({ item, open, onStart }: { item: CrewItem; open: boolean; onS
   const secs = Math.max(0, Math.floor((end - new Date(item.startedAt).getTime()) / 1000));
   const mm = Math.floor(secs / 60);
   const label = item.completedAt
-    ? `Took ${mm < 1 ? 'under a minute' : `${mm} min`}`
+    ? mm < 1 ? t('timerTookUnderMinute') : t('timerTookMinutes', { count: mm })
     : `${String(Math.floor(mm / 60)).padStart(1, '0')}:${String(mm % 60).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`;
   return (
     <p className={`mt-1 inline-flex items-center gap-1 text-xs font-semibold ${item.completedAt ? 'text-muted' : 'text-green'}`} aria-live="off">

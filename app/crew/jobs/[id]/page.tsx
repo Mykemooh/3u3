@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { redirect, notFound } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
 import { homeForRole } from '@/lib/nav';
-import { SERVICE_LABELS } from '@/lib/data';
+import { SERVICE_LABELS, serviceLabel } from '@/lib/data';
 import { loadJob, canWorkJob, canLead, viewerFrom } from '@/lib/jobs';
 import { formatSlot, formatClock } from '@/lib/time';
 import { formatSlotLabel } from '@/lib/scheduling';
@@ -11,6 +11,9 @@ import { MEDIA_LIMITS } from '@/lib/storage';
 import AppShell, { CREW_TABS } from '@/components/app/AppShell';
 import CrewJob from '@/components/CrewJob';
 import { getHomeProfile, homeProfileHasContent } from '@/lib/homeProfile';
+import { getLocale } from '@/lib/i18n/server';
+import { translator } from '@/lib/i18n';
+import { crewMessages } from '@/lib/i18n/messages/crew';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +30,9 @@ export default async function CrewJobPage({ params }: { params: { id: string } }
 
   const { job, booking, client, service, address, items, media } = data;
   const isLead = await canLead(viewer, job);
-  const whenLabel = `${formatSlot(booking.slotStart).split(' · ')[0]} · ${formatSlotLabel(booking.slotStart, booking.slotEnd)}`;
+  const locale = await getLocale();
+  const t = translator(crewMessages, locale);
+  const whenLabel = `${formatSlot(booking.slotStart, locale).split(' · ')[0]} · ${formatSlotLabel(booking.slotStart, booking.slotEnd)}`;
   // The viewer already passed canWorkJob above (assigned crew, or admin)
   // — that's the authorization boundary for decrypting the entry code.
   const homeProfile = address ? await getHomeProfile(address.id) : null;
@@ -38,14 +43,14 @@ export default async function CrewJobPage({ params }: { params: { id: string } }
         job={{
           id: job.id,
           status: job.status,
-          startedLabel: job.startedAt ? formatClock(job.startedAt) : null,
-          completedLabel: job.completedAt ? formatClock(job.completedAt) : null,
+          startedLabel: job.startedAt ? formatClock(job.startedAt, locale) : null,
+          completedLabel: job.completedAt ? formatClock(job.completedAt, locale) : null,
           requireBeforePhoto: job.requireBeforePhoto,
           noPhotosNeeded: job.noPhotosNeeded,
           cleanerNotesAckAt: job.cleanerNotesAckAt ? job.cleanerNotesAckAt.toISOString() : null,
         }}
-        client={{ name: client?.name ?? 'Client', phone: client?.phone ?? null }}
-        serviceLabel={service ? SERVICE_LABELS[service.key] ?? service.name : 'Cleaning'}
+        client={{ name: client?.name ?? t('clientFallback'), phone: client?.phone ?? null }}
+        serviceLabel={service ? (SERVICE_LABELS[service.key] ? serviceLabel(service.key, locale) : service.name) : t('serviceFallback')}
         whenLabel={whenLabel}
         addressLabel={address ? `${address.line1}, ${address.city}, ${address.state}${address.zip ? ` ${address.zip}` : ''}` : null}
         cleanerNotes={address?.notes ?? null}

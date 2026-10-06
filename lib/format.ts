@@ -33,3 +33,11 @@ export const SERVICE_LABELS_ES: Record<string, string> = {
 export function serviceLabel(key: string, locale: 'en' | 'es' = 'en'): string {
   return (locale === 'es' ? SERVICE_LABELS_ES[key] : SERVICE_LABELS[key]) ?? SERVICE_LABELS[key] ?? key;
 }
+
+/**
+ * A service's display name: the built-in label in the reader's language for
+ * the standard keys, or the owner's own name for a service they created.
+ */
+export function serviceName(key: string, customName: string | null | undefined, locale: 'en' | 'es' = 'en'): string {
+  return SERVICE_LABELS[key] ? serviceLabel(key, locale) : customName || key;
+}

@@ -6,7 +6,7 @@ import { authOptions } from '@/lib/auth';
 import { db } from '@/db/client';
 import { bookings, users, serviceTypes, jobs, jobChecklistItems, addresses, crews } from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
-import { getCrewForUser, getTenant, SERVICE_LABELS } from '@/lib/data';
+import { getCrewForUser, getTenant, SERVICE_LABELS, serviceLabel } from '@/lib/data';
 import { homeForRole } from '@/lib/nav';
 import { jobIdsForEmployee } from '@/lib/team';
 import { businessTodayISO } from '@/lib/time';
@@ -17,6 +17,11 @@ import CrewDashboardCards from '@/components/crew/CrewDashboardCards';
 import { crewDashboard } from '@/lib/earnings';
 import CalendarConnectCard from '@/components/CalendarConnectCard';
 import { calendarConfigured, calendarConnection } from '@/lib/googleCalendar';
+import { getLocale } from '@/lib/i18n/server';
+import { translator, type Locale, type Translate } from '@/lib/i18n';
+import { crewMessages } from '@/lib/i18n/messages/crew';
+
+type T = Translate<typeof crewMessages.en>;
 
 // Reads the signed-in cleaner's own jobs — live data, per-session.
 export const dynamic = 'force-dynamic';
@@ -66,6 +71,8 @@ export default async function CrewHome() {
   // open, so the page decides. Admins may look; customers may not.
   if (role !== 'CLEANER' && role !== 'ADMIN') redirect(`${homeForRole(role)}?denied=1`);
   enforceMfa(session.user as unknown as SessionUser, '/crew');
+  const locale = await getLocale();
+  const t = translator(crewMessages, locale);
 
   let myJobs: (typeof jobs.$inferSelect)[] = [];
   if (role === 'CLEANER') {
@@ -74,7 +81,7 @@ export default async function CrewHome() {
     if (ids.length === 0 && !(await getCrewForUser(userId))) {
       return (
         <AppShell name={session.user.name} tabs={CREW_TABS} homeHref="/crew">
-          <div className="card text-slate">You're not on a team yet. Ask the office to add you, then sign in again.</div>
+          <div className="card text-slate">{t('noTeam')}</div>
         </AppShell>
       );
     }
@@ -103,29 +110,29 @@ export default async function CrewHome() {
       <div className="space-y-8">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="eyebrow">{formatDateLabel(today)}</p>
-            {dashboard && <p className="text-sm text-slate">Hi {dashboard.user.firstName}{dashboard.teamName ? ` · ${dashboard.teamName}` : ''}{dashboard.user.roleName ? ` · ${dashboard.user.roleName}` : ''}</p>}
+            <p className="eyebrow">{formatDateLabel(today, locale)}</p>
+            {dashboard && <p className="text-sm text-slate">{t('homeHi', { name: dashboard.user.firstName })}{dashboard.teamName ? ` · ${dashboard.teamName}` : ''}{dashboard.user.roleName ? ` · ${dashboard.user.roleName}` : ''}</p>}
             <h1 className="mt-1 text-3xl font-extrabold">
-              {inProgress.length ? 'Job in progress' : todays.length ? `${todays.length} job${todays.length === 1 ? '' : 's'} today` : 'No jobs today'}
+              {inProgress.length ? t('homeJobInProgress') : todays.length ? t(todays.length === 1 ? 'homeJobsTodayOne' : 'homeJobsTodayMany', { count: todays.length }) : t('homeNoJobsToday')}
             </h1>
           </div>
           {role === 'CLEANER' && (
             <Link href="/crew/supplies" className="btn-secondary !px-3 !py-2 text-sm shrink-0">
-              Report supplies
+              {t('homeReportSupplies')}
             </Link>
           )}
         </div>
 
-        {dashboard && <CrewDashboardCards data={dashboard} />}
+        {dashboard && <CrewDashboardCards data={dashboard} locale={locale} />}
 
-        {next && <NextJobCard row={next} />}
+        {next && <NextJobCard row={next} t={t} locale={locale} />}
 
-        <Section title="In progress" rows={inProgress.filter((r) => r !== next)} />
-        <Section title="Today" rows={todays.filter((r) => r !== next)} />
-        <Section title="Missed — still open" rows={overdue} tone="warn" />
-        <Section title="Coming up" rows={upcoming} showDate />
-        <Section title="Recently finished" rows={completed} showDate muted />
-        {rows.length === 0 && <p className="card text-slate">No jobs assigned yet. New bookings will show up here.</p>}
+        <Section t={t} locale={locale} title={t('homeSectionInProgress')} rows={inProgress.filter((r) => r !== next)} />
+        <Section t={t} locale={locale} title={t('homeSectionToday')} rows={todays.filter((r) => r !== next)} />
+        <Section t={t} locale={locale} title={t('homeSectionMissed')} rows={overdue} tone="warn" />
+        <Section t={t} locale={locale} title={t('homeSectionComingUp')} rows={upcoming} showDate />
+        <Section t={t} locale={locale} title={t('homeSectionFinished')} rows={completed} showDate muted />
+        {rows.length === 0 && <p className="card text-slate">{t('homeEmpty')}</p>}
         {role === 'CLEANER' && calendarConfigured() && (
           <section className="card !p-5" aria-label="Google Calendar">
             <CalendarConnectCard connection={serializeConnection(await calendarConnection(userId))} />
@@ -136,17 +143,17 @@ export default async function CrewHome() {
   );
 }
 
-function NextJobCard({ row }: { row: Row }) {
+function NextJobCard({ row, t, locale }: { row: Row; t: T; locale: Locale }) {
   const { job, booking, client, service, address, total, done } = row;
   const started = job.status === 'IN_PROGRESS';
   const driving = job.status === 'EN_ROUTE';
   return (
     <Link href={`/crew/jobs/${job.id}`} className="block overflow-hidden rounded-2xl bg-ink text-white shadow-card-lg transition hover:-translate-y-0.5">
       <div className="p-6">
-        <p className="text-xs font-bold uppercase tracking-[0.12em] text-gold">{started ? 'Keep going' : driving ? 'On the way' : 'Up next'}</p>
+        <p className="text-xs font-bold uppercase tracking-[0.12em] text-gold">{started ? t('nextKeepGoing') : driving ? t('nextOnTheWay') : t('nextUpNext')}</p>
         <p className="mt-2 text-2xl font-bold text-white">{client?.name}</p>
         <p className="mt-1 text-white/70">
-          {service ? SERVICE_LABELS[service.key] ?? service.name : 'Cleaning'} · {formatSlotLabel(booking.slotStart, booking.slotEnd)}
+          {service ? (SERVICE_LABELS[service.key] ? serviceLabel(service.key, locale) : service.name) : t('serviceFallback')} · {formatSlotLabel(booking.slotStart, booking.slotEnd)}
         </p>
         {address && <p className="text-white/70">{address}</p>}
         <div className="mt-5 flex items-center gap-3">
@@ -154,17 +161,17 @@ function NextJobCard({ row }: { row: Row }) {
             <div className="h-full rounded-full bg-gold" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
           </div>
           <span className="text-xs font-semibold text-white/70">
-            {done}/{total} rooms
+            {t('nextRooms', { done, total })}
           </span>
         </div>
       </div>
       <div className="flow-line" aria-hidden="true" />
-      <div className="bg-gold px-6 py-3 text-center font-semibold text-white">{started ? 'Open job' : driving ? "Open job — tap I've arrived" : 'Open job and start'}</div>
+      <div className="bg-gold px-6 py-3 text-center font-semibold text-white">{started ? t('nextOpenJob') : driving ? t('nextOpenJobArrived') : t('nextOpenAndStart')}</div>
     </Link>
   );
 }
 
-function Section({ title, rows, showDate, muted, tone }: { title: string; rows: Row[]; showDate?: boolean; muted?: boolean; tone?: 'warn' }) {
+function Section({ t, locale, title, rows, showDate, muted, tone }: { t: T; locale: Locale; title: string; rows: Row[]; showDate?: boolean; muted?: boolean; tone?: 'warn' }) {
   if (rows.length === 0) return null;
   return (
     <section>
@@ -175,8 +182,8 @@ function Section({ title, rows, showDate, muted, tone }: { title: string; rows: 
             <div className="min-w-0">
               <p className="truncate font-semibold text-ink">{client?.name}</p>
               <p className="truncate text-sm text-slate">
-                {showDate || tone === 'warn' ? `${formatDateLabel(booking.slotStart.slice(0, 10))} · ` : ''}
-                {formatSlotLabel(booking.slotStart, booking.slotEnd)} · {service ? SERVICE_LABELS[service.key] ?? service.name : 'Cleaning'}
+                {showDate || tone === 'warn' ? `${formatDateLabel(booking.slotStart.slice(0, 10), locale)} · ` : ''}
+                {formatSlotLabel(booking.slotStart, booking.slotEnd)} · {service ? (SERVICE_LABELS[service.key] ? serviceLabel(service.key, locale) : service.name) : t('serviceFallback')}
               </p>
             </div>
             <span
@@ -184,7 +191,7 @@ function Section({ title, rows, showDate, muted, tone }: { title: string; rows: 
                 job.status === 'COMPLETE' ? 'bg-emerald-100 text-green' : job.status === 'IN_PROGRESS' || job.status === 'EN_ROUTE' ? 'bg-gold/20 text-bronze' : 'bg-surface text-slate'
               }`}
             >
-              {job.status === 'COMPLETE' ? 'Done' : job.status === 'IN_PROGRESS' ? `${done}/${total}` : job.status === 'EN_ROUTE' ? 'Driving' : 'Not started'}
+              {job.status === 'COMPLETE' ? t('statusDone') : job.status === 'IN_PROGRESS' ? `${done}/${total}` : job.status === 'EN_ROUTE' ? t('statusDriving') : t('statusNotStarted')}
             </span>
           </Link>
         ))}
