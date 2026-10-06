@@ -152,7 +152,7 @@ export async function getCrewForUser(userId: string) {
   return rows[0];
 }
 
-export { formatMoney, SERVICE_LABELS } from './format';
+export { formatMoney, SERVICE_LABELS, SERVICE_LABELS_ES, serviceLabel } from './format';
 
 export async function getClientsForTenant(tenantId: string) {
   const rows = await db

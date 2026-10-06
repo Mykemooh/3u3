@@ -1278,6 +1278,13 @@ async function main() {
     UPDATE tenants SET plan_status = 'ACTIVE', access_expires_at = NULL
       WHERE billing_model_version = 0 AND is_platform = false AND plan_status IN ('TRIALING','PAST_DUE','CANCELED');
     UPDATE tenants SET billing_model_version = 1 WHERE billing_model_version = 0;
+
+    -- English / Spanish (lib/i18n): each person's language, for the app and
+    -- for every text and email they receive.
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS locale TEXT NOT NULL DEFAULT 'en';
+    DO $$ BEGIN
+      ALTER TABLE users ADD CONSTRAINT users_locale_check CHECK (locale IN ('en','es'));
+    EXCEPTION WHEN duplicate_object THEN NULL; END $$;
   `);
 
   console.log('Schema pushed to Postgres.');

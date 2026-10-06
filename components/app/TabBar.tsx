@@ -41,10 +41,10 @@ function isActive(pathname: string, href: string, all: Tab[]) {
 }
 
 /** Desktop: inline tabs in the header. */
-export function HeaderTabs({ tabs }: { tabs: Tab[] }) {
+export function HeaderTabs({ tabs, label = 'Sections' }: { tabs: Tab[]; label?: string }) {
   const pathname = usePathname();
   return (
-    <nav className="hidden items-center gap-1 md:flex" aria-label="Sections">
+    <nav className="hidden items-center gap-1 md:flex" aria-label={label}>
       {tabs.map((t) => {
         const active = isActive(pathname, t.href, tabs);
         return (
@@ -65,11 +65,11 @@ export function HeaderTabs({ tabs }: { tabs: Tab[] }) {
 }
 
 /** Phone: a tab bar within thumb reach, clear of the home indicator. */
-export function BottomTabs({ tabs }: { tabs: Tab[] }) {
+export function BottomTabs({ tabs, label = 'Sections' }: { tabs: Tab[]; label?: string }) {
   const pathname = usePathname();
   return (
     <nav
-      aria-label="Sections"
+      aria-label={label}
       className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 backdrop-blur md:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >

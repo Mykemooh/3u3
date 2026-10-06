@@ -1,3 +1,4 @@
+import { intlLocale, type Locale } from '@/lib/i18n';
 // Admin-driven scheduling engine — PRD section 6.4.
 //
 // The app never fabricates or estimates a slot: every candidate window is
@@ -154,8 +155,8 @@ export function formatSlotLabel(startIso: string, endIso: string): string {
   return `${fmt(startIso)} – ${fmt(endIso)}`;
 }
 
-export function formatDateLabel(dateISO: string): string {
+export function formatDateLabel(dateISO: string, locale: Locale = 'en'): string {
   const [y, m, d] = dateISO.split('-').map(Number);
   const dt = new Date(y, m - 1, d);
-  return dt.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  return dt.toLocaleDateString(intlLocale(locale), { weekday: 'long', month: 'long', day: 'numeric' });
 }
