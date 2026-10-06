@@ -39,7 +39,7 @@ export default function RestockPanel() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-ink">Restock</h2>
-          <p className="max-w-2xl text-sm text-slate">What to buy now: items at or under the amount you like to keep, and anything a crew flagged. Each store gets one link; you check out yourself. Nothing is bought for you.</p>
+          <p className="max-w-2xl text-sm text-slate">What to buy now: items under the amount you like to keep, and anything a crew flagged. Each store gets one link; you check out yourself. Nothing is bought for you.</p>
         </div>
         {groups && groups.length > 0 && <button className="btn-secondary btn-sm" disabled={busy} onClick={() => go('/api/admin/supplies/restock', 'POST', { action: 'email' }, 'Sent to your email.')}>Email me this list</button>}
       </div>

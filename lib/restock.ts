@@ -10,7 +10,7 @@ import { appUrl } from '@/lib/url';
  * Restocking supplies, with no vendor account or API needed.
  *
  * The owner lists the products they reorder (where they buy each, how many
- * to keep, how many to order). The restock list is anything at or under its
+ * to keep, how many to order). The restock list is anything under its
  * par level plus anything a crew has flagged as low or out. Each vendor
  * group gets a link that works from any browser: Amazon's add-to-cart link
  * fills the cart for every item that has an ASIN; other vendors get the
@@ -139,14 +139,14 @@ export type RestockGroup = { vendor: Vendor; label: string; lines: RestockLine[]
 
 const lineLink = (i: typeof supplyItems.$inferSelect) => i.url || (i.vendor === 'AMAZON' && i.sku && ASIN.test(i.sku) ? `https://www.amazon.com/dp/${i.sku}` : VENDORS[i.vendor].search(i.name));
 
-/** What to buy now: items at/under par, items crews flagged, grouped by vendor with a cart or search link each. */
+/** What to buy now: items under their par level, items crews flagged, grouped by vendor with a cart or search link each. */
 export async function restockList(tenantId: string) {
   const items = await listItems(tenantId);
   const reports = await db.select().from(supplyReports).where(and(eq(supplyReports.tenantId, tenantId), eq(supplyReports.resolved, false)));
   const lines: RestockLine[] = [];
   for (const item of items) {
     const flagged = reports.filter((r) => reportMatches(r.productName, item.name));
-    const low = item.parLevel > 0 && item.onHand <= item.parLevel;
+    const low = item.parLevel > 0 && item.onHand < item.parLevel;
     if (!low && !flagged.length) continue;
     const why = [low ? `${item.onHand} on hand (keep ${item.parLevel})` : '', flagged.length ? `${flagged.length === 1 ? 'a crew flagged it' : `${flagged.length} crew reports`} (${flagged[0].status.toLowerCase()})` : ''].filter(Boolean).join(' · ');
     lines.push({ item, qty: item.orderQty, why, link: lineLink(item) });

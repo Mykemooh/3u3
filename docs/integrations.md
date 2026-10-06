@@ -57,7 +57,11 @@ Notes:
 - The QuickBooks push no longer counts a paid tip twice when the invoice
   also carries the tip as its own line item.
 
-## Muse — Tex's marketing agent (saved Oct 6 2026, build after items 1–11)
+## Muse — Tex's marketing agent (built Oct 6 2026)
+
+**Status:** phases 1–4 are built (Marketing → Muse). Ideas and copy, the four-week plan, free AI pictures (Pollinations, no key) and a Facebook/Instagram publisher that only creates paused ads. A paid image/video generator (Higgsfield or similar) is not wired in — there's no free API for it; the picture step is an adapter point (`imageUrlFor` in `lib/muse.ts`). Needs for Facebook: `META_APP_ID`, `META_APP_SECRET`, optional `META_MAX_DAILY_CENTS`.
+
+Original plan:
 
 A "Muse AI"-style marketing agent that lives in Tex's backend (`lib/muse.ts`,
 tools in `lib/museTools.ts`, office-only, Admin → Marketing → Muse). Phased,
@@ -81,6 +85,10 @@ each phase shippable on its own:
 
 Rules: nothing is published or spent without an explicit owner approval in
 the app; no API keys in code or the database; tenant-scoped like Tex.
+
+## Supply restock (built Oct 6 2026)
+
+Supplies → Restock: a catalog with par levels, a restock list from low items and crew reports, per-store links (Amazon add-to-cart by ASIN, product or search links elsewhere) and Google Shopping price comparison. Free: no vendor account or API. An Amazon Business or Zinc integration (real ordering) is possible later but both need accounts and fees.
 
 ## Usable today with no key
 

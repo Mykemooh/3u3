@@ -22,6 +22,10 @@ web
 
 Family-owned (not a franchise or a route-based service): the founders (Betty & Mike) and their family's name are on every job. The business explicitly commits to only making claims it can already stand behind — no "insured and bonded," no customer counts, no manufactured testimonials — until verifiably true.
 
+## Platform direction
+
+3U3 Cleaning is also the first customer of **TrashCan**, a multi-tenant SaaS for cleaning companies (self-serve signup, per-company portals, Stripe Connect payouts). "TrashCan" is the product name — it is not about deleting anything. Tex is the assistant on chat, text and phone (receptionist, client self-service and, for office staff, Muse the marketing helper). The product makes no fixed promise about crew size or hours.
+
 ## Operating Context
 
 - Customers interact primarily on the marketing site and account dashboard; quoting happens via an in-person walkthrough, not a self-serve calculator.

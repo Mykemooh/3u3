@@ -131,6 +131,45 @@ New tables (all created by `db/push.ts`, additive): `api_keys`,
 `xero_links`; new columns `add_on_services.outdoor`,
 `payroll_runs.gusto_payroll_id`, `payroll_runs.gusto_pushed_at`.
 
+## October 2026 update — Tex, Muse and supplies
+
+TrashCan (the SaaS) wraps the 3U3 operations app: any cleaning company can
+sign up, get its own portals, and run the same workflow.
+
+- **Tex** — one assistant on every channel: the chat bubble in each portal,
+  texts to the business number, and phone calls. It answers from help
+  articles (company's own first), takes new requests as leads, greets known
+  callers by name, and hands off to a person. For a client it can look up
+  cleans, invoices and quotes, move or cancel a clean (24-hour rule, open
+  times only) and update notes like pets and parking. Changes are two steps
+  (propose, then confirm). By text or phone the client first proves it's
+  them with a **4-digit phone PIN** (Account → Settings) or a one-time code
+  texted to the number on file; an email change always needs the code.
+  PINs are hashed, locked after five wrong tries, and never saved in logs.
+  Settings → Texting and Tex sets office hours (callers who ask for a
+  person are put through while open, voicemail otherwise; after hours Tex
+  takes a message) and an optional greeting. Needs `ANTHROPIC_API_KEY`
+  and Twilio keys.
+- **Muse** (Marketing → Muse) — Tex's marketing agent. Drafts ads, emails
+  and texts from the company's own services, clients and season, checks
+  copy against house rules (no prices, no unprovable claims, no invented
+  reviews), suggests a four-week plan, and shows free AI pictures
+  (Pollinations, no key). Everything is a draft until approved; email and
+  text ideas become unsent campaign drafts in Growth. With `META_APP_ID`
+  and `META_APP_SECRET`, an approved ad can be created in the owner's own
+  Facebook ad account — **always paused**, with a daily-budget cap
+  (`META_MAX_DAILY_CENTS`) and ZIP targeting. Works without any key using
+  built-in templates; `ANTHROPIC_API_KEY` makes the writing fresher.
+- **Supply restock** (Supplies → Restock) — a list of what the company
+  reorders, with how many to keep. Items under par and anything crews flag
+  become a shopping list per store with an Amazon cart link, product links
+  and price-comparison links. Nothing is bought for you; no vendor account
+  or API.
+
+New tables (additive, in `db/push.ts`): `tex_actions`, `ad_concepts`,
+`meta_connections`, `supply_items`; new columns `users.phone_pin_*` and
+`tenants.tex_open_*`, `tenants.tex_greeting`.
+
 ## Tech stack
 
 - **Next.js 14** (App Router) + TypeScript + Tailwind CSS

@@ -465,7 +465,7 @@ const museDrafts: Tool = {
 
 const restockTool: Tool = {
   name: 'restock_list',
-  description: 'What cleaning supplies to buy now: items at or under their par level and anything crews flagged as low or out, grouped by store with links. Nothing is ordered for them.',
+  description: 'What cleaning supplies to buy now: items under their par level and anything crews flagged as low or out, grouped by store with links. Nothing is ordered for them.',
   input_schema: { type: 'object', properties: {} },
   async run(ctx) {
     if (!ctx.userId || !(await getUserRole(ctx.userId)).permissions.has('supplies.manage')) return { ok: false, error: 'Your role doesn’t include supplies.' };

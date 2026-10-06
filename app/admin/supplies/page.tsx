@@ -23,7 +23,7 @@ export default async function AdminSupplies() {
     <div className="space-y-8">
       <div>
         <h1 className="mb-1 text-2xl font-bold text-ink">Supplies</h1>
-        <p className="text-slate">What crews have flagged as low, out, or damaged — straight from the crew portal.</p>
+        <p className="text-slate">Know what to buy and when — from your own list and what crews flag as low, out or damaged in the crew portal.</p>
       </div>
 
       <RestockPanel />
