@@ -1,7 +1,7 @@
 # Integrations plan
 
 What a cleaning company running on TrashCan (3U3 first) connects to, what's
-already wired, and what gets built next. Every integration is **off until its
+wired, and what's next. Every integration is **off until its
 keys are set** in Vercel → Settings → Environment Variables, so code can ship
 before the accounts exist.
 
@@ -23,45 +23,39 @@ QuickBooks, through that service's own "Connect" sign-in flow).
 | Google sign-in | "Continue with Google" on every portal | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | console.cloud.google.com/apis/credentials (OAuth client, Web app; redirect `<site>/api/auth/callback/google`) | Free |
 | Claude API (Tex) | Tex's answers in the portals, by text and by phone | `ANTHROPIC_API_KEY` (optional `TEX_MODEL`) | console.anthropic.com/settings/keys | Per token; Tex falls back to the help articles without it |
 
-## To build next (scheduled build, Oct 6 2026)
+## Built Oct 6 2026 (scheduled build) — each is off until its keys are set
 
-Each item ships behind its env var or a per-company "Connect" button, with
-tests, and is listed on Admin → Settings → Integrations with its status.
+Every item below is on **Admin → Settings → Integrations** with its live
+status (connected / ready to connect / missing keys / not set up / built
+in) and setup steps. The platform owner sees every env var as set or
+missing — names only — on **/platform/integrations** ("Keys").
 
-1. **Integrations hub** — Admin → Settings → Integrations shows every
-   integration above and below: connected / missing keys / not used, what it
-   does, and the exact setup steps. Platform owner sees which env vars are
-   set (names only, never values).
-2. **Company API keys + outgoing webhooks** (Zapier, Make, n8n). Each company
-   creates API keys (stored hashed, shown once) and webhook endpoints that
-   receive signed JSON for `lead.created`, `booking.created`,
-   `booking.cancelled`, `job.started`, `job.completed`, `invoice.sent`,
-   `invoice.paid`, `review.created`. Retries with backoff; delivery log.
-   No outside keys needed.
-3. **Inbound lead webhook** — `POST /api/hooks/leads` (company API key)
-   creates a lead from Angi, Thumbtack, Facebook Lead Ads or a website form
-   via Zapier. Dedupe by phone/email.
-4. **Google Calendar sync** — each staff member can "Connect Google
-   Calendar" (same Google Cloud project as sign-in, Calendar API enabled);
-   their jobs are pushed as events and kept in step when moved, skipped or
-   cancelled. One-way, idempotent.
-5. **Weather on the schedule** — Open-Meteo (free, **no key**): rain/heat
-   flags on days with outdoor add-ons (patio, windows, pressure washing).
-6. **Google review link lookup** — with `GOOGLE_MAPS_API_KEY` (Places API),
-   find the company's Place ID and fill the "leave a review" link used by
-   review requests. Manual paste stays as the fallback.
-7. **Address autocomplete** — Mapbox Search Box on lead and client forms,
-   using the existing Mapbox token; coordinates still never stored.
-8. **Background checks (Checkr)** — invite a new cleaner from Team, track
-   status by webhook. `CHECKR_API_KEY` (dashboard.checkr.com, partner
-   account).
-9. **Payroll (Gusto)** — export a payroll run in Gusto's import format now;
-   push via API when partner credentials exist (`GUSTO_CLIENT_ID`,
-   `GUSTO_CLIENT_SECRET`, dev.gusto.com).
-10. **Error monitoring** — Sentry (`SENTRY_DSN`, sentry.io) for server and
-    browser errors, and a public `/status` page backed by a health check.
-11. **Xero** — the QuickBooks sync's twin for companies on Xero
-    (`XERO_CLIENT_ID`, `XERO_CLIENT_SECRET`, developer.xero.com).
+| # | Integration | What it does | Needs | Where |
+| --- | --- | --- | --- | --- |
+| 1 | **Integrations hub** | One page with every integration's status and exact setup steps | nothing | `lib/integrationsHub.ts`, `app/admin/integrations`, `app/platform/integrations` |
+| 2 | **API keys + outgoing webhooks** (Zapier, Make, n8n) | Company API keys (sha256-stored, shown once, revocable). Webhook addresses get HMAC-SHA256-signed JSON (`TrashCan-Signature: t=…,v1=…`, per-endpoint secret) for `lead.created`, `booking.created`, `booking.cancelled`, `job.started`, `job.completed`, `invoice.sent`, `invoice.paid`, `review.created`. Retries at 1m, 5m, 30m, 2h, 12h then gives up; delivery log with Retry now and Send test event. Public https only. | nothing | Settings → API and webhooks; `lib/apiKeys.ts`, `lib/webhooks.ts`, `lib/events.ts` |
+| 3 | **Inbound lead webhook** | `POST /api/hooks/leads` with a company key (`Authorization: Bearer tc_live_…` or `X-Api-Key`), JSON or form-encoded. Forgiving field names; needs a name and a phone or email. A repeat from the same phone/email while the lead is open is folded in. Shows on Leads → "From other sites". 200 leads/hour cap. | a company API key | `lib/inboundLeads.ts` |
+| 4 | **Google Calendar sync** | Each staff member connects their own calendar (office on Integrations, crew on Today). Jobs (and walkthroughs for office staff) from yesterday to +60 days kept as events; moved / restaffed / cancelled / skipped visits follow. One way, idempotent (fixed event id per booking). | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` (same OAuth client as sign-in) + Calendar API enabled + scope `…/auth/calendar.events` + redirect `<site>/api/calendar/google/callback` | `lib/googleCalendar.ts` |
+| 5 | **Weather on the schedule** | Schedule shows a weather watch for days with outdoor add-ons and ≥60% rain / ≥0.2 in or ≥95°F. Add-ons have an Outdoor checkbox (common ones recognised by name). | nothing; `OPEN_METEO_API_KEY` optional — Open-Meteo's free API is non-commercial | `lib/weather.ts` |
+| 6 | **Google review link lookup** | Settings → Reviews: Search Google, pick the listing, its Place ID becomes the review link | `GOOGLE_MAPS_API_KEY` (Places API (New)) | `lib/googlePlaces.ts` |
+| 7 | **Address autocomplete** | Mapbox Search Box (suggest + retrieve, session-billed) on the lead form, new-client form and client address editor; falls back to geocoding autocomplete; coordinates never stored | existing `MAPBOX_ACCESS_TOKEN` | `components/AddressInput.tsx` |
+| 8 | **Background checks (Checkr)** | Team → Background checks: send a check (Checkr's hosted form does details, disclosure, consent). Webhook `POST /api/hooks/checkr` (signed with the API key) moves status; owner emailed when done. Only status/result kept. | `CHECKR_API_KEY`; optional `CHECKR_PACKAGE` (default `basic_plus`), `CHECKR_ENVIRONMENT=staging` | `lib/checkr.ts` |
+| 9 | **Payroll (Gusto)** | Every payroll run: Export for Gusto (CSV in the hours-and-earnings import layout — hours for hourly pay, commission for per-clean/day/percentage pay, paycheck tips). With partner keys: Connect Gusto, then Send to Gusto fills the open Gusto payroll for that period, matched by email; nothing is submitted. | CSV: nothing. API: `GUSTO_CLIENT_ID`, `GUSTO_CLIENT_SECRET`, `GUSTO_ENVIRONMENT=production` once approved; redirect `<site>/api/admin/integrations/gusto/callback` | `lib/gusto.ts` |
+| 10 | **Error monitoring** | Server errors (anything passed to `console.error`, unhandled rejections) and browser errors go to Sentry; no SDK. Only type, message, stack, path, environment, commit — never bodies, cookies, headers or query strings. `/status` and `/api/health` already existed. | `SENTRY_DSN` | `lib/monitoring.ts`, `instrumentation.ts` |
+| 11 | **Xero** | Paid invoices added to Xero as "receive money" bank transactions with line items and tip; Idempotency-Key + `xero_links`, never twice | `XERO_CLIENT_ID`, `XERO_CLIENT_SECRET`; optional `XERO_SALES_ACCOUNT_CODE` (default 200), `XERO_BANK_ACCOUNT_CODE`, `XERO_SCOPES`; redirect `<site>/api/admin/integrations/xero/callback` | `lib/xero.ts` |
+
+Notes:
+
+- Webhook retries run when the company's next event is sent, in the two
+  daily jobs, and at `/api/cron/webhooks` (send `Authorization: Bearer
+  <CRON_SECRET>`; point any scheduler at it for faster retries — no new
+  Vercel cron was added, so the plan's cron limits don't change).
+- Webhook signing secrets and outside services' tokens are sealed with
+  `HOME_PROFILE_ENCRYPTION_KEY` when it's set (`lib/secretBox.ts`).
+- Google Calendar sync also runs in the daily job, catching anything an
+  edit path missed (for example a person moved to another team).
+- The QuickBooks push no longer counts a paid tip twice when the invoice
+  also carries the tip as its own line item.
 
 ## Muse — Tex's marketing agent (saved Oct 6 2026, build after items 1–11)
 
@@ -90,8 +84,9 @@ the app; no API keys in code or the database; tenant-scoped like Tex.
 
 ## Usable today with no key
 
-- Open-Meteo weather (no account).
+- Open-Meteo weather (no account; non-commercial terms — see item 5).
+- Company API keys, outgoing webhooks and the inbound lead webhook.
+- Gusto CSV export from every payroll run.
 - US federal holidays (computed in `lib/recurring.ts`).
 - Google Calendar "Add to calendar" links and `.ics` files (already in the
   client portal).
-- Outgoing webhooks and company API keys (TrashCan's own).

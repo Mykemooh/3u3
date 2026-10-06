@@ -102,6 +102,35 @@ exercise rather than a rewrite.
 - **Video clean-up:** daily Vercel cron deletes videos older than
   `VIDEO_RETENTION_DAYS`, if set. Photos are never deleted.
 
+## October 2026 update — integrations
+
+Each is off until its keys are set (or a company clicks its Connect
+button), and each is listed with live status and setup steps on
+**Admin → Settings → Integrations**. Full table: `docs/integrations.md`.
+
+- **Integrations hub** — status for every integration; the platform owner
+  sees which env vars are set (names only) on `/platform/integrations`.
+- **API keys and webhooks** (Settings → API and webhooks) — company API
+  keys (hashed, shown once) and signed outgoing webhooks for leads,
+  bookings, jobs, invoices and reviews, with retries and a delivery log.
+- **Inbound leads** — `POST /api/hooks/leads` with a company API key;
+  leads from Angi, Thumbtack, Facebook or a website form land on Leads.
+- **Google Calendar** — each staff member's jobs kept in their own
+  calendar.
+- **Weather watch** on the Schedule for outdoor add-ons (Open-Meteo).
+- **Google review link lookup** (Places API) on Settings.
+- **Address autocomplete** on Mapbox Search Box.
+- **Background checks** through Checkr, from Team.
+- **Gusto** — CSV export of any payroll run; API push with partner keys.
+- **Sentry** error monitoring (server and browser), no SDK.
+- **Xero** — paid invoices sync like QuickBooks.
+
+New tables (all created by `db/push.ts`, additive): `api_keys`,
+`webhook_endpoints`, `webhook_deliveries`, `inbound_leads`,
+`calendar_connections`, `calendar_event_links`, `background_checks`,
+`xero_links`; new columns `add_on_services.outdoor`,
+`payroll_runs.gusto_payroll_id`, `payroll_runs.gusto_pushed_at`.
+
 ## Tech stack
 
 - **Next.js 14** (App Router) + TypeScript + Tailwind CSS
