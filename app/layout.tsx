@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Inter, Plus_Jakarta_Sans } from 'next/font/google';
+import localFont from 'next/font/local';
 import './globals.css';
 import Providers from './providers';
 import BrandWatermark from '@/components/BrandWatermark';
@@ -15,11 +15,30 @@ import ErrorReporter from '@/components/ErrorReporter';
  * --font-sans is Inter; --font-display is Plus Jakarta Sans, falling back
  * to --font-sans if it somehow fails to load.
  */
-const inter = Inter({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
-const jakarta = Plus_Jakarta_Sans({
-  subsets: ['latin'],
-  weight: ['600', '700', '800'],
+// All three faces are self-hosted from @fontsource-variable packages (latin
+// subset, variable weight), so builds never depend on reaching Google Fonts.
+const inter = localFont({
+  src: '../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2',
+  weight: '100 900',
+  variable: '--font-sans',
+  display: 'swap',
+});
+const jakarta = localFont({
+  src: '../node_modules/@fontsource-variable/plus-jakarta-sans/files/plus-jakarta-sans-latin-wght-normal.woff2',
+  weight: '200 800',
   variable: '--font-display',
+  display: 'swap',
+});
+
+// TrashCan's display face (docs/brand/trashcan-guidelines.md). The guide
+// names Satoshi, which is distributed by Fontshare rather than Google Fonts;
+// Manrope (self-hosted from @fontsource-variable/manrope) is the closest
+// open geometric grotesk and stands in until the Satoshi files are added
+// (see docs/brand/trashcan-guidelines.md → Fonts).
+const tcDisplay = localFont({
+  src: '../node_modules/@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2',
+  weight: '200 800',
+  variable: '--font-tc-display',
   display: 'swap',
 });
 
@@ -31,7 +50,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${jakarta.variable}`}>
+    <html lang="en" className={`${inter.variable} ${jakarta.variable} ${tcDisplay.variable}`}>
       <body>
         <BrandWatermark />
         <div className="relative z-10">

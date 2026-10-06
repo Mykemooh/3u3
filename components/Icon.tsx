@@ -23,7 +23,7 @@ const PATHS: Record<IconName, JSX.Element> = {
   quote: (
     <>
       <path d="M6 3h9l4 4v14H6z" />
-      <path d="M15 3v4h4M12 11l.9 1.9L15 13.8l-2.1.9L12 17l-.9-2.3L9 13.8l2.1-.9z" />
+      <path d="M15 3v4h4M9.5 12h6M9.5 15.5h6M9.5 8.5h3" />
     </>
   ),
   spray: (
@@ -118,6 +118,65 @@ const PATHS: Record<IconName, JSX.Element> = {
   ),
   sparkle: <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z" />,
   x: <path d="M6 6l12 12M18 6 6 18" />,
+  jobs: (
+    <>
+      <rect x="5" y="4" width="14" height="17" rx="2.5" />
+      <path d="M9 4V3h6v1M8.5 12.5l2.2 2.2 4.8-4.8" />
+    </>
+  ),
+  bolt: <path d="M13 2 4.5 13.5H11L10 22l8.5-11.5H12z" />,
+  search: (
+    <>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="m20 20-4.2-4.2" />
+    </>
+  ),
+  bell: <path d="M6 9.5a6 6 0 1 1 12 0c0 5 2 6.5 2 6.5H4s2-1.5 2-6.5M10 19.5a2.2 2.2 0 0 0 4 0" />,
+  arrow: <path d="M5 12h14M13 6l6 6-6 6" />,
+  check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
+  map: (
+    <>
+      <path d="M9 4 3.5 6v14L9 18l6 2 5.5-2V4L15 6z" />
+      <path d="M9 4v14M15 6v14" />
+    </>
+  ),
+  card: (
+    <>
+      <rect x="3" y="5.5" width="18" height="13" rx="2.5" />
+      <path d="M3 10h18M7 15h3" />
+    </>
+  ),
+  phone: <path d="M6.5 3h3l1.5 4.5-2 1.5a11 11 0 0 0 6 6l1.5-2 4.5 1.5v3a2 2 0 0 1-2 2A16.5 16.5 0 0 1 4.5 5a2 2 0 0 1 2-2" />,
+  camera: (
+    <>
+      <path d="M4 8h3l2-2.5h6L17 8h3v11H4z" />
+      <circle cx="12" cy="13" r="3.5" />
+    </>
+  ),
+  timer: (
+    <>
+      <circle cx="12" cy="13.5" r="7.5" />
+      <path d="M12 9.5v4l2.5 2M10 2.5h4" />
+    </>
+  ),
+  layers: <path d="m12 3 9 5-9 5-9-5zM3 12.5l9 5 9-5M3 17l9 5 9-5" />,
+  logout: <path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4M10 16l-4-4 4-4M6 12h10" />,
+  chevron: <path d="m9 6 6 6-6 6" />,
+  menu: <path d="M4 7h16M4 12h16M4 17h16" />,
+  lock: (
+    <>
+      <rect x="5" y="10.5" width="14" height="10" rx="2.5" />
+      <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" />
+    </>
+  ),
+  globe: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3" />
+    </>
+  ),
+  download: <path d="M12 4v11M7 10.5l5 5 5-5M5 20h14" />,
+  trend: <path d="M3 17l6-6 4 4 8-8M15 7h6v6" />,
 };
 
 export default function Icon({ name, size = 22, className = '' }: { name: IconName; size?: number; className?: string }) {

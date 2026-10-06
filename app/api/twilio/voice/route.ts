@@ -3,6 +3,8 @@ import { tenantForInbound, clientByPhone } from '@/lib/messaging';
 import { phoneDigits } from '@/lib/sms';
 import { isOpenNow } from '@/lib/time';
 import { twilioForm, twiml, say, gather, xml } from '@/lib/voice';
+import { appUrl } from '@/lib/url';
+import { startVoiceCall, dialTimeLimit } from '@/lib/billing/wallet';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,8 +18,16 @@ export async function POST(req: Request) {
   if (!ok) return NextResponse.json({ error: 'Invalid signature' }, { status: 403 });
   const tenant = await tenantForInbound(params.To ?? '', params.From ?? '');
   if (!tenant) return twiml(say('Sorry, this number is not set up yet.'));
+  // Phone minutes are prepaid (lib/billing/wallet.ts): the first two are
+  // reserved before anyone picks up, the rest are paid as the call runs.
+  const callSid = params.CallSid ?? '';
+  if (callSid && !(await startVoiceCall(tenant.id, callSid))) {
+    return twiml(say(`Thanks for calling ${tenant.name}. We can’t take calls on this line right now. Please try again a little later. Goodbye.`));
+  }
   if (!tenant.texVoiceEnabled) {
-    return twiml(tenant.ownerPhone ? `<Dial>${xml(tenant.ownerPhone)}</Dial>` : say(`Thanks for calling ${tenant.name}. Please send us a text at this number and we will get right back to you.`));
+    if (!tenant.ownerPhone) return twiml(say(`Thanks for calling ${tenant.name}. Please send us a text at this number and we will get right back to you.`));
+    const limit = await dialTimeLimit(tenant.id);
+    return twiml(`<Dial${limit ? ` timeLimit="${limit}"` : ''} action="${xml(appUrl('/api/twilio/voice/voicemail'))}" method="POST">${xml(tenant.ownerPhone)}</Dial>`);
   }
   const digits = phoneDigits(params.From);
   const client = digits ? await clientByPhone(digits, tenant.id) : undefined;

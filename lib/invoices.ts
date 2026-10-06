@@ -10,7 +10,7 @@ import { logNotification } from '@/lib/bookings';
 import { sendEmail, invoiceEmail, paymentReceivedCustomerEmail, paymentReceivedOwnerEmail, type EmailBrand } from '@/lib/email';
 import { pushPaidInvoice } from '@/lib/quickbooks';
 import { pushPaidInvoiceToXero } from '@/lib/xero';
-import { connectRouting } from '@/lib/connect';
+import { cardRouting, ConnectError } from '@/lib/connect';
 import type Stripe from 'stripe';
 
 /** This tenant's own name/colors/logo for the invoice and payment emails — never 3U3's, once this is a different company's booking. */
@@ -262,7 +262,9 @@ export async function sendInvoice(invoiceId: string): Promise<{ url: string }> {
     const customerId = await getOrCreateStripeCustomer(invoice.clientId);
     const useAutopay = !!client?.autopayEnabled && !!client?.stripeDefaultPaymentMethodId;
     const brand = await brandFor(invoice.tenantId);
-    const routing = await connectRouting(invoice.tenantId, invoice.totalCents);
+    const routing = await cardRouting(invoice.tenantId, invoice.totalCents).catch((e: Error) => {
+      throw e instanceof ConnectError ? new InvoiceError(e.message) : e;
+    });
 
     const stripeInvoice = await stripe.invoices.create({
       customer: customerId,

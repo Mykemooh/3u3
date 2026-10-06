@@ -75,6 +75,10 @@ async function main() {
       creamColor: '#EFF6FF',
       serviceAreaRadiusMiles: 25,
       planStatus: 'ACTIVE',
+      // The platform owner's own company: Team, with no platform fee and no
+      // metered usage (docs/billing.md → House accounts).
+      plan: 'TEAM',
+      billingExempt: true,
     });
     tenant = (await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1))[0]!;
   }

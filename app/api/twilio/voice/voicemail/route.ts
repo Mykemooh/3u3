@@ -4,6 +4,7 @@ import { notificationLog } from '@/db/schema';
 import { phoneDigits } from '@/lib/sms';
 import { clientByPhone, tenantForInbound } from '@/lib/messaging';
 import { twilioForm, twiml, say, recordMessage } from '@/lib/voice';
+import { continueVoiceCall } from '@/lib/billing/wallet';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +18,8 @@ export async function POST(req: Request) {
   if (!ok) return NextResponse.json({ error: 'Invalid signature' }, { status: 403 });
   const tenant = await tenantForInbound(params.To ?? '', params.From ?? '');
   if (!tenant) return twiml(say('Sorry, this number is not set up yet.'));
+  // Settle the minutes a transfer or message ran (lib/billing/wallet.ts).
+  const paid = params.CallSid ? await continueVoiceCall(tenant.id, params.CallSid).catch(() => true) : true;
 
   if (params.RecordingUrl) {
     const digits = phoneDigits(params.From);
@@ -32,5 +35,6 @@ export async function POST(req: Request) {
     return twiml(say('Got it, thanks. Someone will get back to you soon. Bye now!'));
   }
   if (params.DialCallStatus === 'completed' || params.DialCallStatus === 'answered') return twiml('');
+  if (!paid) return twiml(say(`Sorry, nobody could pick up just now. Someone from ${tenant.name} will follow up soon. Goodbye.`));
   return twiml(say(`Sorry, nobody could pick up just now. Leave a message after the beep and someone from ${tenant.name} will call you back.`) + recordMessage());
 }

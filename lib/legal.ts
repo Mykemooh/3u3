@@ -1,13 +1,13 @@
 import type { LegalSection } from '@/components/LegalPage';
 
 /**
- * TrashCan's Terms and Privacy Policy, in plain language and matched to
+ * TRASHCAN's Terms and Privacy Policy, in plain language and matched to
  * what the software actually does (what it stores, who processes it, how
  * long photos are kept). Have a lawyer review both before relying on
  * them; edit here and the pages update.
  */
 
-export const LEGAL_UPDATED = 'October 5, 2026';
+export const LEGAL_UPDATED = 'October 6, 2026';
 export const contactLine = () =>
   process.env.PLATFORM_CONTACT_EMAIL
     ? `Email ${process.env.PLATFORM_CONTACT_EMAIL}, or use Help inside your account.`
@@ -17,7 +17,7 @@ export const TERMS: LegalSection[] = [
   {
     heading: 'Who these terms are between',
     body: [
-      'TrashCan is software for running a cleaning company: quotes, scheduling, crews, payments, messaging and an AI receptionist called Tex. These terms are between TrashCan and the business that signs up (“you” or “the Company”). The people the Company invites — office staff, cleaners and clients — use TrashCan through the Company’s account.',
+      'TRASHCAN is software for running a cleaning company: quotes, scheduling, crews, payments, messaging and an AI receptionist called Tex. These terms are between TRASHCAN and the business that signs up (“you” or “the Company”). The people the Company invites — office staff, cleaners and clients — use TRASHCAN through the Company’s account.',
     ],
   },
   {
@@ -29,21 +29,23 @@ export const TERMS: LegalSection[] = [
   {
     heading: 'Trial, plans and billing',
     body: [
-      'New companies get a 14-day free trial with no card. After that, a paid plan keeps your account active; plans renew until you cancel. Subscription payments are handled by Stripe. If a payment fails or the trial ends without a plan, your team’s access pauses until it is sorted out. Your data is not deleted.',
-      'Fees for payment processing, texting and phone minutes are charged by those providers (for example Stripe and Twilio) under their own terms.',
+      'Every company starts on the Free plan, with no card and no time limit. On the Free plan, a platform fee of 1% applies to card payments your clients make through TRASHCAN. The Crew plan ($49 a month) lowers that fee to 0.5% and the Team plan ($129 a month) removes it; both include a monthly allowance of texts and Tex phone minutes. Current prices are always on the pricing page, and we will tell account owners by email before a price that affects you changes.',
+      'Your company is the merchant for its own clients’ payments. Payments are processed by Stripe through your company’s own connected Stripe account; Stripe’s processing fees, refunds and disputes on those payments are your company’s, under Stripe’s terms. The platform fee is collected by Stripe as part of each payment.',
+      'Paid plans renew monthly until you change plan or cancel. If a subscription payment fails and Stripe’s retries are exhausted, your company moves to the Free plan. Nothing is locked or deleted.',
+      'Texts, Tex phone minutes and your business phone number are paid for with prepaid credits you add by card. When credits run out, texting and Tex phone calls pause until you add more; email, the app and Tex web chat keep working. The one-time texting setup fee covers your business number and carrier registration. Credits are not refundable except when you close your account.',
     ],
   },
   {
     heading: 'Your data',
     body: [
-      'Your company’s data — clients, homes, schedules, photos, invoices, messages — belongs to you. We use it only to run TrashCan for you, keep it secure, and support you when you ask. You can export clients, invoices, cleans, payroll, expenses and room times as spreadsheets at any time from Reports.',
+      'Your company’s data — clients, homes, schedules, photos, invoices, messages — belongs to you. We use it only to run TRASHCAN for you, keep it secure, and support you when you ask. You can export clients, invoices, cleans, payroll, expenses and room times as spreadsheets at any time from Reports.',
       'You decide what you collect from your clients and staff, and you are responsible for having the right to collect it, including consent to text people (US carriers require registration and opt-in for business texting).',
     ],
   },
   {
     heading: 'Running your business',
     body: [
-      'TrashCan helps with pricing, pay and taxes but does not make those decisions for you. You set your prices, decide how your crew is paid, and are responsible for employment law, payroll taxes (including on tips, which are taxable wages in the US), sales tax, licenses and insurance.',
+      'TRASHCAN helps with pricing, pay and taxes but does not make those decisions for you. You set your prices, decide how your crew is paid, and are responsible for employment law, payroll taxes (including on tips, which are taxable wages in the US), sales tax, licenses and insurance.',
       'Pricing guides shown inside the quote editor are general published ranges, not advice for your market.',
     ],
   },
@@ -56,14 +58,14 @@ export const TERMS: LegalSection[] = [
   {
     heading: 'Acceptable use',
     body: [
-      'Don’t use TrashCan to send spam or messages people haven’t agreed to, to store data you have no right to hold, to break the law, to probe or overload the service, or to access another company’s data.',
+      'Don’t use TRASHCAN to send spam or messages people haven’t agreed to, to store data you have no right to hold, to break the law, to probe or overload the service, or to access another company’s data.',
       'We may suspend an account that puts other customers, carriers or the service at risk, and we will tell you why.',
     ],
   },
   {
     heading: 'Availability and changes',
     body: [
-      'We work to keep TrashCan running and show its health at /status, but it is provided without a guaranteed uptime. Features change as the product improves; if we remove something you rely on, we will give notice where we reasonably can.',
+      'We work to keep TRASHCAN running and show its health at /status, but it is provided without a guaranteed uptime. Features change as the product improves; if we remove something you rely on, we will give notice where we reasonably can.',
     ],
   },
   {
@@ -75,7 +77,7 @@ export const TERMS: LegalSection[] = [
   {
     heading: 'Liability',
     body: [
-      'TrashCan is provided “as is”. To the extent the law allows, we are not liable for indirect or consequential losses (such as lost profits or lost bookings), and our total liability for any claim is limited to what you paid us in the 12 months before it.',
+      'TRASHCAN is provided “as is”. To the extent the law allows, we are not liable for indirect or consequential losses (such as lost profits or lost bookings), and our total liability for any claim is limited to what you paid us in the 12 months before it.',
     ],
   },
   {
@@ -91,8 +93,8 @@ export const PRIVACY: LegalSection[] = [
   {
     heading: 'Who is responsible for your information',
     body: [
-      'If you are a client or employee of a cleaning company that uses TrashCan, that company decides what is collected about you and why; TrashCan stores and processes it on the company’s behalf. Questions about your cleaning — or requests to see or delete your information — go to that company first; we will help them answer.',
-      'For company owners who sign up, TrashCan is responsible for your account information.',
+      'If you are a client or employee of a cleaning company that uses TRASHCAN, that company decides what is collected about you and why; TRASHCAN stores and processes it on the company’s behalf. Questions about your cleaning — or requests to see or delete your information — go to that company first; we will help them answer.',
+      'For company owners who sign up, TRASHCAN is responsible for your account information.',
     ],
   },
   {
@@ -102,7 +104,7 @@ export const PRIVACY: LegalSection[] = [
         'Account details: name, email, phone, and a password stored only as a one-way hash. Multi-factor secrets are encrypted; backup and email codes are stored only as hashes.',
         'Home and job details: addresses, home notes, room counts, and entry codes (encrypted), the cleaning checklist, before-and-after photos and videos, room times, and the GPS position where the crew started and finished each clean (proof of the visit).',
         'Live location while a crew is driving to a home, so the client can see them coming. Positions are kept only for that trip.',
-        'Billing: invoices and payment status. Card numbers are collected by Stripe and never touch TrashCan; we keep only the card brand, last four digits and expiry.',
+        'Billing: invoices and payment status. Card numbers are collected by Stripe and never touch TRASHCAN; we keep only the card brand, last four digits and expiry.',
         'Messages: texts with the company, conversations with Tex, reviews and room ratings.',
         'Usage and security records: sign-ins, a change history of who edited what, and basic server logs.',
       ],
@@ -117,7 +119,7 @@ export const PRIVACY: LegalSection[] = [
   {
     heading: 'Who processes it for us',
     body: [
-      'TrashCan uses these service providers, each only for its part of the work:',
+      'TRASHCAN uses these service providers, each only for its part of the work:',
       [
         'Vercel (hosting) and a managed Postgres database (Neon)',
         'Stripe (payments and subscriptions)',
@@ -156,7 +158,7 @@ export const PRIVACY: LegalSection[] = [
   },
   {
     heading: 'Children',
-    body: ['TrashCan is for businesses and adults. It is not directed to children under 13, and we do not knowingly collect their information.'],
+    body: ['TRASHCAN is for businesses and adults. It is not directed to children under 13, and we do not knowingly collect their information.'],
   },
   {
     heading: 'Changes and contact',

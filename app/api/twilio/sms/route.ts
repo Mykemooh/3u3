@@ -3,6 +3,8 @@ import { receiveInbound } from '@/lib/messaging';
 import { validTwilioSignature } from '@/lib/sms';
 import { appUrl } from '@/lib/url';
 import { texReplyToText } from '@/lib/tex';
+import { chargeUsage } from '@/lib/billing/wallet';
+import { smsSegments } from '@/lib/billing/plans';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,9 +31,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 403 });
   }
   const got = await receiveInbound({ from: params.From ?? '', to: params.To ?? '', body: params.Body ?? '', sid: params.MessageSid ?? null });
+  // Inbound texts are paid from credits too (lib/billing/wallet.ts). The
+  // message is always kept and shown in the inbox; with no credits, Tex
+  // just doesn't auto-reply.
+  const inboundPaid = got ? (await chargeUsage(got.tenant.id, 'SMS', smsSegments(params.Body ?? ''), params.MessageSid ?? null)).ok : false;
   // Tex answers if the company turned it on — never to STOP/START, which
   // Twilio and the carriers answer themselves.
-  if (got && !got.consent && got.tenant.texSmsAutoReply) {
+  if (got && inboundPaid && !got.consent && got.tenant.texSmsAutoReply) {
     await texReplyToText({ tenant: got.tenant, client: got.client, from: params.From ?? '', body: params.Body ?? '' }).catch((err) => console.error('[twilio/sms] Tex reply failed', err));
   }
   return twiml();

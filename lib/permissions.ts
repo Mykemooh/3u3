@@ -42,7 +42,7 @@ export const ADMIN_PERMISSIONS: { key: AdminPermission; label: string; detail: s
   { key: 'supplies.manage', label: 'Supplies', detail: 'Supply reports from the crew' },
   { key: 'help.manage', label: 'Help articles', detail: "Edit the company's own FAQs and SOPs Tex answers from" },
   { key: 'settings.manage', label: 'Settings', detail: 'Services, automations, integrations, company settings' },
-  { key: 'billing.manage', label: 'Billing', detail: "The company's own TrashCan subscription" },
+  { key: 'billing.manage', label: 'Plan & credits', detail: "The company's TRASHCAN plan, texting credits and card on file" },
 ];
 
 export const CREW_PERMISSIONS: { key: CrewPermission; label: string; detail: string }[] = [
@@ -128,6 +128,7 @@ const PATH_RULES: [string, AdminPermission][] = [
   ['/admin/developers', 'settings.manage'],
   ['/api/admin/developers', 'settings.manage'],
   ['/billing', 'billing.manage'],
+  ['/admin/plan', 'billing.manage'],
   ['/api/admin/billing', 'billing.manage'],
 ];
 

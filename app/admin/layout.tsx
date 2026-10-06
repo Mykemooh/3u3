@@ -13,7 +13,8 @@ import AccessNotice from '@/components/AccessNotice';
 import { db } from '@/db/client';
 import { tenants } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { isPlatformAccessActive } from '@/lib/platform';
+import { getUnreadAdminAlerts } from '@/lib/data';
+import { PLANS, effectivePlanKey } from '@/lib/billing/plans';
 
 // Every admin page reads live operational data (bookings, leads, rates,
 // crew). Setting this here cascades to all nested /admin pages, so none of
@@ -34,29 +35,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (role !== 'ADMIN') redirect(`${homeForRole(role)}?denied=1`);
   enforceMfa(session.user as unknown as SessionUser, '/admin');
 
-  // Platform access gate (lib/platform.ts) — a lapsed trial, promo code,
-  // or subscription locks the admin's own tools, not their customers'
-  // live booking/account pages, so a billing hiccup never strands a
-  // client mid-visit. Billing itself lives outside this layout
-  // (app/billing) specifically so it's never the thing this gate blocks.
+  // Under the plan model nothing locks a company out (lib/billing/plans.ts):
+  // a lapsed subscription is simply the Free plan.
   const tenant = tenantId ? (await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1))[0] : undefined;
-  if (tenant && !isPlatformAccessActive(tenant)) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-white px-6">
-        <div className="card max-w-sm text-center">
-          <p className="mb-2 text-2xl">🔒</p>
-          <h1 className="mb-2 text-lg font-bold text-ink">Your platform access has lapsed</h1>
-          <p className="mb-5 text-sm text-slate">
-            Your free trial or subscription has ended. Renew or redeem a code to get back into your admin tools —
-            your clients can still book and view their account in the meantime.
-          </p>
-          <Link href="/billing" className="btn-primary w-full">
-            Go to Billing
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  const unread = tenantId ? await getUnreadAdminAlerts(tenantId, 50).catch(() => []) : [];
+  const planKey = tenant ? effectivePlanKey(tenant) : 'FREE';
+  const planLabel = tenant?.billingExempt ? 'House account' : `${PLANS[planKey].name} plan`;
 
   // What this person's role may open (lib/roles.ts): the rail only shows
   // those sections, and a page they can't use explains why instead of
@@ -83,11 +67,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         useBrandLogo: !tenant?.logoUrl && /3u3/i.test(tenant?.name ?? ''),
       }}
       userName={session.user?.name ?? ''}
+      unreadCount={unread.length}
+      planLabel={planLabel}
     >
       <AccessNotice />
       {blocked ? (
         <div className="card mx-auto mt-10 max-w-md text-center">
-          <h2 className="text-lg font-bold text-ink">This part of the admin isn't on your role</h2>
+          <h2 className="text-lg font-bold text-ink">This part of the workspace isn't on your role</h2>
           <p className="mt-2 text-sm text-slate">
             {userRole?.name ?? 'Your role'} doesn't include{' '}
             <strong>{ADMIN_PERMISSIONS.find((p) => p.key === needed)?.label ?? needed}</strong>. Ask an owner to add it under

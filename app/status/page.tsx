@@ -3,7 +3,7 @@ import PlatformShell from '@/components/PlatformShell';
 import { checkHealth } from '@/lib/health';
 
 export const dynamic = 'force-dynamic';
-export const metadata: Metadata = { title: 'Status — TrashCan' };
+export const metadata: Metadata = { title: 'System status · TRASHCAN' };
 
 const ago = (iso: string | null) => {
   if (!iso) return 'not yet';
@@ -14,23 +14,23 @@ const ago = (iso: string | null) => {
 };
 
 const BANNER = {
-  operational: ['bg-green/10 text-green', 'Everything is working'],
-  degraded: ['bg-amber-50 text-amber-800', 'Working, with a delay in background jobs'],
-  down: ['bg-red-50 text-red-700', 'TrashCan is having trouble right now'],
+  operational: ['bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200', 'Everything is working'],
+  degraded: ['bg-amber-50 text-amber-800 ring-1 ring-amber-200', 'Working, with a delay in background jobs'],
+  down: ['bg-red-50 text-red-700 ring-1 ring-red-200', 'TRASHCAN is having trouble right now'],
 } as const;
 
 export default async function StatusPage() {
   const h = await checkHealth();
   const [cls, label] = BANNER[h.status];
-  const dot = (state: string) => (state === 'ok' ? 'bg-green' : state === 'never' ? 'bg-line' : state === 'late' ? 'bg-amber-500' : 'bg-red-500');
+  const dot = (state: string) => (state === 'ok' ? 'bg-tc-green' : state === 'never' ? 'bg-tc-300' : state === 'late' ? 'bg-amber-500' : 'bg-red-500');
   return (
     <PlatformShell>
-      <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
-        <h1 className="text-3xl font-extrabold text-ink">Status</h1>
-        <div className={`mt-6 rounded-2xl px-5 py-4 text-lg font-semibold ${cls}`} role="status">{label}</div>
-        <div className="mt-6 divide-y divide-line rounded-2xl border border-line bg-white">
+      <div className="mx-auto max-w-2xl px-4 pb-20 pt-14 sm:px-6 md:pt-20">
+        <h1 className="tc-h1">System status</h1>
+        <div className={`mt-6 rounded-tc-lg px-5 py-4 text-lg font-semibold ${cls}`} role="status">{label}</div>
+        <div className="mt-6 divide-y divide-tc-200 rounded-tc-lg border border-tc-200 bg-white">
           <div className="flex items-center justify-between px-5 py-4">
-            <span className="flex items-center gap-3"><span className={`h-2.5 w-2.5 rounded-full ${h.database.ok ? 'bg-green' : 'bg-red-500'}`} />App and database</span>
+            <span className="flex items-center gap-3"><span className={`h-2.5 w-2.5 rounded-full ${h.database.ok ? 'bg-tc-green' : 'bg-red-500'}`} />App and database</span>
             <span className="text-sm text-slate">{h.database.ok ? `Responding (${h.database.ms} ms)` : 'Not responding'}</span>
           </div>
           {h.jobs.map((j) => (

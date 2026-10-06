@@ -4,6 +4,7 @@ import { tenants } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { getStripe, isStripeConfigured } from '@/lib/stripe';
 import { appUrl } from '@/lib/url';
+import { planFor, platformFeeOnly, stripePassthrough, effectivePlanKey } from '@/lib/billing/plans';
 
 /**
  * Stripe Connect: a cleaning company's own Stripe account, so its clients'
@@ -71,10 +72,30 @@ export async function syncConnectAccount(account: Stripe.Account) {
  * Stripe says it can take charges right now (checked live, so a restricted
  * account never receives a charge it can't accept), otherwise the
  * platform's account as before connecting. Returns the destination and
- * the platform fee for this amount.
+ * the platform's application fee for this amount (lib/billing/plans.ts).
+ *
+ * `kind: 'TIP'` is a tip for the crew: TrashCan takes no platform fee on
+ * it, only Stripe's own cost of moving it.
  */
-export async function connectRouting(tenantId: string, amountCents: number): Promise<{ destination: string; feeCents: number } | null> {
-  const tenant = (await db.select({ id: tenants.stripeConnectAccountId, ready: tenants.stripeConnectReady }).from(tenants).where(eq(tenants.id, tenantId)).limit(1))[0];
+export async function connectRouting(
+  tenantId: string,
+  amountCents: number,
+  kind: 'PAYMENT' | 'TIP' = 'PAYMENT',
+): Promise<{ destination: string; feeCents: number } | null> {
+  const tenant = (
+    await db
+      .select({
+        id: tenants.stripeConnectAccountId,
+        ready: tenants.stripeConnectReady,
+        plan: tenants.plan,
+        planCompUntil: tenants.planCompUntil,
+        planCompForever: tenants.planCompForever,
+        exempt: tenants.billingExempt,
+      })
+      .from(tenants)
+      .where(eq(tenants.id, tenantId))
+      .limit(1)
+  )[0];
   if (!tenant?.id || !tenant.ready) return null;
   try {
     const account = await getStripe().accounts.retrieve(tenant.id);
@@ -86,20 +107,47 @@ export async function connectRouting(tenantId: string, amountCents: number): Pro
     console.error('[connect] could not check account', err);
     return null;
   }
-  return { destination: tenant.id, feeCents: platformFeeCents(amountCents) };
+  return {
+    destination: tenant.id,
+    feeCents: applicationFeeCents(amountCents, { plan: effectivePlanKey({ ...tenant, billingExempt: tenant.exempt }), exempt: tenant.exempt, kind }),
+  };
 }
 
 /**
- * The platform's share of a payment routed to a company's account. By
- * default it covers card processing (2.9% + 30¢), which Stripe charges the
- * platform on destination charges; PLATFORM_FEE_BPS and
- * PLATFORM_FEE_FIXED_CENTS change it.
+ * Like connectRouting, but refuses to put another company's client payment
+ * into the platform's own Stripe account. Only a billing-exempt house
+ * account (the platform owner's own company) may take card payments before
+ * connecting; everyone else is asked to connect Stripe first.
  */
-export function platformFeeCents(amountCents: number) {
+export async function cardRouting(tenantId: string, amountCents: number, kind: 'PAYMENT' | 'TIP' = 'PAYMENT') {
+  const routing = await connectRouting(tenantId, amountCents, kind);
+  if (routing) return routing;
+  const t = (await db.select({ exempt: tenants.billingExempt, isPlatform: tenants.isPlatform }).from(tenants).where(eq(tenants.id, tenantId)).limit(1))[0];
+  if (t?.exempt) return null;
+  throw new ConnectError('Connect your Stripe account (Settings → Payments) before taking card payments, so clients pay your business directly.');
+}
+
+/**
+ * The platform's application fee on a payment routed to a company's
+ * account: Stripe's own cost of the destination charge (which Stripe bills
+ * the platform for), plus the plan's platform fee. A billing-exempt company
+ * pays only the pass-through; a tip never carries the platform fee.
+ */
+export function applicationFeeCents(
+  amountCents: number,
+  opts: { plan?: string | null; exempt?: boolean; kind?: 'PAYMENT' | 'TIP' } = {},
+) {
   if (amountCents <= 0) return 0;
-  const bps = Number(process.env.PLATFORM_FEE_BPS ?? 290);
-  const fixed = Number(process.env.PLATFORM_FEE_FIXED_CENTS ?? 30);
-  return Math.min(amountCents, Math.max(0, Math.round((amountCents * bps) / 10000) + fixed));
+  const pass = stripePassthrough();
+  const passthrough = Math.round((amountCents * pass.bps) / 10000) + pass.fixedCents;
+  const plan = planFor(opts.plan);
+  const platform = opts.kind === 'TIP' ? 0 : platformFeeOnly(plan, amountCents, !!opts.exempt);
+  return Math.min(amountCents, Math.max(0, passthrough + platform));
+}
+
+/** @deprecated kept for older callers — the Free plan's fee on a plain payment. */
+export function platformFeeCents(amountCents: number) {
+  return applicationFeeCents(amountCents);
 }
 
 export async function connectDashboardLink(tenantId: string) {

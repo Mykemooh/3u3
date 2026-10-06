@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { homeForRole, canAccess } from '@/lib/nav';
+import { isPlatformHost, TC_PAGES, TC_PREFIX } from '@/lib/tc/site';
 
 /**
  * Access control at the edge — written against getToken directly rather
@@ -41,6 +42,27 @@ const SESSION_COOKIES = ['__Secure-next-auth.session-token', 'next-auth.session-
 
 export async function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
+
+  // TrashCan's own domain (PLATFORM_HOSTS, lib/tc/site.ts): the marketing
+  // site lives at the root there. /trashcan/* is the long form that every
+  // other host uses, so it redirects to the short path here.
+  if (isPlatformHost(req.headers.get('host'))) {
+    if (pathname === TC_PREFIX || pathname.startsWith(`${TC_PREFIX}/`)) {
+      const short = new URL(pathname.slice(TC_PREFIX.length) || '/', req.url);
+      short.search = search;
+      return NextResponse.redirect(short, 308);
+    }
+    if ((TC_PAGES as readonly string[]).includes(pathname)) {
+      const target = new URL(pathname === '/' ? TC_PREFIX : `${TC_PREFIX}${pathname}`, req.url);
+      target.search = search;
+      return NextResponse.rewrite(target);
+    }
+  }
+  // Public pages (the marketing site, a company's home page) are only in
+  // the matcher for the rewrite above — never gate them.
+  if ((TC_PAGES as readonly string[]).includes(pathname) || pathname === TC_PREFIX || pathname.startsWith(`${TC_PREFIX}/`)) {
+    return NextResponse.next();
+  }
 
   // Hand the path to server components and route handlers, so the admin
   // layout and lib/adminApi.ts can check the role's permission for it
@@ -107,6 +129,7 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
+    '/', '/features', '/pricing', '/resources', '/trashcan', '/trashcan/:path*',
     '/admin/:path*', '/crew/:path*', '/book/:path*', '/account/:path*', '/billing', '/platform/:path*', '/security',
     '/api/admin/:path*', '/api/crew/:path*', '/api/account/:path*', '/api/platform/:path*',
   ],

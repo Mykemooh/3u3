@@ -3,6 +3,87 @@
 @tailwind utilities;
 
 @layer base {
+  /* ---- Brand tokens ----------------------------------------------------
+     Bare "R G B" channels so Tailwind's opacity modifiers keep working
+     (tailwind.config.ts). :root is the company brand — 3U3 Cleaning's own
+     brand book. .theme-tc (below) is TrashCan, the platform.              */
+  :root {
+    --c-gold: 1 106 238;        /* vivid blue */
+    --c-gold-light: 45 189 145; /* fresh green */
+    --c-ink: 4 23 48;           /* deep navy */
+    --c-ink-soft: 15 42 66;
+    --c-slate: 28 52 71;
+    --c-muted: 91 112 133;
+    --c-line: 220 227 233;
+    --c-surface: 241 245 248;
+    --c-bronze: 1 87 196;
+    --c-green: 24 170 157;      /* aqua/teal */
+    --c-green-light: 227 245 243;
+    --c-cream: 247 249 251;
+    --c-charcoal: 28 52 71;
+    --shadow-card: 0 8px 30px rgba(4, 23, 48, 0.06);
+    --shadow-card-lg: 0 16px 50px rgba(4, 23, 48, 0.09);
+    --shadow-gold: 0 2px 6px rgba(1, 106, 238, 0.22), 0 10px 24px -10px rgba(45, 189, 145, 0.45);
+    --shadow-gold-lg: 0 4px 10px rgba(1, 106, 238, 0.26), 0 16px 32px -12px rgba(45, 189, 145, 0.5);
+  }
+
+  /* TrashCan (docs/brand/trashcan-guidelines.md). On a light workspace the
+     primary action is black; lime is reserved for the dark layer (rail,
+     hero, CTA band), focus and highlights — never small text on white. */
+  .theme-tc {
+    --c-gold: 11 15 20;
+    --c-gold-light: 11 15 20;
+    --c-ink: 11 15 20;
+    --c-ink-soft: 30 38 48;
+    --c-slate: 55 65 81;
+    --c-muted: 107 114 128;
+    --c-line: 229 231 235;
+    --c-surface: 246 247 249;
+    --c-bronze: 11 15 20;
+    --c-green: 63 98 18;
+    --c-green-light: 244 255 217;
+    --c-cream: 248 249 250;
+    --c-charcoal: 55 65 81;
+    --shadow-card: 0 1px 2px rgba(11, 15, 20, 0.04), 0 8px 24px -12px rgba(11, 15, 20, 0.1);
+    --shadow-card-lg: 0 10px 30px rgba(11, 15, 20, 0.08);
+    --shadow-gold: 0 1px 2px rgba(11, 15, 20, 0.12);
+    --shadow-gold-lg: 0 6px 16px -6px rgba(11, 15, 20, 0.3);
+    --font-display: var(--font-tc-display);
+    font-feature-settings: 'cv11', 'ss01';
+  }
+  .theme-tc ::selection {
+    background: #b8ff00;
+    color: #0b0f14;
+  }
+  .theme-tc {
+    accent-color: #0b0f14;
+    caret-color: #0b0f14;
+  }
+  .theme-tc :focus-visible {
+    outline-color: #0b0f14;
+  }
+  .theme-tc .tc-dark :focus-visible,
+  .tc-dark :focus-visible {
+    outline-color: #b8ff00;
+  }
+  .theme-tc ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  .theme-tc ::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 999px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+  }
+  .theme-tc ::-webkit-scrollbar-thumb:hover {
+    background-color: #9ca3af;
+  }
+  .theme-tc .tabular,
+  .theme-tc table {
+    font-variant-numeric: tabular-nums;
+  }
+
   /* --font-sans itself comes from next/font (app/layout.tsx's Inter() call,
      applied via its `variable` class on <html>) — a *class* selector, so
      it always wins over this plain *element* selector regardless of
@@ -87,7 +168,7 @@
       shadow-gold transition-[filter] duration-200 hover:brightness-90
       focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-bronze
       active:translate-y-px disabled:pointer-events-none disabled:opacity-50;
-    background-image: linear-gradient(135deg, theme('colors.gold.DEFAULT'), theme('colors.gold.light'));
+    background-image: linear-gradient(135deg, rgb(var(--c-gold)), rgb(var(--c-gold-light)));
   }
   .btn-secondary {
     @apply inline-flex items-center justify-center gap-2 rounded-full border border-line bg-white px-7 py-3.5 text-base
@@ -240,7 +321,7 @@
     bottom: -0.35rem;
     height: 2px;
     border-radius: 999px;
-    background: theme('colors.green.DEFAULT');
+    background: rgb(var(--c-green));
     transform: scaleX(0);
     transform-origin: left center;
     transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
@@ -269,8 +350,8 @@
     z-index: 2;
     background: linear-gradient(
       to right,
-      theme('colors.green.DEFAULT'),
-      theme('colors.green.light')
+      rgb(var(--c-green)),
+      rgb(var(--c-green-light))
     );
     transform: scaleX(0);
     transform-origin: left center;
@@ -365,3 +446,243 @@
   }
 }
 
+
+/* =========================================================================
+   TrashCan surface (.theme-tc) — docs/brand/trashcan-guidelines.md
+   12px controls instead of pills, solid fills instead of the gradient,
+   150–220ms ease-out, CTAs lift 1px. Motion communicates state only, so
+   the decorative light sweep is off here.
+   ========================================================================= */
+@layer components {
+  .theme-tc .btn-primary,
+  .theme-tc .btn-secondary,
+  .theme-tc .btn-dark {
+    border-radius: 12px;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.9375rem;
+    transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1), background-color 180ms, border-color 180ms, box-shadow 180ms, filter 180ms;
+  }
+  .theme-tc .btn-sm {
+    padding: 0.5rem 0.875rem;
+    font-size: 0.8125rem;
+    border-radius: 10px;
+  }
+  .theme-tc .btn-primary {
+    background-image: none;
+    background-color: #0b0f14;
+    box-shadow: 0 1px 2px rgba(11, 15, 20, 0.16);
+  }
+  .theme-tc .btn-primary:hover {
+    filter: none;
+    background-color: #1e2630;
+    transform: translateY(-1px);
+  }
+  .theme-tc .btn-secondary:hover {
+    border-color: #0b0f14;
+    color: #0b0f14;
+    transform: translateY(-1px);
+  }
+  .theme-tc .btn-primary::after,
+  .theme-tc .btn-secondary::after,
+  .theme-tc .btn-dark::after {
+    display: none;
+  }
+  .theme-tc .btn-primary:active,
+  .theme-tc .btn-secondary:active,
+  .theme-tc .btn-dark:active {
+    transform: translateY(0) scale(0.99);
+  }
+  .theme-tc .card {
+    border-radius: 14px;
+  }
+  .theme-tc .input {
+    border-radius: 10px;
+    padding: 0.7rem 0.875rem;
+    font-size: 0.9375rem;
+    border-color: #d1d5db;
+  }
+  .theme-tc .input:focus {
+    border-color: #0b0f14;
+    box-shadow: 0 0 0 4px rgba(184, 255, 0, 0.45);
+    --tw-ring-shadow: 0 0 #0000;
+  }
+  .theme-tc .pill {
+    border-radius: 6px;
+    padding: 0.2rem 0.5rem;
+  }
+  .theme-tc .eyebrow {
+    letter-spacing: 0.08em;
+    color: #6b7280;
+  }
+  .theme-tc .rail-label {
+    background: #0b0f14;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+
+  /* ---- TrashCan controls, usable anywhere ----------------------------- */
+  .tc-btn {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-tc-md px-5 text-[15px] font-semibold
+      transition-[transform,background-color,border-color,color,box-shadow] duration-200 ease-tc-out
+      focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2
+      disabled:pointer-events-none disabled:opacity-50;
+  }
+  .tc-btn:hover {
+    transform: translateY(-1px);
+  }
+  .tc-btn:active {
+    transform: translateY(0);
+  }
+  .tc-btn-lime {
+    @apply tc-btn bg-tc-lime text-tc-black hover:bg-tc-lime-hover focus-visible:outline-tc-lime;
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4) inset, 0 8px 20px -10px rgba(184, 255, 0, 0.6);
+  }
+  .tc-btn-dark {
+    @apply tc-btn bg-tc-black text-white hover:bg-tc-black-3 focus-visible:outline-tc-black;
+  }
+  .tc-btn-ghost {
+    @apply tc-btn border border-tc-300 bg-white text-tc-black hover:border-tc-black focus-visible:outline-tc-black;
+  }
+  .tc-btn-ghost-dark {
+    @apply tc-btn border border-white/20 bg-transparent text-white hover:border-white/50 focus-visible:outline-tc-lime;
+  }
+  .tc-btn-sm {
+    @apply min-h-[36px] rounded-[10px] px-3.5 text-[13px];
+  }
+  .tc-btn-lg {
+    @apply min-h-[52px] px-6 text-base;
+  }
+
+  .tc-link {
+    @apply font-semibold text-tc-black underline decoration-tc-300 decoration-2 underline-offset-4 transition-colors hover:decoration-tc-black;
+  }
+  .tc-card {
+    @apply rounded-tc-lg border border-tc-200 bg-white;
+  }
+  .tc-card-hover {
+    @apply tc-card transition-[transform,box-shadow,border-color] duration-200 ease-tc-out hover:-translate-y-0.5 hover:border-tc-300 hover:shadow-tc;
+  }
+  .tc-label {
+    @apply mb-1.5 block text-[13px] font-semibold text-tc-900;
+  }
+  .tc-input {
+    @apply w-full rounded-[10px] border border-tc-300 bg-white px-3.5 py-3 text-[15px] text-tc-900 transition
+      placeholder:text-tc-500 focus:border-tc-black focus:outline-none;
+  }
+  .tc-input:focus {
+    box-shadow: 0 0 0 4px rgba(184, 255, 0, 0.45);
+  }
+  .tc-status {
+    @apply inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-semibold;
+  }
+  .tc-status::before {
+    content: '';
+    @apply h-1.5 w-1.5 rounded-full bg-current;
+  }
+  .tc-kbd {
+    @apply inline-flex h-5 min-w-[20px] items-center justify-center rounded border border-tc-300 bg-white px-1 font-sans text-[11px] font-semibold text-tc-500;
+  }
+
+  /* Type scale (guide §4): Display 64/42, H1 48/36, H2 32/28, H3 22/20. */
+  .tc-display {
+    @apply font-tc-display text-[42px] font-extrabold leading-[1.02] tracking-[-0.035em] text-balance md:text-[64px];
+  }
+  .tc-h1 {
+    @apply font-tc-display text-[36px] font-extrabold leading-[1.05] tracking-[-0.03em] text-balance md:text-[48px];
+  }
+  .tc-h2 {
+    @apply font-tc-display text-[28px] font-bold leading-[1.1] tracking-[-0.025em] text-balance md:text-[32px];
+  }
+  .tc-h3 {
+    @apply font-tc-display text-[20px] font-bold leading-[1.2] tracking-[-0.015em] md:text-[22px];
+  }
+  .tc-lead {
+    @apply text-[17px] leading-[1.6] text-tc-700 md:text-[18px];
+  }
+
+  /* The dark layer: hero, CTA band, rail. */
+  .tc-dark {
+    @apply bg-tc-black text-white;
+  }
+  .tc-dark ::selection {
+    background: #b8ff00;
+    color: #0b0f14;
+  }
+  .tc-grid-bg {
+    background-image: linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000 40%, transparent 100%);
+  }
+}
+
+/* The company watermark and Tex bubble belong to the company's site, not
+   TrashCan's pages. */
+body:has([data-tc-surface]) .brand-watermark {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tc-btn,
+  .tc-card-hover,
+  .theme-tc .btn-primary,
+  .theme-tc .btn-secondary {
+    transition-duration: 0.01ms !important;
+  }
+  .tc-btn:hover,
+  .tc-card-hover:hover,
+  .theme-tc .btn-primary:hover,
+  .theme-tc .btn-secondary:hover {
+    transform: none !important;
+  }
+  .animate-tc-rise {
+    animation: none;
+  }
+}
+
+/* Range input, TrashCan style: a black thumb with a lime ring on a grey track. */
+.tc-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 28px;
+  background: transparent;
+  cursor: pointer;
+}
+.tc-range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: #e5e7eb;
+}
+.tc-range::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: #e5e7eb;
+}
+.tc-range::-moz-range-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: #0b0f14;
+}
+.tc-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  margin-top: -9px;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #0b0f14;
+  border: 4px solid #b8ff00;
+  box-shadow: 0 2px 6px rgba(11, 15, 20, 0.3);
+}
+.tc-range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #0b0f14;
+  border: 4px solid #b8ff00;
+}
+.tc-range:focus-visible {
+  outline: 2px solid #0b0f14;
+  outline-offset: 4px;
+  border-radius: 8px;
+}

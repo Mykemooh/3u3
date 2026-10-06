@@ -35,7 +35,9 @@ test('open signup: emailed code, wrong codes counted, company created with only 
   const r = await completeSignup({ email, code: devCode!, name: 'Olive Owner', companyName: 'Sparkle Co', password: 'a-long-password-1', answers: { ...answers, services: [...answers.services] }, acceptTerms: true });
   assert.match(r.slug, /^sparkle-co/);
   const tenant = (await db.select().from(tenants).where(eq(tenants.slug, r.slug)))[0];
-  assert.equal(tenant.planStatus, 'TRIALING');
+  assert.equal(tenant.planStatus, 'ACTIVE');
+  assert.equal(tenant.plan, 'FREE', 'every company starts on the Free plan — no trial clock');
+  assert.equal(tenant.accessExpiresAt, null);
   assert.equal(JSON.parse(tenant.intakeJson!).focus, 'PAYMENTS');
   const lines = await db.select().from(serviceTypes).where(eq(serviceTypes.tenantId, tenant.id));
   assert.equal(lines.length, 6, 'every line exists');

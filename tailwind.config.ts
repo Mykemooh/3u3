@@ -1,66 +1,108 @@
 import type { Config } from 'tailwindcss';
 
 /**
- * Text colours are real values, not opacity steps on ink.
+ * Two brands, one component library.
  *
  * ---------------------------------------------------------------------------
- * 2026 rebrand #3: the actual 3U3 brand book (navy/blue/teal/green), from
- * the company's own brand board — #041730 deep navy, #016AEE vivid blue,
- * #18AA9D aqua/teal, #2DBD91 fresh green, #F7F9FB near-white, and a
- * signature #016AEE → #2DBD91 gradient for the primary CTA. This replaces
- * rebrand #2's invented single-green palette, which had drifted away from
- * the real brand — the logo asset (public/brand/logo-*-mark.png) kept its
- * navy numerals and blue-to-green gradient U the whole time; this just
- * brings the rest of the tokens back to match it.
+ * The semantic tokens (gold, ink, slate, muted, line, surface, bronze,
+ * green, cream, charcoal) no longer hold hex values directly. Each one reads
+ * a CSS variable holding an "R G B" triplet, defined in app/globals.css:
  *
- * Token *names* are kept as-is again, same reasoning as every previous
- * pass: every component already references `bg-gold`/`text-bronze`/
- * `bg-ink`/etc., so recoloring here is what makes this apply everywhere
- * without a repo-wide rename. `gold` is now the brand's vivid blue (the
- * gradient's start); `gold.light` is the fresh green (the gradient's end),
- * so `.btn-primary`'s gradient in globals.css reads directly off
- * `gold.DEFAULT → gold.light`. `green` is now the distinct aqua/teal accent
- * (nav underline, status pills) the brand book keeps separate from blue.
- * `bronze` still holds the AA-safe darkened variant of `gold` for links/
- * hover text, just darkened blue instead of darkened green now.
+ *   :root        — the company brand. Today that is 3U3 Cleaning's own
+ *                  brand book (deep navy #041730, vivid blue #016AEE,
+ *                  aqua/teal #18AA9D, fresh green #2DBD91). Client portals,
+ *                  the crew app and a company's public site live here.
+ *   .theme-tc    — TrashCan, the platform (docs/brand/trashcan-guidelines.md):
+ *                  #0B0F14 black, #B8FF00 lime, a neutral grey ramp. The
+ *                  marketing site, signup, the owner's workspace (/admin),
+ *                  billing and the platform console live here.
+ *
+ * Because every existing component already says `bg-gold`, `text-ink`,
+ * `border-line` and so on, wrapping a surface in `.theme-tc` re-skins all of
+ * it with no per-component edits — and opacity modifiers (`bg-gold/10`)
+ * keep working because the variables hold bare channels.
+ *
+ * `tc.*` are the TrashCan brand's literal colours for the few places that
+ * must be exactly that colour regardless of scope: the lime action layer,
+ * the dark rail, the logo.
  * ---------------------------------------------------------------------------
  */
+const v = (name: string) => `rgb(var(--c-${name}) / <alpha-value>)`;
+
 const config: Config = {
-  content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
+  content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}', './lib/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
         gold: {
-          // The signature gradient's two ends — every primary button, focus
-          // ring and accent reads off these two.
-          DEFAULT: '#016AEE', // vivid blue
-          light: '#2DBD91',   // fresh green
+          DEFAULT: v('gold'), // primary action
+          light: v('gold-light'), // primary action, second stop
         },
-        ink: '#041730',        // headings, dark bands — deep navy
-        'ink-soft': '#0F2A42', // one step lighter than ink — dark-section hover states
-        slate: '#1C3447',      // body copy         — dark navy-grey, ~14:1
-        muted: '#5B7085',      // meta, timestamps  — navy-grey, ~4.7:1
-        line: '#DCE3E9',       // borders, dividers — cool, not warm
-        surface: '#F1F5F8',    // section fills — cool neutral tint
-        bronze: '#0157C4',     // links on white    — darkened vivid blue, ~5.8:1
+        ink: v('ink'), // headings, dark bands
+        'ink-soft': v('ink-soft'), // dark-section hover states
+        slate: v('slate'), // body copy
+        muted: v('muted'), // meta, timestamps
+        line: v('line'), // borders, dividers
+        surface: v('surface'), // section fills
+        bronze: v('bronze'), // links and hover text on white
         green: {
-          // The brand book's distinct aqua/teal accent — a genuinely
-          // different hue from `gold` now, not the same hue reused.
-          DEFAULT: '#18AA9D',
-          light: '#E3F5F3',
+          DEFAULT: v('green'), // accent text / icons
+          light: v('green-light'), // accent tint
         },
-        cream: '#F7F9FB',      // the brand book's "Near White" — exact match
-        charcoal: '#1C3447',
+        cream: v('cream'),
+        charcoal: v('charcoal'),
+        tc: {
+          black: '#0B0F14',
+          'black-2': '#141A22', // one step up, for raised dark surfaces
+          'black-3': '#1E2630', // hover on dark
+          lime: '#B8FF00',
+          'lime-hover': '#C8FF33',
+          'lime-ink': '#3F6212', // lime's hue, dark enough for text on white
+          'lime-wash': '#F4FFD9', // pale lime surface for recommendations
+          white: '#FFFFFF',
+          900: '#111827',
+          700: '#374151',
+          500: '#6B7280',
+          300: '#D1D5DB',
+          200: '#E5E7EB',
+          100: '#F3F4F6',
+          50: '#F8F9FA',
+          blue: '#3882F6',
+          green: '#10B981',
+          amber: '#F59E0B',
+          red: '#EF4444',
+        },
       },
       fontFamily: {
         sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
         display: ['var(--font-display)', 'var(--font-sans)', 'system-ui', 'sans-serif'],
+        'tc-display': ['var(--font-tc-display)', 'var(--font-sans)', 'system-ui', 'sans-serif'],
+      },
+      borderRadius: {
+        'tc-sm': '8px',
+        'tc-md': '12px',
+        'tc-lg': '16px',
       },
       boxShadow: {
-        card: '0 8px 30px rgba(4,23,48,0.06)',
-        'card-lg': '0 16px 50px rgba(4,23,48,0.09)',
-        gold: '0 2px 6px rgba(1,106,238,0.22), 0 10px 24px -10px rgba(45,189,145,0.45)',
-        'gold-lg': '0 4px 10px rgba(1,106,238,0.26), 0 16px 32px -12px rgba(45,189,145,0.5)',
+        card: 'var(--shadow-card)',
+        'card-lg': 'var(--shadow-card-lg)',
+        gold: 'var(--shadow-gold)',
+        'gold-lg': 'var(--shadow-gold-lg)',
+        tc: '0 10px 30px rgba(11,15,20,.08)',
+        'tc-lg': '0 24px 60px -12px rgba(11,15,20,.18)',
+        'tc-ring': '0 0 0 1px rgba(11,15,20,.06), 0 1px 2px rgba(11,15,20,.04)',
+      },
+      transitionTimingFunction: {
+        'tc-out': 'cubic-bezier(0.22, 1, 0.36, 1)',
+      },
+      keyframes: {
+        'tc-rise': {
+          from: { opacity: '0', transform: 'translateY(6px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
+      },
+      animation: {
+        'tc-rise': 'tc-rise 220ms cubic-bezier(0.22, 1, 0.36, 1) both',
       },
     },
   },

@@ -1,4 +1,4 @@
-import { connectRouting } from '@/lib/connect';
+import { cardRouting, ConnectError } from '@/lib/connect';
 import { and, eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { invoices, invoiceItems } from '@/db/schema';
@@ -26,7 +26,9 @@ export async function createTipCheckoutSession(invoiceId: string, amountCents: n
   const { invoice } = data;
 
   const stripe = getStripe();
-  const routing = await connectRouting(invoice.tenantId, amountCents);
+  const routing = await cardRouting(invoice.tenantId, amountCents, 'TIP').catch((e: Error) => {
+    throw e instanceof ConnectError ? new TipError('Card tips aren’t set up for this company yet.') : e;
+  });
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
     line_items: [

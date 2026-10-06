@@ -59,7 +59,7 @@ export const SIGNUP_QUESTIONS = {
     ],
   },
   heardFrom: {
-    label: 'How did you hear about TrashCan?',
+    label: 'How did you hear about TRASHCAN?',
     options: [
       ['FRIEND', 'Another cleaning business'],
       ['SEARCH', 'Search'],
@@ -79,6 +79,9 @@ export const answersSchema = z.object({
   pricing: z.enum(keysOf('pricing')),
   focus: z.enum(keysOf('focus')),
   heardFrom: z.enum(keysOf('heardFrom')).optional(),
+  // The plan they picked at signup (lib/billing/plans.ts). Everyone starts
+  // on Free; a paid pick is finished from Settings → Plan & credits.
+  plan: z.enum(['FREE', 'CREW', 'TEAM']).optional(),
 });
 export type SignupAnswers = z.infer<typeof answersSchema>;
 
