@@ -1462,3 +1462,25 @@ export const metaConnections = pgTable('meta_connections', {
 }, (t) => ({
   tenantUnique: uniqueIndex('meta_connections_tenant_unique').on(t.tenantId),
 }));
+
+// Supply catalog (lib/restock.ts) — the products a company reorders, where
+// it buys them, and how many to keep. Crew "low/out" reports and items at
+// or under their par level make the restock list; no vendor account or API
+// is needed — it builds each vendor's cart or search link.
+export const supplyItems = pgTable('supply_items', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  name: text('name').notNull(),
+  vendor: text('vendor', { enum: ['AMAZON', 'WALMART', 'SAMS', 'COSTCO', 'HOME_DEPOT', 'GRAINGER', 'OTHER'] }).notNull().default('AMAZON'),
+  sku: text('sku'),
+  url: text('url'),
+  packSize: text('pack_size'),
+  orderQty: integer('order_qty').notNull().default(1),
+  parLevel: integer('par_level').notNull().default(0),
+  onHand: integer('on_hand').notNull().default(0),
+  archived: boolean('archived').notNull().default(false),
+  lastOrderedAt: timestamp('last_ordered_at', { withTimezone: true }),
+  ...timestamps,
+}, (t) => ({
+  tenantIdx: index('supply_items_tenant_idx').on(t.tenantId, t.archived),
+}));

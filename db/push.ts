@@ -1179,6 +1179,22 @@ async function main() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
     CREATE UNIQUE INDEX IF NOT EXISTS meta_connections_tenant_unique ON meta_connections(tenant_id);
+
+    -- Supply catalog and restock list (lib/restock.ts).
+    CREATE TABLE IF NOT EXISTS supply_items (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      name TEXT NOT NULL,
+      vendor TEXT NOT NULL DEFAULT 'AMAZON' CHECK (vendor IN ('AMAZON','WALMART','SAMS','COSTCO','HOME_DEPOT','GRAINGER','OTHER')),
+      sku TEXT, url TEXT, pack_size TEXT,
+      order_qty INTEGER NOT NULL DEFAULT 1,
+      par_level INTEGER NOT NULL DEFAULT 0,
+      on_hand INTEGER NOT NULL DEFAULT 0,
+      archived BOOLEAN NOT NULL DEFAULT false,
+      last_ordered_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS supply_items_tenant_idx ON supply_items(tenant_id, archived);
   `);
 
   console.log('Schema pushed to Postgres.');

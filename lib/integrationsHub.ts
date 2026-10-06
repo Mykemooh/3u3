@@ -199,6 +199,16 @@ export const INTEGRATIONS: IntegrationDef[] = [
     status: () => 'built_in',
   },
   {
+    key: 'restock',
+    name: 'Supply restock',
+    group: 'Team',
+    does: 'Keep a list of the supplies you reorder with how many to keep. Items running low and anything a crew flags become a shopping list grouped by store, with an Amazon cart link and price-comparison links. Free — no vendor account or API; you check out yourself.',
+    env: [],
+    steps: ['Open Supplies → Restock and add your products (or start with the typical list).', 'For Amazon items, add the ASIN to get one-click carts.'],
+    manage: { label: 'Open Supplies', href: '/admin/supplies' },
+    status: () => 'built_in',
+  },
+  {
     key: 'meta-ads',
     name: 'Facebook and Instagram ads',
     group: 'Leads and automation',

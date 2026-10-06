@@ -19,6 +19,7 @@ import { SERVICES } from '@/lib/services';
 import { invoiceLabel } from '@/lib/invoices';
 import { phoneDigits } from '@/lib/sms';
 import { brainstorm, listConcepts, suggestPlan, MuseError, CHANNELS, type MuseChannel } from '@/lib/muse';
+import { restockList } from '@/lib/restock';
 import { getUserRole } from '@/lib/roles';
 import { receiveLead, InboundLeadError } from '@/lib/inboundLeads';
 import { sendText, MessagingError } from '@/lib/messaging';
@@ -462,6 +463,21 @@ const museDrafts: Tool = {
   },
 };
 
+const restockTool: Tool = {
+  name: 'restock_list',
+  description: 'What cleaning supplies to buy now: items at or under their par level and anything crews flagged as low or out, grouped by store with links. Nothing is ordered for them.',
+  input_schema: { type: 'object', properties: {} },
+  async run(ctx) {
+    if (!ctx.userId || !(await getUserRole(ctx.userId)).permissions.has('supplies.manage')) return { ok: false, error: 'Your role doesn’t include supplies.' };
+    const { groups, unmatched } = await restockList(ctx.tenant.id);
+    return {
+      stores: groups.map((g) => ({ store: g.label, cart_link: g.cartUrl, items: g.lines.map((l) => ({ item: l.item.name, qty: l.qty, why: l.why })) })),
+      flagged_but_not_in_the_list: unmatched.map((u) => u.productName),
+      open: appUrl('/admin/supplies'),
+    };
+  },
+};
+
 // ---------------------------------------------------------------- crew
 
 const myJobs: Tool = {
@@ -647,7 +663,7 @@ export function toolsFor(ctx: Pick<TexContext, 'audience' | 'channel' | 'userId'
   }
   if (ctx.channel === 'VOICE') return [...base, leaveContact];
   if (ctx.audience === 'CREW') return [...base, myJobs, myPay, reportSupply];
-  if (ctx.audience === 'ADMIN') return [...base, todayOverview, scheduleFor, findClient, unpaid, museBrainstorm, musePlan, museDrafts];
+  if (ctx.audience === 'ADMIN') return [...base, todayOverview, scheduleFor, findClient, unpaid, museBrainstorm, musePlan, museDrafts, restockTool];
   return [...base, leaveContact];
 }
 

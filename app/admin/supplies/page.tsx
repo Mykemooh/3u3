@@ -1,5 +1,6 @@
 import { getTenant } from '@/lib/data';
 import { getSupplyReportsForTenant, SUPPLY_STATUS_LABELS } from '@/lib/supplies';
+import RestockPanel from '@/components/admin/RestockPanel';
 import ResolveSupplyButton from '@/components/admin/ResolveSupplyButton';
 
 export const dynamic = 'force-dynamic';
@@ -25,7 +26,10 @@ export default async function AdminSupplies() {
         <p className="text-slate">What crews have flagged as low, out, or damaged — straight from the crew portal.</p>
       </div>
 
+      <RestockPanel />
+
       <div className="space-y-3">
+        <h2 className="text-xl font-bold text-ink">Crew reports</h2>
         {open.map(({ report, reporterName, crewName }) => (
           <div key={report.id} className="card flex flex-wrap items-center justify-between gap-4">
             <div>
