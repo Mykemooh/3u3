@@ -13,6 +13,7 @@ const NAV = [
   { href: '/platform/signups', label: 'Signups' },
   { href: '/platform/roles', label: 'Role template' },
   { href: '/platform/promo-codes', label: 'Promo codes' },
+  { href: '/platform/integrations', label: 'Keys' },
 ];
 
 export default async function PlatformLayout({ children }: { children: React.ReactNode }) {
