@@ -103,6 +103,7 @@ const PATH_RULES: [string, AdminPermission][] = [
   ['/api/admin/reviews', 'marketing.manage'],
   ['/api/admin/campaigns', 'marketing.manage'],
   ['/api/admin/marketing', 'marketing.manage'],
+  ['/api/admin/muse', 'marketing.manage'],
   ['/admin/messages', 'messages.manage'],
   ['/admin/notifications', 'messages.manage'],
   ['/api/admin/messages', 'messages.manage'],

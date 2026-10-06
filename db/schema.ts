@@ -1413,3 +1413,52 @@ export const xeroLinks = pgTable('xero_links', {
 }, (t) => ({
   entityUnique: uniqueIndex('xero_links_entity_unique').on(t.tenantId, t.entity, t.localId),
 }));
+
+// Muse (lib/muse.ts) — Tex's marketing agent. A concept is one ad or
+// campaign idea: copy, an image prompt, who it's for. It starts as a DRAFT
+// the owner edits and APPROVES; only then can it become an email/text
+// campaign or a paused Facebook/Instagram ad (lib/meta.ts).
+export const adConcepts = pgTable('ad_concepts', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  title: text('title').notNull(),
+  channel: text('channel', { enum: ['META', 'EMAIL', 'TEXT'] }).notNull().default('META'),
+  goal: text('goal'),
+  angle: text('angle'),
+  headline: text('headline').notNull(),
+  primaryText: text('primary_text').notNull(),
+  cta: text('cta').notNull().default('Book a free walkthrough'),
+  imagePrompt: text('image_prompt'),
+  imageSeed: integer('image_seed').notNull().default(1),
+  audience: text('audience'),
+  segment: text('segment', { enum: ['ALL_ACTIVE', 'LAPSED', 'RECURRING', 'ONE_TIME', 'LEADS'] }),
+  zips: text('zips'),
+  dailyBudgetCents: integer('daily_budget_cents'),
+  status: text('status', { enum: ['DRAFT', 'APPROVED', 'PUBLISHED', 'ARCHIVED'] }).notNull().default('DRAFT'),
+  campaignId: text('campaign_id'),
+  metaCampaignId: text('meta_campaign_id'),
+  metaAdId: text('meta_ad_id'),
+  createdBy: text('created_by'),
+  ...timestamps,
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  tenantIdx: index('ad_concepts_tenant_idx').on(t.tenantId, t.status),
+}));
+
+// The owner's own Meta ad account, connected by OAuth. The token is sealed
+// (lib/secretBox.ts) and never shown; ads are only ever created paused.
+export const metaConnections = pgTable('meta_connections', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  userId: text('user_id'),
+  tokenSealed: text('token_sealed').notNull(),
+  adAccountId: text('ad_account_id'),
+  adAccountName: text('ad_account_name'),
+  pageId: text('page_id'),
+  pageName: text('page_name'),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  ...timestamps,
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  tenantUnique: uniqueIndex('meta_connections_tenant_unique').on(t.tenantId),
+}));

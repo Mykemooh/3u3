@@ -14,7 +14,7 @@ export type AuditEntity =
   | 'booking' | 'series' | 'invoice' | 'quote' | 'client' | 'role' | 'team_member'
   | 'payroll_run' | 'settings' | 'automation' | 'template' | 'expense' | 'job'
   | 'review' | 'campaign' | 'kb_article' | 'service'
-  | 'api_key' | 'webhook' | 'lead' | 'integration' | 'background_check';
+  | 'ad_concept' | 'api_key' | 'webhook' | 'lead' | 'integration' | 'background_check';
 
 export type FieldChange = { field: string; from: unknown; to: unknown };
 

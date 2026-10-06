@@ -1145,6 +1145,40 @@ async function main() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
     CREATE UNIQUE INDEX IF NOT EXISTS xero_links_entity_unique ON xero_links(tenant_id, entity, local_id);
+
+    -- Muse (lib/muse.ts, lib/meta.ts).
+    CREATE TABLE IF NOT EXISTS ad_concepts (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      title TEXT NOT NULL,
+      channel TEXT NOT NULL DEFAULT 'META' CHECK (channel IN ('META','EMAIL','TEXT')),
+      goal TEXT, angle TEXT,
+      headline TEXT NOT NULL,
+      primary_text TEXT NOT NULL,
+      cta TEXT NOT NULL DEFAULT 'Book a free walkthrough',
+      image_prompt TEXT,
+      image_seed INTEGER NOT NULL DEFAULT 1,
+      audience TEXT,
+      segment TEXT CHECK (segment IN ('ALL_ACTIVE','LAPSED','RECURRING','ONE_TIME','LEADS')),
+      zips TEXT,
+      daily_budget_cents INTEGER,
+      status TEXT NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT','APPROVED','PUBLISHED','ARCHIVED')),
+      campaign_id TEXT, meta_campaign_id TEXT, meta_ad_id TEXT, created_by TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS ad_concepts_tenant_idx ON ad_concepts(tenant_id, status);
+    CREATE TABLE IF NOT EXISTS meta_connections (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      user_id TEXT,
+      token_sealed TEXT NOT NULL,
+      ad_account_id TEXT, ad_account_name TEXT, page_id TEXT, page_name TEXT,
+      expires_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS meta_connections_tenant_unique ON meta_connections(tenant_id);
   `);
 
   console.log('Schema pushed to Postgres.');

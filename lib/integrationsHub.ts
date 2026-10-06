@@ -1,6 +1,6 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '@/db/client';
-import { apiKeys, calendarConnections, integrations, tenants, webhookEndpoints } from '@/db/schema';
+import { metaConnections, apiKeys, calendarConnections, integrations, tenants, webhookEndpoints } from '@/db/schema';
 
 /**
  * Admin → Settings → Integrations: every outside service a company can
@@ -189,6 +189,36 @@ export const INTEGRATIONS: IntegrationDef[] = [
     manage: { label: 'Status page', href: '/status' },
   },
   {
+    key: 'muse',
+    name: 'Muse (ads and campaign ideas)',
+    group: 'Leads and automation',
+    does: 'Tex’s marketing helper: drafts ads, emails and texts from your own services and clients, checks the copy against house rules, suggests a four-week plan, and makes free AI pictures. Works with no keys; add an Anthropic key for fresher writing.',
+    env: [{ name: 'ANTHROPIC_API_KEY', optional: true, note: 'Without it Muse uses built-in templates.' }, { name: 'MUSE_MODEL', optional: true }],
+    steps: ['Open Marketing → Muse and tell it a goal.', 'Edit and approve what you like; email and text ideas become draft campaigns in Growth.'],
+    manage: { label: 'Open Muse', href: '/admin/marketing/muse' },
+    status: () => 'built_in',
+  },
+  {
+    key: 'meta-ads',
+    name: 'Facebook and Instagram ads',
+    group: 'Leads and automation',
+    does: 'Muse can create an approved ad in your own Meta ad account — always paused, with a daily budget cap and the ZIP codes you choose. You switch it on in Ads Manager and pay Meta directly.',
+    env: [
+      { name: 'META_APP_ID' },
+      { name: 'META_APP_SECRET' },
+      { name: 'META_MAX_DAILY_CENTS', optional: true, note: 'Highest daily budget Muse will accept. Defaults to 5000 ($50).' },
+    ],
+    steps: [
+      'Create an app at developers.facebook.com (type Business) and add the Marketing API product.',
+      'Add the redirect URI <site>/api/admin/muse/meta/callback.',
+      'Add META_APP_ID and META_APP_SECRET in Vercel, redeploy, then Connect Facebook in Marketing → Muse.',
+      'Until Meta approves the app for advanced access, only people added to the app as admins or testers can connect.',
+    ],
+    getFrom: { label: 'developers.facebook.com', url: 'https://developers.facebook.com/apps' },
+    manage: { label: 'Open Muse', href: '/admin/marketing/muse' },
+    status: (c) => (c.counts.metaAds > 0 ? 'connected' : 'needs_connect'),
+  },
+  {
     key: 'xero',
     name: 'Xero',
     group: 'Payments and accounting',
@@ -297,6 +327,7 @@ const COUNTERS: Record<string, (tenantId: string, userId: string | null) => Prom
   apiKeys: async (t) => (await db.select({ id: apiKeys.id }).from(apiKeys).where(and(eq(apiKeys.tenantId, t), isNull(apiKeys.revokedAt)))).length,
   calendarMine: async (_t, u) => (u ? (await db.select({ id: calendarConnections.id }).from(calendarConnections).where(eq(calendarConnections.userId, u))).length : 0),
   calendarTeam: async (t) => (await db.select({ id: calendarConnections.id }).from(calendarConnections).where(eq(calendarConnections.tenantId, t))).length,
+  metaAds: async (t) => (await db.select({ id: metaConnections.id }).from(metaConnections).where(eq(metaConnections.tenantId, t))).length,
   webhooks: async (t) => (await db.select({ id: webhookEndpoints.id }).from(webhookEndpoints).where(and(eq(webhookEndpoints.tenantId, t), eq(webhookEndpoints.active, true)))).length,
 };
 

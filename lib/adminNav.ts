@@ -66,6 +66,7 @@ export const ADMIN_SECTIONS: NavSection[] = [
     key: 'marketing', label: 'Marketing', icon: 'megaphone', href: '/admin/marketing', perm: 'marketing.manage', group: 2,
     pages: [
       { href: '/admin/marketing', label: 'Growth' },
+      { href: '/admin/marketing/muse', label: 'Muse (ads and ideas)' },
       { href: '/admin/reviews', label: 'Reviews' },
     ],
   },

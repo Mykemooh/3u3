@@ -18,6 +18,8 @@ import { ensureReferralCode, referralLink } from '@/lib/referrals';
 import { SERVICES } from '@/lib/services';
 import { invoiceLabel } from '@/lib/invoices';
 import { phoneDigits } from '@/lib/sms';
+import { brainstorm, listConcepts, suggestPlan, MuseError, CHANNELS, type MuseChannel } from '@/lib/muse';
+import { getUserRole } from '@/lib/roles';
 import { receiveLead, InboundLeadError } from '@/lib/inboundLeads';
 import { sendText, MessagingError } from '@/lib/messaging';
 import { checkPin, pinUsable } from '@/lib/phonePin';
@@ -410,6 +412,56 @@ async function actionResult(fn: () => Promise<unknown>) {
   }
 }
 
+// ---------------------------------------------------------------- Muse (office)
+
+async function canMarket(ctx: TexContext) {
+  return !!ctx.userId && (await getUserRole(ctx.userId)).permissions.has('marketing.manage');
+}
+const NO_MARKETING = { ok: false, error: 'Your role doesn’t include marketing, so Muse isn’t available. Ask the owner.' };
+
+const museBrainstorm: Tool = {
+  name: 'muse_brainstorm',
+  description:
+    'Muse, the marketing helper: draft ad or campaign ideas for a goal (for example "book more deep cleans before the holidays"). Saves them as DRAFTS in Marketing → Muse for the person to edit and approve; nothing is sent, posted or spent. Channel is META (Facebook/Instagram), EMAIL or TEXT.',
+  input_schema: {
+    type: 'object',
+    properties: { goal: { type: 'string' }, channel: { type: 'string', enum: [...CHANNELS] }, count: { type: 'number', description: '1 to 6, default 3' } },
+    required: ['goal'],
+  },
+  async run(ctx, input) {
+    if (!(await canMarket(ctx))) return NO_MARKETING;
+    try {
+      const r = await brainstorm(ctx.tenant.id, { goal: str(input.goal, 400), channel: CHANNELS.includes(input.channel as MuseChannel) ? (input.channel as MuseChannel) : 'META', count: Number(input.count) || 3 }, { id: ctx.userId, name: ctx.userName });
+      const list = (await listConcepts(ctx.tenant.id)).filter((c) => r.ids.includes(c.id));
+      return { ok: true, drafts: list.map((c) => ({ title: c.title, headline: c.headline, text: c.primaryText })), review_and_approve_at: appUrl('/admin/marketing/muse'), note: 'These are drafts. Tell them to open Muse to edit, approve, pick pictures and send.' };
+    } catch (err) {
+      if (err instanceof MuseError) return { ok: false, error: err.message };
+      throw err;
+    }
+  },
+};
+
+const musePlan: Tool = {
+  name: 'muse_plan',
+  description: 'Muse’s suggested four-week marketing plan, built from who is lapsed, who is one-time, and the season.',
+  input_schema: { type: 'object', properties: {} },
+  async run(ctx) {
+    if (!(await canMarket(ctx))) return NO_MARKETING;
+    return { plan: await suggestPlan(ctx.tenant.id), open_muse: appUrl('/admin/marketing/muse') };
+  },
+};
+
+const museDrafts: Tool = {
+  name: 'muse_drafts',
+  description: 'The ideas Muse has drafted so far and where each stands (draft, approved, in Facebook paused).',
+  input_schema: { type: 'object', properties: {} },
+  async run(ctx) {
+    if (!(await canMarket(ctx))) return NO_MARKETING;
+    const list = await listConcepts(ctx.tenant.id);
+    return { ideas: list.slice(0, 12).map((c) => ({ title: c.title, channel: c.channel, status: c.status, needs_fixing: c.issues[0] ?? null })), open_muse: appUrl('/admin/marketing/muse') };
+  },
+};
+
 // ---------------------------------------------------------------- crew
 
 const myJobs: Tool = {
@@ -595,7 +647,7 @@ export function toolsFor(ctx: Pick<TexContext, 'audience' | 'channel' | 'userId'
   }
   if (ctx.channel === 'VOICE') return [...base, leaveContact];
   if (ctx.audience === 'CREW') return [...base, myJobs, myPay, reportSupply];
-  if (ctx.audience === 'ADMIN') return [...base, todayOverview, scheduleFor, findClient, unpaid];
+  if (ctx.audience === 'ADMIN') return [...base, todayOverview, scheduleFor, findClient, unpaid, museBrainstorm, musePlan, museDrafts];
   return [...base, leaveContact];
 }
 
