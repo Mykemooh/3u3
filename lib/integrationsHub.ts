@@ -172,7 +172,7 @@ export const INTEGRATIONS: IntegrationDef[] = [
     key: 'mapbox',
     name: 'Mapbox',
     group: 'Maps and schedule',
-    does: 'Live crew map, arrival times, route planning and the service-area check. Addresses are looked up, never stored as coordinates.',
+    does: 'Address suggestions on lead and client forms, live crew map, arrival times, route planning and the service-area check. Coordinates are never stored.',
     env: [{ name: 'MAPBOX_ACCESS_TOKEN' }, { name: 'MAPBOX_SERVER_TOKEN', optional: true, note: 'A second, unrestricted token for server-side lookups.' }],
     steps: ['Create a token at account.mapbox.com → Access tokens (public scopes are enough).', 'Add MAPBOX_ACCESS_TOKEN in Vercel and redeploy.'],
     getFrom: { label: 'account.mapbox.com/access-tokens', url: 'https://account.mapbox.com/access-tokens/' },
