@@ -24,7 +24,9 @@ Family-owned (not a franchise or a route-based service): the founders (Betty & M
 
 ## Platform direction
 
-3U3 Cleaning is also the first customer of **TrashCan**, a multi-tenant SaaS for cleaning companies (self-serve signup, per-company portals, Stripe Connect payouts). "TrashCan" is the product name — it is not about deleting anything. Tex is the assistant on chat, text and phone (receptionist, client self-service and, for office staff, Muse the marketing helper). The product makes no fixed promise about crew size or hours.
+3U3 Cleaning is also the first customer of **TRASHCAN** — "the operating system for cleaning businesses" ("Cleaning business, cleaned up."), a multi-tenant SaaS for cleaning companies (self-serve signup, per-company portals, Stripe Connect payouts). The name is written in capitals as the wordmark; it is not about deleting anything. Tex is the assistant on chat, text and phone (receptionist, client self-service and, for office staff, Muse the marketing helper). The product makes no fixed promise about crew size or hours.
+
+**Business model** (docs/billing.md, lib/billing/plans.ts): the software is free; TRASHCAN earns 1% on card payments on Free, 0.5% on Crew ($49/mo), 0% on Team ($129/mo). Texts, Tex phone minutes and the business number are prepaid credits, so the platform never carries a company's usage. Nothing is ever locked — a lapsed plan is Free. 3U3 Cleaning is a **house account** (Team, no platform fee, no metered usage).
 
 ## Operating Context
 
@@ -48,7 +50,8 @@ Family-owned (not a franchise or a route-based service): the founders (Betty & M
 - Tagline family: "Clean spaces. Brighter days." / "More time for life."
 - Three Pillars (stated company values, each written as a checkable promise rather than an adjective): **Faith** ("price at your door instead of guessing from a form," "we don't take a cent before we've earned it"), **Family** ("nobody joins this crew we wouldn't hand our own front-door key to"), **Future** ("a business our boys could take over one day").
 - Voice: warm, plain-spoken, promise-driven, allergic to vague marketing claims — copy favors specific, checkable statements ("The baseboard nobody checks") over adjectives.
-- Current visual system: the company's own brand book (`docs/brand/brand-board.png`) — deep navy `#041730`, vivid blue `#016AEE`, aqua/teal `#18AA9D`, fresh green `#2DBD91`, near-white `#F7F9FB`, signature `#016AEE → #2DBD91` gradient on the primary CTA only; Plus Jakarta Sans for headings/display, Inter for body/UI; full pill buttons, 16px card radius. This is the binding palette — treat it as ground truth over any prior in-session palette experiments, and check `docs/brand/brand-board.png` before making color/type/component decisions.
+- **Two brands, one codebase** (docs/brand/trashcan-guidelines.md): TRASHCAN's own brand (black `#0B0F14`, lime `#B8FF00`, Satoshi→Manrope display + Inter, 12px controls, lime reserved for actions on dark) applies to the TRASHCAN marketing site (`/trashcan`), signup, legal/status pages, the owner's workspace frame (`/admin`, `.theme-tc`) and the platform console. A company's public site, client portal, crew app, booking and invoices carry the **company's** brand — for 3U3, the brand book below.
+- Current visual system for 3U3's own surfaces: the company's own brand book (`docs/brand/brand-board.png`) — deep navy `#041730`, vivid blue `#016AEE`, aqua/teal `#18AA9D`, fresh green `#2DBD91`, near-white `#F7F9FB`, signature `#016AEE → #2DBD91` gradient on the primary CTA only; Plus Jakarta Sans for headings/display, Inter for body/UI; full pill buttons, 16px card radius. This is the binding palette — treat it as ground truth over any prior in-session palette experiments, and check `docs/brand/brand-board.png` before making color/type/component decisions.
 
 ## Evidence on Hand
 
@@ -62,7 +65,8 @@ Family-owned (not a franchise or a route-based service): the founders (Betty & M
 1. Trust is earned by specificity, not adjectives — every claim on the product must be one the business can already stand behind.
 2. Price is a conversation at the door, never a number printed or guessed online.
 3. The crew's tools (offline-first app, fair/configurable pay, supply reporting) are as much the product as the customer-facing site — a cleaning company that treats its crew well is the actual differentiator behind the trust claims.
-4. TrashCan is the platform; each company's portals are theirs. Platform/SUPER_ADMIN concerns stay on /platform and never leak into a company's own admin, crew or client screens, which carry that company's name and brand.
+4. TRASHCAN is the platform; each company's portals are theirs. Platform/SUPER_ADMIN concerns stay on /platform. The owner's workspace wears the TRASHCAN frame with the company's name and logo in the rail; crew and client screens carry only the company's name and brand.
+5. TRASHCAN's own marketing makes only claims it can stand behind: no invented customer counts, ratings or testimonials; product pictures are labelled sample data; competitor prices are dated.
 
 ## Accessibility & Inclusion
 

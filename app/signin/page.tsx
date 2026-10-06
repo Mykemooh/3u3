@@ -99,7 +99,10 @@ function SignInInner() {
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
+    <main
+      className={`flex min-h-screen flex-col items-center justify-center px-6 py-12 ${params.get('platform') ? 'theme-tc bg-tc-50' : ''}`}
+      {...(params.get('platform') ? { 'data-tc-surface': '' } : {})}
+    >
       {/* Coming from TrashCan signup (/start): the platform's mark, not 3U3's. */}
       {params.get('platform') ? (
         <Link href="/start" className="mb-10">
@@ -227,7 +230,7 @@ function SignInInner() {
           <p className="mt-6 text-center text-sm text-slate">
             New company?{' '}
             <Link href="/start" className="font-semibold text-bronze underline">
-              Start a free trial
+              Get started free
             </Link>
           </p>
         ) : (

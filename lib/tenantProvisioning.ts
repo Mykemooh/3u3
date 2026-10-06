@@ -59,10 +59,11 @@ export async function provisionTenant(input: ProvisionTenantInput): Promise<{ te
     bronzeColor: input.bronzeColor || '#1D4ED8',
     creamColor: input.creamColor || '#EFF6FF',
     serviceAreaRadiusMiles: input.serviceAreaRadiusMiles ?? 25,
-    // New companies start on a trial, not instantly billed — see
-    // lib/platform.ts for how long and what happens when it lapses.
-    planStatus: 'TRIALING',
-    accessExpiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+    // Every company starts on the Free plan (lib/billing/plans.ts): no
+    // trial clock, no lock-out — a platform fee on card payments instead.
+    planStatus: 'ACTIVE',
+    accessExpiresAt: null,
+    plan: 'FREE',
   });
 
   await ensureServiceLines(tenantId);

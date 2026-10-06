@@ -1,4 +1,6 @@
 import { redactPin } from '@/lib/phonePin';
+import { withUsage, usageBlockedMessage } from '@/lib/billing/wallet';
+import { smsSegments } from '@/lib/billing/plans';
 import { db } from '@/db/client';
 import { smsMessages, tenants, users, notificationLog } from '@/db/schema';
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
@@ -135,7 +137,11 @@ export async function sendText(input: { tenantId: string; clientId?: string | nu
   if (!smsConfigured()) throw new MessagingError('Texting isn’t connected yet. Add your Twilio keys (Settings → Integrations) and texts will send from your business number.');
   const from = await tenantSmsNumber(input.tenantId);
   if (!from) throw new MessagingError('Add your business texting number in Settings → Texting and Tex first.');
-  const sent = await sendSmsDetailed({ to: phone!, body, from });
+  // Prepaid usage (lib/billing/wallet.ts): paid before it's sent, refunded if it fails.
+  const segments = smsSegments(body);
+  const usage = await withUsage(input.tenantId, 'SMS', segments, () => sendSmsDetailed({ to: phone!, body, from }), (r) => r.ok);
+  if (!usage.charged) throw new MessagingError(usageBlockedMessage(usage.why));
+  const sent = usage.result;
   if (!sent.ok) throw new MessagingError('The text didn’t go through. Check the number and try again.');
   const id = await recordOutbound({
     tenantId: input.tenantId,

@@ -53,7 +53,7 @@ export default function NewCompanyForm() {
         <h2 className="mb-2 text-lg font-bold text-ink">{name} is live</h2>
         <p className="mb-4 text-sm text-slate">
           Its full starting stack is provisioned — service types, checklist templates, a default crew, and its first
-          admin login. It's on a 14-day trial.
+          admin login. It starts on the Free plan.
         </p>
         <div className="mb-4 rounded-xl bg-cream px-4 py-3 text-left text-sm">
           <p>

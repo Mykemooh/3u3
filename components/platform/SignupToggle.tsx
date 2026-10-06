@@ -21,7 +21,7 @@ export default function SignupToggle({ open }: { open: boolean }) {
       <div>
         <p className="font-semibold text-ink">{on ? 'Self-serve signup is open' : 'Signup is closed — /start collects a waitlist'}</p>
         <p className="text-sm text-slate">
-          {on ? 'Anyone can create a company at /start after confirming their email. Each gets a 14-day trial.' : 'Turn this on when you are ready for companies to sign themselves up.'}
+          {on ? 'Anyone can create a company at /start after confirming their email. Each starts on the Free plan.' : 'Turn this on when you are ready for companies to sign themselves up.'}
         </p>
       </div>
       <Switch checked={on} disabled={busy} onChange={flip} label="Self-serve signup" />

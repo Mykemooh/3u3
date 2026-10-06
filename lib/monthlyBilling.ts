@@ -1,4 +1,4 @@
-import { connectRouting } from '@/lib/connect';
+import { cardRouting, ConnectError } from '@/lib/connect';
 import { and, eq, inArray, lt } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { monthlyBillingBatches, invoices, users, bookings, serviceTypes } from '@/db/schema';
@@ -116,7 +116,9 @@ async function closeBatch(batch: MonthlyBatchRow): Promise<void> {
   const customerId = await getOrCreateStripeCustomer(batch.clientId);
   const useAutopay = !!client.autopayEnabled && !!client.stripeDefaultPaymentMethodId;
   const brand = await brandFor(batch.tenantId);
-  const routing = await connectRouting(batch.tenantId, memberInvoices.reduce((sum, i) => sum + i.totalCents, 0));
+  const routing = await cardRouting(batch.tenantId, memberInvoices.reduce((sum, i) => sum + i.totalCents, 0)).catch((e: Error) => {
+    throw e instanceof ConnectError ? new MonthlyBillingError(e.message) : e;
+  });
 
   const stripeInvoice = await stripe.invoices.create({
     customer: customerId,

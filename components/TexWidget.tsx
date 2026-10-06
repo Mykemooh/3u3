@@ -8,7 +8,7 @@ type Config = { enabled: boolean; company?: string; audience?: string; suggestio
 
 // Pages where a chat bubble would get in the way (sign-in, payments,
 // platform pages) or isn't the company's (TrashCan's own pages).
-const HIDDEN = ['/signin', '/mfa', '/mfa-check', '/start', '/platform', '/security', '/proof', '/unsubscribe', '/terms', '/privacy', '/status', '/set-password', '/forgot', '/pay', '/estimate', '/new'];
+const HIDDEN = ['/trashcan', '/signin', '/mfa', '/mfa-check', '/start', '/platform', '/security', '/proof', '/unsubscribe', '/terms', '/privacy', '/status', '/set-password', '/forgot', '/pay', '/estimate', '/new'];
 // Portals with a bottom tab bar on phones — sit above it.
 const WITH_TABS = ['/admin', '/crew', '/account', '/book'];
 
@@ -46,9 +46,16 @@ export default function TexWidget() {
     if (open) setTimeout(() => input.current?.focus(), 50);
   }, [open, config]);
   useEffect(() => bottom.current?.scrollIntoView({ block: 'end' }), [messages.length, busy]);
+  // TrashCan's own pages (on its own domain they sit at /, /pricing…) mark
+  // themselves with data-tc-surface; Tex is the company's assistant, not TrashCan's.
+  const [onTcSurface, setOnTcSurface] = useState(false);
+  useEffect(() => setOnTcSurface(!!document.querySelector('[data-tc-surface]')), [pathname]);
 
+  if (onTcSurface) return null;
   if (HIDDEN.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return null;
   const lifted = WITH_TABS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  // In the owner's workspace (TRASHCAN-styled), Tex wears the workspace's colours.
+  const workspace = pathname === '/admin' || pathname.startsWith('/admin/');
 
   async function ask(text: string) {
     const q = text.trim();
@@ -69,7 +76,7 @@ export default function TexWidget() {
   }
 
   return (
-    <div className={`fixed right-4 z-40 ${lifted ? 'bottom-24 md:bottom-6' : 'bottom-6'}`}>
+    <div className={`fixed right-4 z-40 ${lifted ? 'bottom-24 md:bottom-6' : 'bottom-6'} ${workspace ? 'theme-tc' : ''}`}>
       {open && (
         <div role="dialog" aria-label="Ask Tex" className="mb-3 flex h-[min(32rem,calc(100vh-9rem))] w-[min(23rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-card-lg">
           <header className="flex items-center justify-between bg-ink px-4 py-3 text-white">
@@ -136,12 +143,14 @@ export default function TexWidget() {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-label={open ? 'Close Tex' : 'Ask Tex'}
-        className="ml-auto flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-gold to-green-light text-white shadow-card-lg transition hover:scale-105"
+        className={`ml-auto flex h-14 w-14 items-center justify-center rounded-full shadow-card-lg transition hover:scale-105 ${
+          workspace ? 'bg-tc-black text-tc-lime ring-1 ring-white/10' : 'bg-gradient-to-br from-gold to-green-light text-white'
+        }`}
       >
         {open ? (
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
         ) : (
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 5a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-6l-4.5 3.6A.6.6 0 0 1 5.5 19v-3H7a3 3 0 0 1-3-3V5Z" opacity=".95" /><path d="M12 5.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill="#016AEE" /></svg>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 5a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-6l-4.5 3.6A.6.6 0 0 1 5.5 19v-3H7a3 3 0 0 1-3-3V5Z" opacity=".95" /><path d="M12 5.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z" fill={workspace ? '#0B0F14' : '#016AEE'} /></svg>
         )}
       </button>
     </div>

@@ -2,6 +2,8 @@ import { sendEmail } from '@/lib/email';
 import { sendSmsDetailed, smsConfigured, sendWhatsApp, whatsAppConfigured } from '@/lib/sms';
 import { tenantSmsNumber, recordOutbound } from '@/lib/messaging';
 import { logNotification } from '@/lib/bookings';
+import { withUsage } from '@/lib/billing/wallet';
+import { smsSegments } from '@/lib/billing/plans';
 
 export type NotificationChannel = 'EMAIL' | 'SMS' | 'WHATSAPP';
 
@@ -28,8 +30,11 @@ export async function notifyClient(input: {
 
   // A company without its own texting number sends by email instead.
   const from = client.notificationChannel === 'SMS' && client.phone && smsConfigured() && textable ? await tenantSmsNumber(input.tenantId) : null;
-  if (from && client.phone) {
-    const sent = await sendSmsDetailed({ to: client.phone, body: input.text, from });
+  // Paid from the company's credits first (lib/billing/wallet.ts); with no
+  // credits left the message still goes out — by email.
+  const usage = from && client.phone ? await withUsage(input.tenantId, 'SMS', smsSegments(input.text), () => sendSmsDetailed({ to: client.phone!, body: input.text, from }), (r) => r.ok) : null;
+  if (from && client.phone && usage?.charged) {
+    const sent = usage.result;
     await logNotification({ tenantId: input.tenantId, channel: 'SMS', recipient: client.phone, triggerEvent: input.triggerEvent, relatedBookingId: input.relatedBookingId });
     // Filed in the client's text thread, so the inbox shows what they were sent.
     if (sent.ok) {

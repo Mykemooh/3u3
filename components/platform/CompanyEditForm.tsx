@@ -25,8 +25,6 @@ export default function CompanyEditForm({ tenant }: { tenant: Tenant }) {
   const [primaryColor, setPrimaryColor] = useState(tenant.primaryColor);
   const [bronzeColor, setBronzeColor] = useState(tenant.bronzeColor);
   const [customDomain, setCustomDomain] = useState(tenant.customDomain ?? '');
-  const [planStatus, setPlanStatus] = useState(tenant.planStatus);
-  const [accessExpiresAt, setAccessExpiresAt] = useState(tenant.accessExpiresAt ? tenant.accessExpiresAt.slice(0, 10) : '');
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   async function save() {
@@ -40,8 +38,6 @@ export default function CompanyEditForm({ tenant }: { tenant: Tenant }) {
         primaryColor,
         bronzeColor,
         customDomain: customDomain || null,
-        planStatus,
-        accessExpiresAt: accessExpiresAt || null,
       }),
     });
     if (res.ok) {
@@ -108,28 +104,9 @@ export default function CompanyEditForm({ tenant }: { tenant: Tenant }) {
         <input className="input" placeholder="www.theircompany.com" value={customDomain} onChange={(e) => setCustomDomain(e.target.value)} />
       </div>
 
-      <div className="border-t border-line pt-4">
-        <h3 className="mb-3 font-semibold text-ink">Platform access override</h3>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="label">Plan status</label>
-            <select className="input" value={planStatus} onChange={(e) => setPlanStatus(e.target.value as Tenant['planStatus'])}>
-              <option value="TRIALING">Trialing</option>
-              <option value="ACTIVE">Active</option>
-              <option value="PAST_DUE">Past due</option>
-              <option value="CANCELED">Canceled</option>
-            </select>
-          </div>
-          <div>
-            <label className="label">Access expires</label>
-            <input type="date" className="input" value={accessExpiresAt} onChange={(e) => setAccessExpiresAt(e.target.value)} />
-            <p className="mt-1 text-xs text-muted">Leave blank for unlimited.</p>
-          </div>
-        </div>
-      </div>
 
       <button type="button" onClick={save} disabled={status === 'saving'} className="btn-primary w-full">
-        {status === 'saving' ? 'Saving…' : status === 'saved' ? 'Saved ✓' : 'Save changes'}
+        {status === 'saving' ? 'Saving…' : status === 'saved' ? 'Saved' : 'Save changes'}
       </button>
       {status === 'error' && <p className="text-sm text-red-600">Couldn't save — try again.</p>}
     </div>

@@ -2,8 +2,10 @@ import { NextResponse } from 'next/server';
 import { getStripe } from '@/lib/stripe';
 import { confirmInvoicePaid } from '@/lib/invoices';
 import { confirmTipPaid } from '@/lib/tips';
-import { confirmPlatformCheckout, syncPlatformSubscriptionStatus } from '@/lib/platform';
 import { syncConnectAccount } from '@/lib/connect';
+import { handleBillingEvent } from '@/lib/billing/stripeBilling';
+import { db } from '@/db/client';
+import { stripeEvents } from '@/db/schema';
 import type Stripe from 'stripe';
 
 // Stripe needs the raw request body to verify the signature — never parse
@@ -33,15 +35,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
+  // Stripe delivers at least once; an event we've already handled is a no-op.
+  const fresh = await db
+    .insert(stripeEvents)
+    .values({ id: event.id, type: event.type })
+    .onConflictDoNothing()
+    .returning({ id: stripeEvents.id })
+    .catch(() => [{ id: event.id }]);
+  if (fresh.length === 0) return NextResponse.json({ received: true, duplicate: true });
+
   try {
-    if (event.type === 'invoice.paid') {
+    // TRASHCAN's own billing first: plans, credits, texting setup
+    // (lib/billing/stripeBilling.ts). Anything it doesn't claim is a
+    // company's client payment.
+    if (await handleBillingEvent(event)) {
+      // handled
+    } else if (event.type === 'invoice.paid') {
       await confirmInvoicePaid(event.data.object as Stripe.Invoice);
     } else if (event.type === 'checkout.session.completed') {
-      const session = event.data.object as Stripe.Checkout.Session;
-      await confirmTipPaid(session);
-      await confirmPlatformCheckout(session);
-    } else if (event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
-      await syncPlatformSubscriptionStatus(event.data.object as Stripe.Subscription);
+      await confirmTipPaid(event.data.object as Stripe.Checkout.Session);
     } else if (event.type === 'account.updated') {
       // A company's own Stripe account (lib/connect.ts) finished or changed onboarding.
       await syncConnectAccount(event.data.object as Stripe.Account);

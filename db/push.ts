@@ -1195,6 +1195,89 @@ async function main() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
     CREATE INDEX IF NOT EXISTS supply_items_tenant_idx ON supply_items(tenant_id, archived);
+
+    -- TrashCan plans and prepaid usage (lib/billing/*, docs/billing.md).
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'FREE';
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS plan_comp_until TIMESTAMPTZ;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS plan_comp_forever BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS billing_exempt BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS billing_model_version INTEGER NOT NULL DEFAULT 0;
+    -- Rows that existed before this column get 0 (and the one-time move
+    -- below); every company created afterwards starts on the new model.
+    ALTER TABLE tenants ALTER COLUMN billing_model_version SET DEFAULT 1;
+    DO $$ BEGIN
+      ALTER TABLE tenants ADD CONSTRAINT tenants_plan_check CHECK (plan IN ('FREE','CREW','TEAM'));
+    EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+    CREATE TABLE IF NOT EXISTS wallets (
+      tenant_id TEXT PRIMARY KEY REFERENCES tenants(id),
+      balance_cents INTEGER NOT NULL DEFAULT 0 CHECK (balance_cents >= 0),
+      auto_top_up_enabled BOOLEAN NOT NULL DEFAULT false,
+      auto_top_up_threshold_cents INTEGER NOT NULL DEFAULT 500,
+      auto_top_up_amount_cents INTEGER NOT NULL DEFAULT 2000,
+      stripe_customer_id TEXT,
+      default_payment_method_id TEXT,
+      card_brand TEXT,
+      card_last4 TEXT,
+      included_texts_remaining INTEGER NOT NULL DEFAULT 0 CHECK (included_texts_remaining >= 0),
+      included_voice_minutes_remaining INTEGER NOT NULL DEFAULT 0 CHECK (included_voice_minutes_remaining >= 0),
+      allowance_reset_at TIMESTAMPTZ,
+      texting_status TEXT NOT NULL DEFAULT 'NONE' CHECK (texting_status IN ('NONE','PENDING_PAYMENT','REGISTERING','ACTIVE','REJECTED','SUSPENDED')),
+      number_paid_through TIMESTAMPTZ,
+      low_balance_notified_at TIMESTAMPTZ,
+      empty_notified_at TIMESTAMPTZ,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS wallet_ledger (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      type TEXT NOT NULL CHECK (type IN ('TOPUP','DEBIT','REFUND','ADJUSTMENT','ALLOWANCE')),
+      amount_cents INTEGER NOT NULL,
+      balance_after_cents INTEGER NOT NULL,
+      reason TEXT NOT NULL CHECK (reason IN ('SMS','VOICE','PHONE_NUMBER','SETUP_FEE','TOPUP','MANUAL')),
+      quantity INTEGER NOT NULL DEFAULT 0,
+      ref TEXT,
+      note TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS wallet_ledger_tenant_idx ON wallet_ledger(tenant_id, created_at);
+    CREATE UNIQUE INDEX IF NOT EXISTS wallet_ledger_topup_ref_unique ON wallet_ledger(ref) WHERE type = 'TOPUP' AND ref IS NOT NULL;
+
+    CREATE TABLE IF NOT EXISTS voice_calls (
+      call_sid TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      minutes_charged INTEGER NOT NULL DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS stripe_events (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    -- One-time move to the plan model (billing_model_version 0 → 1):
+    --  • 3U3 Cleaning — the platform owner's own company — becomes a house
+    --    account on Team with no platform fee and no metered usage.
+    --  • Every other company: trials and promo access stop expiring (Free
+    --    never locks); a live paid subscription maps to Team.
+    UPDATE tenants SET plan = 'TEAM', billing_exempt = true
+      WHERE billing_model_version = 0 AND is_platform = false
+        AND (name ILIKE '%3u3%' OR (
+          NOT EXISTS (SELECT 1 FROM tenants t2 WHERE t2.is_platform = false AND t2.name ILIKE '%3u3%')
+          AND id = (SELECT id FROM tenants t3 WHERE t3.is_platform = false ORDER BY t3.created_at ASC LIMIT 1)
+        ));
+    UPDATE tenants SET plan = 'TEAM'
+      WHERE billing_model_version = 0 AND is_platform = false AND billing_exempt = false
+        AND plan_status = 'ACTIVE' AND platform_stripe_subscription_id IS NOT NULL;
+    UPDATE tenants SET plan_comp_forever = true, plan = 'TEAM'
+      WHERE billing_model_version = 0 AND is_platform = false AND billing_exempt = false
+        AND plan_status = 'ACTIVE' AND platform_stripe_subscription_id IS NULL AND access_expires_at IS NULL
+        AND EXISTS (SELECT 1 FROM promo_code_redemptions r JOIN promo_codes p ON p.id = r.promo_code_id WHERE r.tenant_id = tenants.id AND p.tier = 'FOREVER');
+    UPDATE tenants SET plan_status = 'ACTIVE', access_expires_at = NULL
+      WHERE billing_model_version = 0 AND is_platform = false AND plan_status IN ('TRIALING','PAST_DUE','CANCELED');
+    UPDATE tenants SET billing_model_version = 1 WHERE billing_model_version = 0;
   `);
 
   console.log('Schema pushed to Postgres.');

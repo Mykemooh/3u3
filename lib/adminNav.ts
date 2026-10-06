@@ -9,7 +9,9 @@ import type { AdminPermission } from '@/lib/permissions';
 export type IconName =
   | 'home' | 'calendar' | 'users' | 'quote' | 'spray' | 'invoice' | 'wallet' | 'chat'
   | 'megaphone' | 'chart' | 'receipt' | 'team' | 'help' | 'settings' | 'plus' | 'pin'
-  | 'repeat' | 'template' | 'route' | 'mail' | 'clock' | 'box' | 'star' | 'shield' | 'more' | 'sparkle' | 'x';
+  | 'repeat' | 'template' | 'route' | 'mail' | 'clock' | 'box' | 'star' | 'shield' | 'more' | 'sparkle' | 'x'
+  | 'jobs' | 'bolt' | 'search' | 'bell' | 'arrow' | 'check' | 'map' | 'card' | 'phone' | 'camera' | 'timer' | 'layers'
+  | 'logout' | 'chevron' | 'menu' | 'lock' | 'globe' | 'download' | 'trend';
 
 export type NavPage = { href: string; label: string; perm?: AdminPermission | null };
 export type NavSection = {
@@ -51,7 +53,7 @@ export const ADMIN_SECTIONS: NavSection[] = [
       { href: '/admin/addons', label: 'Add-ons' },
     ],
   },
-  { key: 'jobs', label: 'Cleans & photos', icon: 'spray', href: '/crew', perm: 'schedule.manage', group: 1, pages: [] },
+  { key: 'jobs', label: 'Cleans & photos', icon: 'jobs', href: '/crew', perm: 'schedule.manage', group: 1, pages: [] },
   { key: 'invoices', label: 'Invoices', icon: 'invoice', href: '/admin/invoices', perm: 'invoices.manage', group: 1, pages: [] },
   { key: 'payroll', label: 'Payroll', icon: 'wallet', href: '/admin/payroll', perm: 'payroll.manage', group: 1, pages: [] },
   {
@@ -101,7 +103,7 @@ export const ADMIN_SECTIONS: NavSection[] = [
       { href: '/admin/automations', label: 'Reminders & follow-ups' },
       { href: '/admin/integrations', label: 'Integrations' },
       { href: '/admin/developers', label: 'API and webhooks' },
-      { href: '/billing', label: 'Billing', perm: 'billing.manage' },
+      { href: '/admin/plan', label: 'Plan & credits', perm: 'billing.manage' },
     ],
   },
 ];

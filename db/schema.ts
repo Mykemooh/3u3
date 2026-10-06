@@ -111,6 +111,19 @@ export const tenants = pgTable('tenants', {
   // Platform tenant only: whether /start takes new companies on its own
   // (otherwise it collects a waitlist for the platform owner).
   signupOpen: boolean('signup_open').notNull().default(false),
+  // ---- TrashCan plans (lib/billing/plans.ts, docs/billing.md) -------------
+  // Which plan the company is on. FREE needs no subscription; CREW/TEAM are
+  // kept in step with the Stripe subscription by the webhook, and a lapsed
+  // subscription drops the company back to FREE (never a lock-out).
+  // planCompUntil: a promo code's complimentary paid plan, until this date
+  // (null = no promo, or forever when plan came from a FOREVER code).
+  // billingExempt: the platform owner's own company (3U3) and anyone the
+  // platform owner waives — no platform fee and no metered usage.
+  plan: text('plan', { enum: ['FREE', 'CREW', 'TEAM'] }).notNull().default('FREE'),
+  planCompUntil: timestamp('plan_comp_until', { withTimezone: true }),
+  planCompForever: boolean('plan_comp_forever').notNull().default(false),
+  billingExempt: boolean('billing_exempt').notNull().default(false),
+  billingModelVersion: integer('billing_model_version').notNull().default(1),
   ...timestamps,
 }, (t) => ({
   slugUnique: uniqueIndex('tenants_slug_unique').on(t.slug),
@@ -1484,3 +1497,62 @@ export const supplyItems = pgTable('supply_items', {
 }, (t) => ({
   tenantIdx: index('supply_items_tenant_idx').on(t.tenantId, t.archived),
 }));
+
+
+// ---------------------------------------------------------------------------
+// Prepaid usage (lib/billing/wallet.ts). Texts, Tex phone minutes and the
+// business number are paid from a company's credit balance, so the platform
+// never carries a company's usage. wallet_ledger is append-only and the
+// source of truth: balance_cents always equals the sum of its amounts.
+// ---------------------------------------------------------------------------
+export const wallets = pgTable('wallets', {
+  tenantId: text('tenant_id').primaryKey().references(() => tenants.id),
+  balanceCents: integer('balance_cents').notNull().default(0),
+  autoTopUpEnabled: boolean('auto_top_up_enabled').notNull().default(false),
+  autoTopUpThresholdCents: integer('auto_top_up_threshold_cents').notNull().default(500),
+  autoTopUpAmountCents: integer('auto_top_up_amount_cents').notNull().default(2000),
+  stripeCustomerId: text('stripe_customer_id'),
+  defaultPaymentMethodId: text('default_payment_method_id'),
+  cardBrand: text('card_brand'),
+  cardLast4: text('card_last4'),
+  includedTextsRemaining: integer('included_texts_remaining').notNull().default(0),
+  includedVoiceMinutesRemaining: integer('included_voice_minutes_remaining').notNull().default(0),
+  allowanceResetAt: timestamp('allowance_reset_at', { withTimezone: true }),
+  // Business texting number lifecycle (the $49 setup).
+  textingStatus: text('texting_status', { enum: ['NONE', 'PENDING_PAYMENT', 'REGISTERING', 'ACTIVE', 'REJECTED', 'SUSPENDED'] }).notNull().default('NONE'),
+  numberPaidThrough: timestamp('number_paid_through', { withTimezone: true }),
+  lowBalanceNotifiedAt: timestamp('low_balance_notified_at', { withTimezone: true }),
+  emptyNotifiedAt: timestamp('empty_notified_at', { withTimezone: true }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const walletLedger = pgTable('wallet_ledger', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  type: text('type', { enum: ['TOPUP', 'DEBIT', 'REFUND', 'ADJUSTMENT', 'ALLOWANCE'] }).notNull(),
+  amountCents: integer('amount_cents').notNull(),
+  balanceAfterCents: integer('balance_after_cents').notNull(),
+  reason: text('reason', { enum: ['SMS', 'VOICE', 'PHONE_NUMBER', 'SETUP_FEE', 'TOPUP', 'MANUAL'] }).notNull(),
+  quantity: integer('quantity').notNull().default(0),
+  ref: text('ref'),
+  note: text('note'),
+  ...timestamps,
+}, (t) => ({
+  tenantIdx: index('wallet_ledger_tenant_idx').on(t.tenantId, t.createdAt),
+  topupRefUnique: uniqueIndex('wallet_ledger_topup_ref_unique').on(t.ref).where(sql`type = 'TOPUP' AND ref IS NOT NULL`),
+}));
+
+// Tex phone calls, metered by the minute as they run (lib/billing/wallet.ts).
+export const voiceCalls = pgTable('voice_calls', {
+  callSid: text('call_sid').primaryKey(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+  minutesCharged: integer('minutes_charged').notNull().default(0),
+});
+
+// Stripe webhook events already handled — replaying one is a no-op.
+export const stripeEvents = pgTable('stripe_events', {
+  id: text('id').primaryKey(),
+  type: text('type').notNull(),
+  ...timestamps,
+});
