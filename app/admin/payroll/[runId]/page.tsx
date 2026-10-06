@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth';
 import { getPayrollRun, PAY_TYPE_LABELS, type PayType } from '@/lib/payroll';
 import { formatMoney } from '@/lib/data';
 import PayrollRunActions from '@/components/admin/PayrollRunActions';
+import { gustoConfigured } from '@/lib/gusto';
+import { getConnection } from '@/lib/companyConnections';
 
 export const dynamic = 'force-dynamic';
 
@@ -76,7 +78,7 @@ export default async function PayrollRunDetail({ params }: { params: { runId: st
         </table>
       </div>
 
-      <PayrollRunActions runId={run.id} status={run.status} />
+      <PayrollRunActions runId={run.id} status={run.status} gustoConnected={gustoConfigured() && !!(await getConnection(user.tenantId, 'GUSTO'))} gustoPushedAt={run.gustoPushedAt?.toISOString() ?? null} />
     </div>
   );
 }

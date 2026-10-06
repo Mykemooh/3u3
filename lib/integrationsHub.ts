@@ -159,6 +159,22 @@ export const INTEGRATIONS: IntegrationDef[] = [
     manage: { label: 'Team → Background checks', href: '/admin/team#checks' },
   },
   {
+    key: 'gusto',
+    name: 'Gusto payroll',
+    group: 'Team',
+    does: 'Every payroll run exports in Gusto’s hours-and-earnings import layout now. With Gusto partner keys, Send to Gusto fills the open Gusto payroll for that period instead (matched by email; you still review and run it in Gusto).',
+    env: [{ name: 'GUSTO_CLIENT_ID' }, { name: 'GUSTO_CLIENT_SECRET' }, { name: 'GUSTO_ENVIRONMENT', optional: true, note: '"production" once Gusto approves the app; otherwise Gusto’s demo environment is used.' }],
+    steps: [
+      'Without keys: open a payroll run and click Export for Gusto, then upload it in Gusto → Run payroll → Import hours. Check the columns against Gusto’s template the first time.',
+      'For the API: apply for a Gusto developer (partner) app at dev.gusto.com and add the redirect URI <site>/api/admin/integrations/gusto/callback.',
+      'Add GUSTO_CLIENT_ID and GUSTO_CLIENT_SECRET in Vercel, redeploy, then click Connect Gusto below.',
+      'Make sure each person’s email on Team matches their email in Gusto.',
+    ],
+    getFrom: { label: 'dev.gusto.com', url: 'https://dev.gusto.com' },
+    manage: { label: 'Payroll', href: '/admin/payroll' },
+    status: (c) => (c.providers.has('GUSTO') ? 'connected' : 'needs_connect'),
+  },
+  {
     key: 'resend',
     name: 'Resend email',
     group: 'Messages',

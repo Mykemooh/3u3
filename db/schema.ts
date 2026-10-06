@@ -738,7 +738,7 @@ export const notificationLog = pgTable('notification_log', {
 export const integrations = pgTable('integrations', {
   id: id(),
   tenantId: text('tenant_id').notNull().references(() => tenants.id),
-  provider: text('provider', { enum: ['QUICKBOOKS'] }).notNull(),
+  provider: text('provider', { enum: ['QUICKBOOKS', 'XERO', 'GUSTO'] }).notNull(),
   accessToken: text('access_token').notNull(),
   refreshToken: text('refresh_token').notNull(),
   // QuickBooks' "realm id" — which company file these tokens authorize.
@@ -781,6 +781,9 @@ export const payrollRuns = pgTable('payroll_runs', {
   periodEnd: text('period_end').notNull(),
   status: text('status', { enum: ['OPEN', 'PAID'] }).notNull().default('OPEN'),
   paidAt: timestamp('paid_at', { withTimezone: true }),
+  // Last time this run's hours and pay were sent to Gusto (lib/gusto.ts).
+  gustoPayrollId: text('gusto_payroll_id'),
+  gustoPushedAt: timestamp('gusto_pushed_at', { withTimezone: true }),
   ...timestamps,
 });
 

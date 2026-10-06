@@ -7,6 +7,7 @@ import { integrationOverview, STATUS_LABEL, type IntegrationStatus } from '@/lib
 import { appUrl } from '@/lib/url';
 import DisconnectQuickbooksButton from '@/components/admin/DisconnectQuickbooksButton';
 import CalendarConnectCard from '@/components/CalendarConnectCard';
+import ProviderConnect from '@/components/admin/ProviderConnect';
 import { calendarConnection } from '@/lib/googleCalendar';
 
 export const dynamic = 'force-dynamic';
@@ -92,6 +93,12 @@ export default async function AdminIntegrations({ searchParams }: { searchParams
                       ) : (
                         <a href="/api/admin/integrations/quickbooks/connect" className="btn-primary btn-sm">Connect QuickBooks</a>
                       )}
+                    </div>
+                  )}
+
+                  {(i.key === 'gusto' || i.key === 'xero') && i.status !== 'missing_keys' && (
+                    <div className="mt-3">
+                      <ProviderConnect provider={i.key} connected={i.status === 'connected'} label={i.key === 'gusto' ? 'Gusto' : 'Xero'} />
                     </div>
                   )}
 

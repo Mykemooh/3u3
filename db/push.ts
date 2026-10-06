@@ -1104,6 +1104,13 @@ async function main() {
     );
     CREATE INDEX IF NOT EXISTS background_checks_candidate_idx ON background_checks(candidate_id);
     CREATE INDEX IF NOT EXISTS background_checks_tenant_user_idx ON background_checks(tenant_id, user_id);
+
+    -- Xero and Gusto connections share the integrations table with QuickBooks.
+    ALTER TABLE integrations DROP CONSTRAINT IF EXISTS integrations_provider_check;
+    ALTER TABLE integrations ADD CONSTRAINT integrations_provider_check CHECK (provider IN ('QUICKBOOKS','XERO','GUSTO'));
+    -- Gusto push (lib/gusto.ts).
+    ALTER TABLE payroll_runs ADD COLUMN IF NOT EXISTS gusto_payroll_id TEXT;
+    ALTER TABLE payroll_runs ADD COLUMN IF NOT EXISTS gusto_pushed_at TIMESTAMPTZ;
   `);
 
   console.log('Schema pushed to Postgres.');
