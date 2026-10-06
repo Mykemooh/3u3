@@ -1337,3 +1337,29 @@ export const calendarEventLinks = pgTable('calendar_event_links', {
 }, (t) => ({
   userBookingUnique: uniqueIndex('calendar_event_links_user_booking_unique').on(t.userId, t.bookingId),
 }));
+
+// Background checks through Checkr (lib/checkr.ts). Only the status and
+// overall result are kept here; the report itself stays in Checkr.
+export const backgroundChecks = pgTable('background_checks', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  userId: text('user_id').notNull().references(() => users.id),
+  candidateId: text('candidate_id').notNull(),
+  invitationId: text('invitation_id'),
+  invitationUrl: text('invitation_url'),
+  reportId: text('report_id'),
+  package: text('package').notNull(),
+  // INVITED → (candidate fills in Checkr's form) PENDING → CLEAR / CONSIDER,
+  // or EXPIRED / CANCELED / SUSPENDED / DISPUTE along the way.
+  status: text('status').notNull().default('INVITED'),
+  result: text('result'),
+  workState: text('work_state'),
+  workCity: text('work_city'),
+  requestedByUserId: text('requested_by_user_id'),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  ...timestamps,
+  updatedAt: timestamp('updated_at', { withTimezone: true }),
+}, (t) => ({
+  candidateIdx: index('background_checks_candidate_idx').on(t.candidateId),
+  tenantUserIdx: index('background_checks_tenant_user_idx').on(t.tenantId, t.userId),
+}));

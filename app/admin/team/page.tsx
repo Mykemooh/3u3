@@ -3,6 +3,8 @@ import { getEmployees, getTeams } from '@/lib/team';
 import TeamBoard from '@/components/team/TeamBoard';
 import Link from 'next/link';
 import { defaultRoleName } from '@/lib/roles';
+import BackgroundChecks from '@/components/admin/BackgroundChecks';
+import { checkrConfigured, checkrPackage, listBackgroundChecks } from '@/lib/checkr';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +21,8 @@ export default async function AdminTeamPage() {
     defaultRoleName(tenant.id, 'CLEANER'),
     defaultRoleName(tenant.id, 'JR_CLEANER'),
   ]);
+  const checks = checkrConfigured() ? await listBackgroundChecks(tenant.id) : [];
+  const base = teams.find((t) => t.homeState) ?? null;
 
   return (
     <div className="space-y-6">
@@ -47,6 +51,26 @@ export default async function AdminTeamPage() {
         employees={employees}
         roleLabels={{ TEAM_LEAD: lead, CLEANER: cleaner, JR_CLEANER: jr }}
       />
+
+      <section className="card space-y-3" aria-labelledby="checks">
+        <div>
+          <h2 id="checks" className="font-semibold text-ink">Background checks</h2>
+          <p className="text-sm text-slate">Through Checkr. The person gets Checkr’s own form, disclosure and consent by email.</p>
+        </div>
+        {checkrConfigured() ? (
+          <BackgroundChecks
+            people={employees.map((e) => ({ id: e.id, name: e.name, email: e.email }))}
+            checks={checks.map((c) => ({ id: c.id, userId: c.userId, status: c.status, result: c.result, createdAt: c.createdAt.toISOString(), completedAt: c.completedAt?.toISOString() ?? null }))}
+            defaultState={base?.homeState?.slice(0, 2).toUpperCase() ?? ''}
+            defaultCity={base?.homeCity ?? ''}
+            packageName={checkrPackage()}
+          />
+        ) : (
+          <p className="text-sm text-muted">
+            Not set up yet. See <Link href="/admin/integrations#checkr" className="font-semibold text-bronze hover:underline">Integrations → Checkr</Link>.
+          </p>
+        )}
+      </section>
     </div>
   );
 }

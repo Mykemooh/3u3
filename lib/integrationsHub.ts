@@ -140,6 +140,25 @@ export const INTEGRATIONS: IntegrationDef[] = [
     status: (c) => (c.tenant?.googleReviewUrl ? 'connected' : 'not_used'),
   },
   {
+    key: 'checkr',
+    name: 'Checkr background checks',
+    group: 'Team',
+    does: 'Send a new cleaner a background check from Team and see its status there. Checkr collects their details and consent; reports stay in Checkr.',
+    env: [
+      { name: 'CHECKR_API_KEY' },
+      { name: 'CHECKR_PACKAGE', optional: true, note: 'The package slug on your Checkr account. Defaults to basic_plus.' },
+      { name: 'CHECKR_ENVIRONMENT', optional: true, note: '"staging" to use Checkr’s test environment.' },
+    ],
+    steps: [
+      'Open a Checkr account (partner or API access) at dashboard.checkr.com.',
+      'Copy the secret API key from Account settings → Developer settings.',
+      'Add a webhook there pointing at <site>/api/hooks/checkr.',
+      'Add CHECKR_API_KEY (and CHECKR_PACKAGE if yours isn’t basic_plus) in Vercel and redeploy.',
+    ],
+    getFrom: { label: 'dashboard.checkr.com', url: 'https://dashboard.checkr.com' },
+    manage: { label: 'Team → Background checks', href: '/admin/team#checks' },
+  },
+  {
     key: 'resend',
     name: 'Resend email',
     group: 'Messages',

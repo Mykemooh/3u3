@@ -1082,6 +1082,28 @@ async function main() {
 
     -- Weather on the schedule (lib/weather.ts): which add-ons are done outside.
     ALTER TABLE add_on_services ADD COLUMN IF NOT EXISTS outdoor BOOLEAN;
+
+    -- Background checks through Checkr (lib/checkr.ts).
+    CREATE TABLE IF NOT EXISTS background_checks (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      user_id TEXT NOT NULL REFERENCES users(id),
+      candidate_id TEXT NOT NULL,
+      invitation_id TEXT,
+      invitation_url TEXT,
+      report_id TEXT,
+      package TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'INVITED',
+      result TEXT,
+      work_state TEXT,
+      work_city TEXT,
+      requested_by_user_id TEXT,
+      completed_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ
+    );
+    CREATE INDEX IF NOT EXISTS background_checks_candidate_idx ON background_checks(candidate_id);
+    CREATE INDEX IF NOT EXISTS background_checks_tenant_user_idx ON background_checks(tenant_id, user_id);
   `);
 
   console.log('Schema pushed to Postgres.');
