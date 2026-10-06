@@ -125,6 +125,21 @@ export const INTEGRATIONS: IntegrationDef[] = [
     status: () => 'built_in',
   },
   {
+    key: 'google_places',
+    name: 'Google review link lookup',
+    group: 'Leads and automation',
+    does: 'Finds your Google Business Profile and fills in the “leave a review” link happy clients are sent to. Pasting the link by hand works without it.',
+    env: [{ name: 'GOOGLE_MAPS_API_KEY', note: 'Server-side only. Restrict it to Places API (New).' }],
+    steps: [
+      'In Google Cloud → APIs & Services → Library, enable Places API (New).',
+      'Create an API key under Credentials and restrict it to Places API (New).',
+      'Add GOOGLE_MAPS_API_KEY in Vercel and redeploy, then use Search Google under Settings → Reviews and referrals.',
+    ],
+    getFrom: { label: 'console.cloud.google.com/apis/credentials', url: 'https://console.cloud.google.com/apis/credentials' },
+    manage: { label: 'Settings → Reviews and referrals', href: '/admin/settings#growth' },
+    status: (c) => (c.tenant?.googleReviewUrl ? 'connected' : 'not_used'),
+  },
+  {
     key: 'resend',
     name: 'Resend email',
     group: 'Messages',

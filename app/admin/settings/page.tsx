@@ -9,6 +9,8 @@ import CompanySettingsForm from '@/components/admin/CompanySettingsForm';
 import { appUrl } from '@/lib/url';
 import { isStripeConfigured } from '@/lib/stripe';
 import ConnectStripeCard from '@/components/admin/ConnectStripeCard';
+import GooglePlaceFinder from '@/components/admin/GooglePlaceFinder';
+import { placesConfigured } from '@/lib/googlePlaces';
 import { adminSession } from '@/lib/adminApi';
 
 export default async function AdminSettings({ searchParams }: { searchParams?: { connect?: string } }) {
@@ -84,6 +86,7 @@ export default async function AdminSettings({ searchParams }: { searchParams?: {
       <div id="growth" className="card max-w-2xl scroll-mt-24">
         <h2 className="mb-3 font-semibold text-ink">Reviews and referrals</h2>
         <CompanySettingsForm section="growth" initial={initial} />
+        {placesConfigured() && <GooglePlaceFinder defaultQuery={tenant.name} />}
       </div>
 
       <div className="card max-w-2xl">
