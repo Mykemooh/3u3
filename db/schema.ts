@@ -876,6 +876,10 @@ export const addOnServices = pgTable('add_on_services', {
   defaultPriceCents: integer('default_price_cents').notNull(),
   active: boolean('active').notNull().default(true),
   sortOrder: integer('sort_order').notNull().default(0),
+  // Done outside (patio, windows, pressure washing) — the schedule warns
+  // about rain and heat on those days (lib/weather.ts). Null = guess from
+  // the name.
+  outdoor: boolean('outdoor'),
   ...timestamps,
 });
 

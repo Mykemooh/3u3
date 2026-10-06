@@ -8,13 +8,14 @@ export default function AddOnCatalogRow({
   initial,
 }: {
   addOnId: string;
-  initial: { name: string; description: string | null; defaultPriceCents: number; active: boolean };
+  initial: { name: string; description: string | null; defaultPriceCents: number; active: boolean; outdoor: boolean };
 }) {
   const router = useRouter();
   const [name, setName] = useState(initial.name);
   const [description, setDescription] = useState(initial.description ?? '');
   const [priceDollars, setPriceDollars] = useState((initial.defaultPriceCents / 100).toFixed(2));
   const [active, setActive] = useState(initial.active);
+  const [outdoor, setOutdoor] = useState(initial.outdoor);
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   async function onSubmit(e: React.FormEvent) {
@@ -23,7 +24,7 @@ export default function AddOnCatalogRow({
     const res = await fetch(`/api/admin/addons/${addOnId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, description: description || null, defaultPriceDollars: Number(priceDollars), active }),
+      body: JSON.stringify({ name, description: description || null, defaultPriceDollars: Number(priceDollars), active, outdoor }),
     });
     if (res.ok) {
       setStatus('saved');
@@ -58,6 +59,10 @@ export default function AddOnCatalogRow({
       <label className="flex items-center gap-2 pb-3 text-sm font-medium text-slate">
         <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="h-4 w-4 accent-gold" />
         Active
+      </label>
+      <label className="flex items-center gap-2 pb-3 text-sm font-medium text-slate" title="Done outside: the schedule flags rain and heat on days it's booked">
+        <input type="checkbox" checked={outdoor} onChange={(e) => setOutdoor(e.target.checked)} className="h-4 w-4 accent-gold" />
+        Outdoor
       </label>
       <button type="submit" disabled={status === 'saving'} className="btn-primary">
         {status === 'saving' ? 'Saving…' : status === 'saved' ? 'Saved ✓' : 'Save'}

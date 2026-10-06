@@ -41,7 +41,7 @@ export async function createAddOnService(input: {
 
 export async function updateAddOnService(
   id: string,
-  patch: Partial<{ name: string; description: string | null; defaultPriceCents: number; active: boolean; sortOrder: number }>,
+  patch: Partial<{ name: string; description: string | null; defaultPriceCents: number; active: boolean; sortOrder: number; outdoor: boolean | null }>,
 ): Promise<void> {
   await db.update(addOnServices).set(patch).where(eq(addOnServices.id, id));
 }

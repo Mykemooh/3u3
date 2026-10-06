@@ -1079,6 +1079,9 @@ async function main() {
       synced_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
     CREATE UNIQUE INDEX IF NOT EXISTS calendar_event_links_user_booking_unique ON calendar_event_links(user_id, booking_id);
+
+    -- Weather on the schedule (lib/weather.ts): which add-ons are done outside.
+    ALTER TABLE add_on_services ADD COLUMN IF NOT EXISTS outdoor BOOLEAN;
   `);
 
   console.log('Schema pushed to Postgres.');

@@ -110,6 +110,21 @@ export const INTEGRATIONS: IntegrationDef[] = [
     status: (c) => ((c.counts.calendarMine ?? 0) > 0 ? 'connected' : 'needs_connect'),
   },
   {
+    key: 'weather',
+    name: 'Weather (Open-Meteo)',
+    group: 'Maps and schedule',
+    does: 'Flags rain and heat on the schedule for days with outdoor add-ons — patio, windows, pressure washing.',
+    env: [{ name: 'OPEN_METEO_API_KEY', optional: true, note: 'Open-Meteo’s free service is for non-commercial use; a business should take one of their API plans and set this key.' }],
+    steps: [
+      'Works without setup. Mark which add-ons are done outside on Quotes → Add-ons (common ones are recognised by name).',
+      'The forecast uses a team’s home-base city (Team page), or the city most of the week’s jobs are in.',
+      'For commercial use, subscribe at open-meteo.com/en/pricing and add OPEN_METEO_API_KEY in Vercel.',
+    ],
+    getFrom: { label: 'open-meteo.com/en/pricing', url: 'https://open-meteo.com/en/pricing' },
+    manage: { label: 'Schedule', href: '/admin/schedule' },
+    status: () => 'built_in',
+  },
+  {
     key: 'resend',
     name: 'Resend email',
     group: 'Messages',

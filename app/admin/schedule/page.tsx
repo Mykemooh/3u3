@@ -4,6 +4,7 @@ import { getWeekSchedule, startOfWeek, shiftWeek } from '@/lib/dispatch';
 import { getEmployees, staffForJobs } from '@/lib/team';
 import { businessTodayISO } from '@/lib/time';
 import ScheduleBoard from '@/components/team/ScheduleBoard';
+import { weatherWatch } from '@/lib/weather';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +29,8 @@ export default async function AdminSchedule({ searchParams }: { searchParams: { 
     getWeekSchedule(tenant.id, start),
     getEmployees(tenant.id),
   ]);
+  const weather = await weatherWatch(tenant.id, dates[0], dates[dates.length - 1]);
+  const dayName = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
   const entries = [
     ...crews.flatMap((c) => dates.flatMap((d) => byCrew[c.id][d])),
     ...dates.flatMap((d) => unassigned[d]),
@@ -63,6 +66,21 @@ export default async function AdminSchedule({ searchParams }: { searchParams: { 
           </Link>
         </div>
       </div>
+
+      {weather.days.length > 0 && (
+        <section className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4" aria-label="Weather watch">
+          <p className="text-sm font-semibold text-amber-900">Weather watch for outdoor work{weather.place ? ` · ${weather.place}` : ''}</p>
+          <ul className="mt-2 space-y-1 text-sm text-amber-900">
+            {weather.days.map((d) => (
+              <li key={d.date}>
+                <span className="font-semibold">{dayName(d.date)}</span> — {d.text}.{' '}
+                {d.jobs.map((j) => `${j.client} (${j.addOns.join(', ')})`).join('; ')}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-amber-800">Forecast from Open-Meteo. Outdoor add-ons are marked on Quotes → Add-ons.</p>
+        </section>
+      )}
 
       <ScheduleBoard
         dates={dates}

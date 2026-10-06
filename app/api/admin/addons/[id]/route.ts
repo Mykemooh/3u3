@@ -12,6 +12,7 @@ const schema = z.object({
   defaultPriceDollars: z.number().positive().optional(),
   active: z.boolean().optional(),
   sortOrder: z.number().int().optional(),
+  outdoor: z.boolean().nullable().optional(),
 });
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {

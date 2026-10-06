@@ -1,6 +1,7 @@
 import { getTenant } from '@/lib/data';
 import { getAddOnCatalog } from '@/lib/addons';
 import AddOnCatalogRow from '@/components/admin/AddOnCatalogRow';
+import { isOutdoorAddOn } from '@/lib/weather';
 import AddOnCatalogCreateForm from '@/components/admin/AddOnCatalogCreateForm';
 
 export default async function AdminAddOns() {
@@ -28,7 +29,7 @@ export default async function AdminAddOns() {
           <AddOnCatalogRow
             key={a.id}
             addOnId={a.id}
-            initial={{ name: a.name, description: a.description, defaultPriceCents: a.defaultPriceCents, active: a.active }}
+            initial={{ name: a.name, description: a.description, defaultPriceCents: a.defaultPriceCents, active: a.active, outdoor: isOutdoorAddOn(a.name, a.outdoor) }}
           />
         ))}
         {addOns.length === 0 && <div className="card text-center text-muted">No add-on services yet — create one above.</div>}
