@@ -12,6 +12,18 @@ async function main() {
   const { pool } = await import('../db/client');
   const lines = await backfillServiceLines();
   console.log(`[backfill] Service lines: ${lines.added} added across ${lines.companies} companies.`);
+
+  // The platform owner login, from PLATFORM_ADMIN_EMAIL / _PASSWORD
+  // (lib/platformBootstrap.ts). Never fails the build.
+  const { ensurePlatformOwner } = await import('../lib/platformBootstrap');
+  const owner = await ensurePlatformOwner({
+    email: process.env.PLATFORM_ADMIN_EMAIL,
+    password: process.env.PLATFORM_ADMIN_PASSWORD,
+    name: process.env.PLATFORM_ADMIN_NAME,
+  }).catch((err) => ({ status: 'skipped' as const, reason: `error: ${err?.message ?? err}` }));
+  if (owner.status === 'created') console.log(`[backfill] Platform owner login created for ${owner.email}.`);
+  else if (owner.status === 'exists') console.log('[backfill] Platform owner login already exists.');
+  else console.log(`[backfill] Platform owner: skipped (${owner.reason}).`);
   await pool.end();
 }
 
