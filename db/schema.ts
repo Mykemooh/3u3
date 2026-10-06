@@ -1271,3 +1271,32 @@ export const webhookDeliveries = pgTable('webhook_deliveries', {
   dueIdx: index('webhook_deliveries_due_idx').on(t.status, t.nextAttemptAt),
   tenantIdx: index('webhook_deliveries_tenant_idx').on(t.tenantId, t.createdAt),
 }));
+
+// Leads sent in from other sites (Angi, Thumbtack, Facebook Lead Ads, a
+// website form via Zapier) with a company API key — POST /api/hooks/leads,
+// lib/inboundLeads.ts. A repeat from the same phone or email while the
+// first is still open is folded into it (duplicateCount) instead of
+// becoming a second lead.
+export const inboundLeads = pgTable('inbound_leads', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  source: text('source').notNull().default('API'),
+  name: text('name').notNull(),
+  phone: text('phone'),
+  phoneKey: text('phone_key'),
+  email: text('email'),
+  address: text('address'),
+  service: text('service'),
+  message: text('message'),
+  status: text('status', { enum: ['NEW', 'CONTACTED', 'CONVERTED', 'DISMISSED'] }).notNull().default('NEW'),
+  clientId: text('client_id').references(() => users.id),
+  apiKeyId: text('api_key_id'),
+  duplicateCount: integer('duplicate_count').notNull().default(0),
+  lastReceivedAt: timestamp('last_received_at', { withTimezone: true }).notNull().defaultNow(),
+  ...timestamps,
+  updatedAt: timestamp('updated_at', { withTimezone: true }),
+}, (t) => ({
+  tenantIdx: index('inbound_leads_tenant_idx').on(t.tenantId, t.status),
+  phoneIdx: index('inbound_leads_phone_idx').on(t.tenantId, t.phoneKey),
+  emailIdx: index('inbound_leads_email_idx').on(t.tenantId, t.email),
+}));

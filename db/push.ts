@@ -1027,6 +1027,30 @@ async function main() {
     );
     CREATE INDEX IF NOT EXISTS webhook_deliveries_due_idx ON webhook_deliveries(status, next_attempt_at);
     CREATE INDEX IF NOT EXISTS webhook_deliveries_tenant_idx ON webhook_deliveries(tenant_id, created_at);
+
+    -- Leads sent in by API (lib/inboundLeads.ts).
+    CREATE TABLE IF NOT EXISTS inbound_leads (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      source TEXT NOT NULL DEFAULT 'API',
+      name TEXT NOT NULL,
+      phone TEXT,
+      phone_key TEXT,
+      email TEXT,
+      address TEXT,
+      service TEXT,
+      message TEXT,
+      status TEXT NOT NULL DEFAULT 'NEW' CHECK (status IN ('NEW','CONTACTED','CONVERTED','DISMISSED')),
+      client_id TEXT REFERENCES users(id),
+      api_key_id TEXT,
+      duplicate_count INTEGER NOT NULL DEFAULT 0,
+      last_received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ
+    );
+    CREATE INDEX IF NOT EXISTS inbound_leads_tenant_idx ON inbound_leads(tenant_id, status);
+    CREATE INDEX IF NOT EXISTS inbound_leads_phone_idx ON inbound_leads(tenant_id, phone_key);
+    CREATE INDEX IF NOT EXISTS inbound_leads_email_idx ON inbound_leads(tenant_id, email);
   `);
 
   console.log('Schema pushed to Postgres.');

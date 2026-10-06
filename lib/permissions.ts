@@ -74,6 +74,7 @@ const PATH_RULES: [string, AdminPermission][] = [
   ['/admin/leads', 'clients.manage'],
   ['/admin/pipeline', 'clients.manage'],
   ['/api/admin/clients', 'clients.manage'],
+  ['/api/admin/leads', 'clients.manage'],
   ['/api/admin/addresses', 'clients.manage'],
   ['/admin/estimates', 'quotes.manage'],
   ['/admin/rates', 'quotes.manage'],

@@ -6,6 +6,8 @@ import { eq, inArray } from 'drizzle-orm';
 import { getTenant, getAllBookings } from '@/lib/data';
 import BookingStatusActions from '@/components/BookingStatusActions';
 import StartEstimateButton from '@/components/StartEstimateButton';
+import InboundLeadsList from '@/components/admin/InboundLeadsList';
+import { listInboundLeads } from '@/lib/inboundLeads';
 
 const ESTIMATE_STYLE: Record<string, string> = {
   DRAFT: 'bg-surface text-slate',
@@ -29,7 +31,7 @@ const STATUS_STYLE: Record<string, string> = {
 export default async function AdminLeads() {
   const tenant = await getTenant();
   if (!tenant) return null;
-  const allBookings = await getAllBookings(tenant.id);
+  const [allBookings, inbound] = await Promise.all([getAllBookings(tenant.id), listInboundLeads(tenant.id)]);
   const leads = allBookings
     .filter((b) => b.isQuoteVisit)
     .sort((a, b) => b.slotStart.localeCompare(a.slotStart));
@@ -72,6 +74,20 @@ export default async function AdminLeads() {
     <div>
       <h1 className="mb-1 text-2xl font-bold text-ink">Leads</h1>
       <p className="mb-6 text-slate">Every quote-visit request, from first capture to won or lost.</p>
+
+      {inbound.length > 0 && (
+        <section className="mb-8" aria-labelledby="inbound-leads">
+          <h2 id="inbound-leads" className="mb-1 font-semibold text-ink">From other sites ({inbound.length})</h2>
+          <p className="mb-3 text-sm text-slate">Sent in by API — Angi, Thumbtack, Facebook, your website form. Call or text them to book a walkthrough.</p>
+          <InboundLeadsList
+            leads={inbound.map((l) => ({
+              id: l.id, source: l.source, name: l.name, phone: l.phone, email: l.email, address: l.address, service: l.service,
+              message: l.message, status: l.status, clientId: l.clientId, duplicateCount: l.duplicateCount, lastReceivedAt: l.lastReceivedAt.toISOString(),
+            }))}
+          />
+          <h2 className="mb-3 mt-8 font-semibold text-ink">Walkthrough requests</h2>
+        </section>
+      )}
 
       <div className="grid grid-cols-1 gap-3">
         {leads.map((lead) => {
