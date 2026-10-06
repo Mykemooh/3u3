@@ -175,6 +175,20 @@ export const INTEGRATIONS: IntegrationDef[] = [
     status: (c) => (c.providers.has('GUSTO') ? 'connected' : 'needs_connect'),
   },
   {
+    key: 'sentry',
+    name: 'Sentry error monitoring',
+    group: 'Reliability',
+    does: 'Sends server and browser errors to Sentry with the page they happened on, so problems are seen before a client reports them. Never sends form contents, cookies or links’ query strings.',
+    env: [{ name: 'SENTRY_DSN' }],
+    steps: [
+      'Create a project in Sentry (platform: Next.js) and copy its DSN from Project settings → Client keys.',
+      'Add SENTRY_DSN in Vercel and redeploy.',
+      'The public status page is at <site>/status; point an uptime monitor at <site>/api/health (200 while the app and database are up).',
+    ],
+    getFrom: { label: 'sentry.io', url: 'https://sentry.io' },
+    manage: { label: 'Status page', href: '/status' },
+  },
+  {
     key: 'resend',
     name: 'Resend email',
     group: 'Messages',

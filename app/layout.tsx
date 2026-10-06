@@ -4,6 +4,7 @@ import './globals.css';
 import Providers from './providers';
 import BrandWatermark from '@/components/BrandWatermark';
 import TexWidget from '@/components/TexWidget';
+import ErrorReporter from '@/components/ErrorReporter';
 
 /**
  * Two faces, per the brand book: Inter for body/UI text, Plus Jakarta Sans
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Providers>
             {children}
             <TexWidget />
+            {process.env.SENTRY_DSN ? <ErrorReporter /> : null}
           </Providers>
         </div>
       </body>

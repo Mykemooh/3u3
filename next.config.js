@@ -8,6 +8,8 @@ const nextConfig = {
   },
   experimental: {
     serverComponentsExternalPackages: ['pg'],
+    // instrumentation.ts: Sentry error capture when SENTRY_DSN is set.
+    instrumentationHook: true,
   },
   images: {
     // AVIF first, then WebP, then the original. These photos are large
