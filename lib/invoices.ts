@@ -9,6 +9,7 @@ import { getOwnerEmail } from '@/lib/data';
 import { logNotification } from '@/lib/bookings';
 import { sendEmail, invoiceEmail, paymentReceivedCustomerEmail, paymentReceivedOwnerEmail, type EmailBrand } from '@/lib/email';
 import { pushPaidInvoice } from '@/lib/quickbooks';
+import { pushPaidInvoiceToXero } from '@/lib/xero';
 import { connectRouting } from '@/lib/connect';
 import type Stripe from 'stripe';
 
@@ -429,5 +430,11 @@ export async function confirmInvoicePaid(stripeInvoice: Stripe.Invoice) {
     await pushPaidInvoice(invoice.tenantId, invoice.id);
   } catch (err) {
     console.warn(`[invoices] QuickBooks sync failed for ${invoice.id}:`, err);
+  }
+  // Same for Xero (lib/xero.ts).
+  try {
+    await pushPaidInvoiceToXero(invoice.tenantId, invoice.id);
+  } catch (err) {
+    console.warn(`[invoices] Xero sync failed for ${invoice.id}:`, err);
   }
 }

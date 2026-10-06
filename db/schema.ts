@@ -1388,3 +1388,16 @@ export const texActions = pgTable('tex_actions', {
 }, (t) => ({
   convIdx: index('tex_actions_conversation_idx').on(t.tenantId, t.conversationId),
 }));
+
+// Xero sync (lib/xero.ts) — the QuickBooks links table's twin: which Xero
+// contact and bank transaction stand for our client and paid invoice.
+export const xeroLinks = pgTable('xero_links', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  entity: text('entity', { enum: ['CONTACT', 'INVOICE'] }).notNull(),
+  localId: text('local_id').notNull(),
+  xeroId: text('xero_id').notNull(),
+  ...timestamps,
+}, (t) => ({
+  entityUnique: uniqueIndex('xero_links_entity_unique').on(t.tenantId, t.entity, t.localId),
+}));

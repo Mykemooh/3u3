@@ -1127,6 +1127,17 @@ async function main() {
     -- Gusto push (lib/gusto.ts).
     ALTER TABLE payroll_runs ADD COLUMN IF NOT EXISTS gusto_payroll_id TEXT;
     ALTER TABLE payroll_runs ADD COLUMN IF NOT EXISTS gusto_pushed_at TIMESTAMPTZ;
+
+    -- Xero sync (lib/xero.ts).
+    CREATE TABLE IF NOT EXISTS xero_links (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      entity TEXT NOT NULL CHECK (entity IN ('CONTACT','INVOICE')),
+      local_id TEXT NOT NULL,
+      xero_id TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS xero_links_entity_unique ON xero_links(tenant_id, entity, local_id);
   `);
 
   console.log('Schema pushed to Postgres.');

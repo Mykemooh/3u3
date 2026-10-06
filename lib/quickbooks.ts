@@ -194,7 +194,8 @@ export async function pushPaidInvoice(tenantId: string, invoiceId: string): Prom
   const { invoice, items, client } = data;
 
   const qbCustomerId = await findOrCreateQbCustomer(tenantId, client);
-  const lines = items.map((item) => ({
+  // A paid tip is also an isTip line item (lib/tips.ts); it's added once below, from tipCents.
+  const lines = items.filter((item) => !item.isTip).map((item) => ({
     Amount: item.amountCents / 100,
     DetailType: 'SalesItemLineDetail',
     Description: item.description,

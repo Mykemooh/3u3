@@ -189,6 +189,26 @@ export const INTEGRATIONS: IntegrationDef[] = [
     manage: { label: 'Status page', href: '/status' },
   },
   {
+    key: 'xero',
+    name: 'Xero',
+    group: 'Payments and accounting',
+    does: 'For companies on Xero instead of QuickBooks: each paid invoice is added to Xero as money received, with the client, line items and tip. Never added twice.',
+    env: [
+      { name: 'XERO_CLIENT_ID' },
+      { name: 'XERO_CLIENT_SECRET' },
+      { name: 'XERO_SALES_ACCOUNT_CODE', optional: true, note: 'Revenue account for line items. Defaults to 200 (Sales).' },
+      { name: 'XERO_BANK_ACCOUNT_CODE', optional: true, note: 'Bank account that receives the money. Defaults to your only bank account, or one named Stripe.' },
+      { name: 'XERO_SCOPES', optional: true, note: 'Only if Xero asks your app to use different scopes.' },
+    ],
+    steps: [
+      'Create a Web app at developer.xero.com → My Apps.',
+      'Add the redirect URI <site>/api/admin/integrations/xero/callback and copy the client ID and secret.',
+      'Add them in Vercel, redeploy, then click Connect Xero below.',
+    ],
+    getFrom: { label: 'developer.xero.com', url: 'https://developer.xero.com/app/manage' },
+    status: (c) => (c.providers.has('XERO') ? 'connected' : 'needs_connect'),
+  },
+  {
     key: 'resend',
     name: 'Resend email',
     group: 'Messages',
