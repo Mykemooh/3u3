@@ -1,3 +1,4 @@
+import { redactPin } from '@/lib/phonePin';
 import { db } from '@/db/client';
 import { smsMessages, tenants, users, notificationLog } from '@/db/schema';
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
@@ -108,7 +109,7 @@ export async function recordOutbound(input: {
     direction: 'OUT',
     fromNumber: toE164(input.from) ?? input.from,
     toNumber: toE164(input.to) ?? input.to,
-    body: input.body,
+    body: redactPin(input.body),
     twilioSid: input.sid ?? null,
     sentByUserId: input.sentByUserId ?? null,
     sentByTex: input.sentByTex ?? false,
@@ -215,7 +216,7 @@ export async function receiveInbound(input: { from: string; to: string; body: st
     tenantId: tenant.id,
     channel: 'SMS',
     recipient: 'admin',
-    triggerEvent: `SMS_RECEIVED: ${client?.name ?? input.from}: ${input.body.slice(0, 120)}`,
+    triggerEvent: `SMS_RECEIVED: ${client?.name ?? input.from}: ${redactPin(input.body).slice(0, 120)}`,
     isRead: false,
   });
   return { tenant, client: client ?? null, messageId: id, consent };

@@ -78,6 +78,17 @@ Extras such as inside the oven or fridge, interior windows or laundry can be add
 If you have a repeating schedule, moving one visit only moves that visit — the rest of your schedule stays as it was.`,
   },
   {
+    slug: 'phone-pin',
+    title: 'What is the phone PIN?',
+    kind: 'FAQ',
+    audience: ['PUBLIC', 'CLIENT'],
+    section: 'Your account',
+    tags: ['pin', 'phone', 'call', 'text', 'verify', 'security', 'code', 'identity'],
+    body: `Your phone PIN is 4 digits you choose in Account → Settings. When you call or text {company}, say the PIN and Tex knows it's really you, so it can look up your cleans, move one, or update your notes without sending a code.
+
+Tex never repeats your PIN and it isn't saved in the conversation. After five wrong tries it pauses PIN checks on your account for a while. If you haven't set one, Tex can text a one-time code to the number on file instead.`,
+  },
+  {
     slug: 'what-to-prepare',
     title: 'How should I get ready for a clean?',
     kind: 'FAQ',
@@ -402,7 +413,8 @@ Happy clients (4 stars or more on every room) are offered your Google review lin
     body: `Messages → Texts is a two-way inbox from your business number. Reminders and Tex's replies appear in each client's thread.
 
 - Tex answers client chats, texts and calls from your help articles when you turn it on (Settings → Texting and Tex). It never quotes prices, and it hands off to you when it can't help.
-- Tex can also help a client who is signed in, or whose phone number matches their account: look up their cleans and invoices, move or cancel a clean (same 24-hour rule and open times as their account), and update notes like pets and parking. Changes are always two steps — Tex says exactly what will change and the client confirms. By text or phone the client must read back a one-time code texted to the number on file. You get the usual "client updated their account" email.
+- Tex can also help a client who is signed in, or whose phone number matches their account: look up their cleans and invoices, move or cancel a clean (same 24-hour rule and open times as their account), and update notes like pets and parking. Changes are always two steps — Tex says exactly what will change and the client confirms. By text or phone the client first proves it's them — by saying the 4-digit phone PIN they set in their account, or by reading back a one-time code texted to the number on file (a changed email always needs the code). You get the usual "client updated their account" email.
+- Tex works like a front desk: it greets known callers by name, takes new requests (name, best number, address, service, timing) as leads, and texts the booking link. Set your office hours and greeting in Settings → Texting and Tex: while you're open, a caller who asks for a person is put through to your cell (with voicemail if you don't pick up); after hours Tex takes a message. Voicemails and new requests show up as alerts.
 - Once you reply to a thread yourself, Tex stays quiet in it for a while so you're not talking over each other.
 - Clients who reply STOP can't be texted until they text START.
 - Every Tex conversation is in Messages → Tex conversations. Ones marked Needs you are waiting on a person.`,

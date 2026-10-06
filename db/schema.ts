@@ -84,6 +84,13 @@ export const tenants = pgTable('tenants', {
   texSmsAutoReply: boolean('tex_sms_auto_reply').notNull().default(true),
   texVoiceEnabled: boolean('tex_voice_enabled').notNull().default(true),
   ownerPhone: text('owner_phone'),
+  // The receptionist's hours: when a caller who asks for a person is put
+  // through to the owner (open) or has a message taken (closed), plus an
+  // optional greeting in the company's own words.
+  texOpenDays: text('tex_open_days').notNull().default('1,2,3,4,5'),
+  texOpenFrom: text('tex_open_from').notNull().default('08:00'),
+  texOpenTo: text('tex_open_to').notNull().default('17:00'),
+  texGreeting: text('tex_greeting'),
   // Growth (lib/marketing.ts): where a happy client is sent to leave a
   // public review, what a referral is worth, and when a client counts as
   // lapsed for the win-back message.
@@ -138,6 +145,11 @@ export const users = pgTable('users', {
   // Last time a "forgot password" link was sent (lib/passwordReset.ts), so
   // the form can't be used to flood someone's inbox or phone.
   passwordResetSentAt: timestamp('password_reset_sent_at', { withTimezone: true }),
+  // The client's 4-digit phone PIN (lib/phonePin.ts): salted hash only, with
+  // a failure count and lockout so it can't be guessed over the phone.
+  phonePinHash: text('phone_pin_hash'),
+  phonePinFailures: integer('phone_pin_failures').notNull().default(0),
+  phonePinLockedUntil: timestamp('phone_pin_locked_until', { withTimezone: true }),
   // Admin "close client" toggle (closed clients can't sign in or book, but
   // their history is kept, not deleted).
   isActive: boolean('is_active').notNull().default(true),

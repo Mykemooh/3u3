@@ -93,3 +93,13 @@ export function businessLocalToUtc(naive: string): Date {
   const asIfUtc = Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day), Number(p.hour), Number(p.minute), Number(p.second));
   return new Date(guess + (guess - asIfUtc));
 }
+
+/** Is the business open right now? days is "1,2,3" (0 = Sunday), from/to are "HH:MM" in business time. */
+export function isOpenNow(days: string, from: string, to: string, date = new Date()): boolean {
+  const iso = businessNowISO(date);
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
+  const weekday = new Date(y, m - 1, d).getDay();
+  if (!days.split(',').map((x) => x.trim()).includes(String(weekday))) return false;
+  const now = iso.slice(11, 16);
+  return now >= from && now < to;
+}

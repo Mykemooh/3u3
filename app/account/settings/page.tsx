@@ -16,6 +16,8 @@ import NotificationPreferences from '@/components/NotificationPreferences';
 import PendingInvoices from '@/components/account/PendingInvoices';
 import PaymentHistoryByMonth from '@/components/account/PaymentHistoryByMonth';
 import HomeProfileEditor from '@/components/HomeProfileEditor';
+import PhonePinCard from '@/components/PhonePinCard';
+import { hasPin } from '@/lib/phonePin';
 import { getHomeProfile } from '@/lib/homeProfile';
 import { encryptionConfigured } from '@/lib/encryption';
 
@@ -42,6 +44,7 @@ export default async function AccountSettings() {
   const primaryAddress = addresses.find((a) => a.isPrimary) ?? addresses[0];
   const pending = pendingInvoicesFor(accountBookings);
   const paymentMonths = paymentHistoryByMonth(accountBookings);
+  const pinSet = await hasPin(user.id);
   const homeProfile = primaryAddress ? await getHomeProfile(primaryAddress.id) : null;
 
   return (
@@ -84,6 +87,8 @@ export default async function AccountSettings() {
           </div>
         </div>
       </section>
+
+      <PhonePinCard initiallySet={pinSet} />
 
       {primaryAddress && (
         <section id="home" className="card scroll-mt-24">

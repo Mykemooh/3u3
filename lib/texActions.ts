@@ -14,6 +14,7 @@ import { logChange } from '@/lib/audit';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 import { businessLocalToUtc, businessTodayDate } from '@/lib/time';
 import type { TexContext } from '@/lib/texTools';
+import { pinVerified } from '@/lib/phonePin';
 
 /**
  * Changes Tex makes for a client: move a clean, cancel one, or update
@@ -39,6 +40,18 @@ export class TexActionError extends Error {}
 
 export const hashCode = (id: string, code: string) => createHmac('sha256', process.env.NEXTAUTH_SECRET || 'dev-secret').update(`tex:${id}:${code}`).digest('hex');
 export const needsCode = (ctx: Pick<TexContext, 'channel'>) => ctx.channel !== 'WEB';
+
+/**
+ * Does this change need a texted code? Not on the website (the session
+ * proves who it is). By text or phone, a client who gave their PIN has
+ * proved it, so a spoken yes is enough — except for an email change (a
+ * way into the account), which always needs the code.
+ */
+async function codeRequired(ctx: TexContext, always: boolean) {
+  if (!needsCode(ctx)) return false;
+  if (always) return true;
+  return !(await pinVerified(ctx));
+}
 
 /** Has the person on this call/text thread proved who they are recently? (Web sessions always have.) */
 export async function isVerified(ctx: Pick<TexContext, 'channel' | 'tenant' | 'conversationId' | 'userId'>) {
@@ -91,7 +104,8 @@ async function propose(ctx: TexContext, kind: 'RESCHEDULE' | 'CANCEL' | 'UPDATE_
     summary,
     expiresAt: new Date(Date.now() + CODE_MINUTES * 60_000),
   });
-  if (needsCode(ctx)) {
+  const alwaysCode = kind === 'VERIFY' || (kind === 'UPDATE_ACCOUNT' && (payload as { field?: string }).field === 'email');
+  if (await codeRequired(ctx, alwaysCode)) {
     await sendCode(ctx, id, summary);
     return {
       pending_id: id,
@@ -212,7 +226,9 @@ export async function confirmChange(ctx: TexContext, pendingId: string, code?: s
     await db.update(texActions).set({ status: 'EXPIRED' }).where(eq(texActions.id, row.id));
     throw new TexActionError('That confirmation expired — propose the change again.');
   }
-  if (!needsCode(ctx)) {
+  const rowPayload = JSON.parse(row.payloadJson ?? '{}');
+  const codeNeeded = await codeRequired(ctx, row.kind === 'VERIFY' || (row.kind === 'UPDATE_ACCOUNT' && rowPayload.field === 'email'));
+  if (!codeNeeded) {
     // A plain yes must come from the person in a LATER message than the proposal, never in the same turn.
     const said = (
       await db
@@ -223,7 +239,7 @@ export async function confirmChange(ctx: TexContext, pendingId: string, code?: s
     )[0];
     if (!said) throw new TexActionError('The person hasn’t said yes yet. Read the summary back and wait for their reply before confirming.');
   }
-  if (needsCode(ctx)) {
+  if (codeNeeded) {
     const used = await db
       .update(texActions)
       .set({ attempts: sql`${texActions.attempts} + 1` })

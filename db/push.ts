@@ -214,6 +214,13 @@ async function main() {
     -- never reach an already-deployed database no matter how many times
     -- this script is re-run.
     ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_pin_hash TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_pin_failures INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_pin_locked_until TIMESTAMPTZ;
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS tex_open_days TEXT NOT NULL DEFAULT '1,2,3,4,5';
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS tex_open_from TEXT NOT NULL DEFAULT '08:00';
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS tex_open_to TEXT NOT NULL DEFAULT '17:00';
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS tex_greeting TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS password_setup_token TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS password_setup_expires_at TIMESTAMPTZ;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_sent_at TIMESTAMPTZ;

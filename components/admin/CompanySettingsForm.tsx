@@ -12,6 +12,10 @@ type Values = {
   ownerPhone: string;
   texSmsAutoReply: boolean;
   texVoiceEnabled: boolean;
+  texOpenDays: string;
+  texOpenFrom: string;
+  texOpenTo: string;
+  texGreeting: string;
   googleReviewUrl: string;
   referralCreditDollars: string;
   winbackDays: number;
@@ -32,7 +36,7 @@ export default function CompanySettingsForm({ section, initial }: { section: 'pr
       case 'payroll':
         return { payrollFrequency: v.payrollFrequency, payrollAnchorDate: v.payrollAnchorDate || null };
       case 'texting':
-        return { smsNumber: v.smsNumber || null, ownerPhone: v.ownerPhone || null, texSmsAutoReply: v.texSmsAutoReply, texVoiceEnabled: v.texVoiceEnabled };
+        return { smsNumber: v.smsNumber || null, ownerPhone: v.ownerPhone || null, texSmsAutoReply: v.texSmsAutoReply, texVoiceEnabled: v.texVoiceEnabled, texOpenDays: v.texOpenDays, texOpenFrom: v.texOpenFrom, texOpenTo: v.texOpenTo, texGreeting: v.texGreeting || null };
       case 'growth':
         return { googleReviewUrl: v.googleReviewUrl || '', referralCreditCents: Math.round(Number(v.referralCreditDollars || 0) * 100), winbackDays: v.winbackDays };
       case 'security':
@@ -82,6 +86,23 @@ export default function CompanySettingsForm({ section, initial }: { section: 'pr
           <label><span className="label">Owner's cell (calls transfer here)</span><input className="input" inputMode="tel" value={v.ownerPhone} onChange={(e) => set('ownerPhone', e.target.value)} /></label>
           <label className="flex items-center gap-2 text-sm text-slate"><input type="checkbox" checked={v.texSmsAutoReply} onChange={(e) => set('texSmsAutoReply', e.target.checked)} /> Tex answers texts when the office doesn't</label>
           <label className="flex items-center gap-2 text-sm text-slate"><input type="checkbox" checked={v.texVoiceEnabled} onChange={(e) => set('texVoiceEnabled', e.target.checked)} /> Tex answers phone calls</label>
+          <div className="sm:col-span-2">
+            <span className="label">Office hours — callers who ask for a person are put through to your cell while you’re open; after hours Tex takes a message</span>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate">
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d, i) => {
+                const on = v.texOpenDays.split(',').includes(String(i));
+                return (
+                  <label key={d} className="flex items-center gap-1">
+                    <input type="checkbox" checked={on} onChange={() => set('texOpenDays', (on ? v.texOpenDays.split(',').filter((x) => x !== String(i)) : [...v.texOpenDays.split(',').filter(Boolean), String(i)]).sort().join(','))} /> {d}
+                  </label>
+                );
+              })}
+              <input type="time" className="input w-auto" value={v.texOpenFrom} onChange={(e) => set('texOpenFrom', e.target.value)} />
+              <span>to</span>
+              <input type="time" className="input w-auto" value={v.texOpenTo} onChange={(e) => set('texOpenTo', e.target.value)} />
+            </div>
+          </div>
+          <label className="sm:col-span-2"><span className="label">Phone greeting (optional — leave blank and Tex says hi by name)</span><input className="input" maxLength={240} placeholder={`Thanks for calling — this is Tex, the virtual assistant. How can I help?`} value={v.texGreeting} onChange={(e) => set('texGreeting', e.target.value)} /></label>
         </div>
       )}
       {section === 'growth' && (

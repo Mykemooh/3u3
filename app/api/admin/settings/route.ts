@@ -26,6 +26,10 @@ const schema = z.object({
   ownerPhone: z.string().max(20).nullable().optional(),
   texSmsAutoReply: z.boolean().optional(),
   texVoiceEnabled: z.boolean().optional(),
+  texOpenDays: z.string().regex(/^([0-6](,[0-6])*)?$/).optional(),
+  texOpenFrom: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
+  texOpenTo: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
+  texGreeting: z.string().max(240).nullable().optional(),
   // Growth (lib/marketing.ts).
   googleReviewUrl: z.string().url().max(500).nullable().optional().or(z.literal('')),
   referralCreditCents: z.number().int().min(0).max(100000).optional(),

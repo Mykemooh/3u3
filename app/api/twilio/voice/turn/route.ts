@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 import { tenantForInbound, clientByPhone } from '@/lib/messaging';
 import { phoneDigits } from '@/lib/sms';
 import { askTex } from '@/lib/tex';
-import { twilioForm, twiml, say, gather, xml } from '@/lib/voice';
+import { appUrl } from '@/lib/url';
+import { twilioForm, twiml, say, gather, xml, recordMessage } from '@/lib/voice';
+import { isOpenNow } from '@/lib/time';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +14,8 @@ export async function POST(req: Request) {
   if (!ok) return NextResponse.json({ error: 'Invalid signature' }, { status: 403 });
   const tenant = await tenantForInbound(params.To ?? '', params.From ?? '');
   if (!tenant) return twiml(say('Sorry, this number is not set up yet.'));
-  const speech = (params.SpeechResult ?? '').trim();
+  // Spoken words, or digits keyed on the phone (a PIN).
+  const speech = (params.SpeechResult ?? '').trim() || (params.Digits ? `My PIN is ${params.Digits}` : '');
   if (!speech) return twiml(gather('Sorry, I didn’t catch that. What can I help with?') + say('Thanks for calling. Goodbye.'));
 
   const digits = phoneDigits(params.From);
@@ -28,9 +31,13 @@ export async function POST(req: Request) {
   }).catch(() => null);
 
   if (!reply) return twiml(say(`Sorry, I’m having trouble right now. Please text us at this number and someone from ${tenant.name} will get back to you.`));
-  if (reply.handoff) {
-    if (tenant.ownerPhone) return twiml(say(reply.answer) + `<Dial timeout="25">${xml(tenant.ownerPhone)}</Dial>` + say('Sorry, no one could pick up. We’ll call you back at this number.'));
-    return twiml(say(`${reply.answer} Someone from ${tenant.name} will call you back at this number. Goodbye.`));
+  if (reply.transfer) {
+    const open = isOpenNow(tenant.texOpenDays, tenant.texOpenFrom, tenant.texOpenTo);
+    if (open && tenant.ownerPhone) {
+      // If nobody picks up, the voicemail route takes a message.
+      return twiml(say(reply.answer) + `<Dial timeout="25" action="${xml(appUrl('/api/twilio/voice/voicemail'))}" method="POST">${xml(tenant.ownerPhone)}</Dial>`);
+    }
+    return twiml(say(`${reply.answer} Go ahead and leave a message after the beep and someone will call you back.`) + recordMessage());
   }
-  return twiml(say(reply.answer) + gather('Is there anything else?') + say(`Thanks for calling ${tenant.name}. Goodbye.`));
+  return twiml(say(reply.answer) + gather(reply.handoff ? 'Anything else I can help with?' : 'Anything else?') + say(`Thanks for calling ${tenant.name}. Take care!`));
 }

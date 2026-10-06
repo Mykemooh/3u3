@@ -18,6 +18,9 @@ import { ensureReferralCode, referralLink } from '@/lib/referrals';
 import { SERVICES } from '@/lib/services';
 import { invoiceLabel } from '@/lib/invoices';
 import { phoneDigits } from '@/lib/sms';
+import { receiveLead, InboundLeadError } from '@/lib/inboundLeads';
+import { sendText, MessagingError } from '@/lib/messaging';
+import { checkPin, pinUsable } from '@/lib/phonePin';
 import { ACCOUNT_FIELDS, TexActionError, confirmChange, openTimes, proposeAccountUpdate, proposeCancel, proposeReschedule, proposeVerify } from '@/lib/texActions';
 
 /**
@@ -43,8 +46,13 @@ export type TexContext = {
   conversationId: string;
   /** By text or phone: has the person proved who they are with a code (lib/texActions.ts)? Web sessions always have. */
   verified: boolean;
-  /** Set by tools during a turn. */
+  /** The client has a phone PIN set and it isn't locked (lib/phonePin.ts). */
+  hasPin: boolean;
+  /** Is the office open right now (Settings → Texting and Tex)? */
+  open: boolean;
+  /** Set by tools during a turn. handoff = the team should look at this; transfer = the caller asked for a person right now. */
   handoff: boolean;
+  transfer: boolean;
   articlesSeen: Article[];
 };
 
@@ -103,6 +111,8 @@ const companyInfo: Tool = {
       help_center: appUrl('/help'),
       sign_in: appUrl('/signin'),
       text_us: ctx.tenant.smsNumber ?? null,
+      office_open_now: ctx.open,
+      office_hours: `${ctx.tenant.texOpenFrom}–${ctx.tenant.texOpenTo}, days ${ctx.tenant.texOpenDays} (0 = Sunday)`,
       pricing: 'Every job is priced after a free in-person walkthrough; there is no online price list.',
     };
   },
@@ -119,6 +129,7 @@ const handOff: Tool = {
   },
   async run(ctx, input) {
     ctx.handoff = true;
+    ctx.transfer = true;
     await alertTeam(ctx, 'TEX_HANDOFF', `${ctx.userName ?? ctx.phone ?? 'A visitor'} (${ctx.channel.toLowerCase()}): ${str(input.reason, 300)}`);
     return { ok: true, note: 'The team has been told and will follow up.' };
   },
@@ -127,26 +138,54 @@ const handOff: Tool = {
 // ------------------------------------------------------------ visitors
 
 const leaveContact: Tool = {
-  name: 'leave_contact_details',
+  name: 'take_request',
   description:
-    'For someone not signed in who wants the company to contact them (a quote, a question you could not answer). Collect a name and a phone number or email first, then call this. It alerts the team.',
+    'Take down a request or message for the team: a new customer wanting a quote or walkthrough, a callback, a question you could not answer, a message for the owner. Collect their name and the best phone number or email first (on a call or text, the number they are calling or texting from is used if they say it is the best one), plus what they need, the service, and the address or neighborhood if they have given it. It creates a lead for the team and texts the caller the link to book a free walkthrough.',
   input_schema: {
     type: 'object',
     properties: {
       name: { type: 'string' },
-      phone: { type: 'string' },
+      phone: { type: 'string', description: 'Best number. Leave out if they said the number they are calling from is fine.' },
       email: { type: 'string' },
-      message: { type: 'string', description: 'What they want, in one or two lines' },
+      service: { type: 'string', description: 'e.g. standard clean, deep clean, move-out, office' },
+      address: { type: 'string', description: 'Street, or just the neighborhood or zip' },
+      message: { type: 'string', description: 'What they want, in one or two lines, including when they would like it' },
+      callback_preference: { type: 'string', description: 'e.g. text me, call after 5' },
     },
     required: ['name', 'message'],
   },
   async run(ctx, input) {
-    const phone = str(input.phone, 30);
+    const phone = str(input.phone, 30) || (ctx.channel !== 'WEB' ? (ctx.phone ?? '') : '');
     const email = str(input.email, 120);
     if (!phone && !email) return { ok: false, error: 'Ask for a phone number or an email address first.' };
+    const name = str(input.name, 80);
+    const message = [str(input.message, 600), str(input.callback_preference, 120) && `Prefers: ${str(input.callback_preference, 120)}`].filter(Boolean).join(' — ');
+    try {
+      await receiveLead(
+        ctx.tenant.id,
+        { name, phone, email, address: str(input.address, 200), service: str(input.service, 120), message: `${message} (via Tex, ${ctx.channel === 'WEB' ? 'website chat' : ctx.channel === 'SMS' ? 'text' : 'phone call'}, ${ctx.open ? 'office open' : 'office closed'})`, source: `Tex ${ctx.channel.toLowerCase()}` },
+        null,
+      );
+    } catch (err) {
+      if (!(err instanceof InboundLeadError)) throw err;
+      return { ok: false, error: err.message };
+    }
     ctx.handoff = true;
-    await alertTeam(ctx, 'TEX_LEAD', `${str(input.name, 80)} — ${[phone, email].filter(Boolean).join(', ')} — ${str(input.message, 300)}`);
-    return { ok: true, note: 'The team has their details and will reach out. For an exact price they can also book a free walkthrough.', book_a_free_walkthrough: appUrl('/new') };
+    await alertTeam(ctx, 'TEX_LEAD', `${name} — ${[phone, email].filter(Boolean).join(', ')} — ${message}`);
+    let texted = false;
+    if (ctx.channel !== 'WEB' && phone) {
+      try {
+        await sendText({ tenantId: ctx.tenant.id, phone, body: `Hi ${name.split(' ')[0]}, it's Tex from ${ctx.tenant.name}. Thanks for reaching out! You can book a free walkthrough here: ${appUrl('/new')}`, byTex: true });
+        texted = true;
+      } catch (err) {
+        if (!(err instanceof MessagingError)) throw err;
+      }
+    }
+    return {
+      ok: true,
+      note: `The team has it${ctx.open ? ' and will get back to them soon' : ' and will get back to them first thing when the office opens'}.${texted ? ' A text with the booking link was just sent.' : ''}`,
+      book_a_free_walkthrough: appUrl('/new'),
+    };
   },
 };
 
@@ -351,6 +390,17 @@ const verifyCaller: Tool = {
   },
 };
 
+const verifyPinTool: Tool = {
+  name: 'verify_pin',
+  description: "Check the client's 4-digit PIN. Ask: \"What's your four-digit PIN?\" and pass exactly what they said (digits or spoken numbers). If it matches, they are verified for this conversation. Never repeat the PIN back.",
+  input_schema: { type: 'object', properties: { pin: { type: 'string', description: 'The four digits as the caller said them' } }, required: ['pin'] },
+  async run(ctx, input) {
+    const r = await checkPin(ctx, str(input.pin, 60));
+    if (r.ok) ctx.verified = true;
+    return r;
+  },
+};
+
 async function actionResult(fn: () => Promise<unknown>) {
   try {
     return await fn();
@@ -528,19 +578,20 @@ function articleUrl(a: Article, audience: Audience) {
   if (audience === 'CREW') return appUrl(`/crew/help/${a.slug}`);
   return appUrl(`/admin/help/${a.slug}`);
 }
-export { articleUrl };
+export { articleUrl, pinUsable };
 
 /** The tools for this person on this channel. */
-export function toolsFor(ctx: Pick<TexContext, 'audience' | 'channel' | 'userId' | 'verified'>): Tool[] {
+export function toolsFor(ctx: Pick<TexContext, 'audience' | 'channel' | 'userId' | 'verified' | 'hasPin'>): Tool[] {
   const base = [searchHelp, companyInfo, handOff];
   if (!ctx.userId) return [...base, leaveContact];
   if (ctx.audience === 'CLIENT') {
     const reads = [myCleans, myInvoices, myQuotes, myAccount];
     const changes = [addNote, findOpenTimes, proposeMove, proposeCancelTool, proposeUpdate, confirmTool];
-    // On a call, caller ID can be faked: nothing from the account until a
-    // code texted to the number on file has been read back.
-    if (ctx.channel === 'VOICE' && !ctx.verified) return [...base, leaveContact, verifyCaller, confirmTool];
-    return [...base, ...reads, ...changes, ...(ctx.channel === 'SMS' && !ctx.verified ? [verifyCaller] : [])];
+    // Caller ID can be faked: nothing from the account until they've said
+    // their PIN or read back a code texted to the number on file.
+    const prove = ctx.hasPin ? [verifyPinTool, verifyCaller] : [verifyCaller];
+    if (!ctx.verified && ctx.channel === 'VOICE') return [...base, leaveContact, ...prove, confirmTool];
+    return [...base, leaveContact, ...reads, ...changes, ...(ctx.channel === 'SMS' && !ctx.verified ? prove : [])];
   }
   if (ctx.channel === 'VOICE') return [...base, leaveContact];
   if (ctx.audience === 'CREW') return [...base, myJobs, myPay, reportSupply];
