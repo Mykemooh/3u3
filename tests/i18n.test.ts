@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { defineMessages, format, fromAcceptLanguage, translator } from '@/lib/i18n';
 import { bookingReminderEmail, bookingReminderText, passwordSetupEmail } from '@/lib/email';
 import { whenLabel } from '@/lib/automations';
+import { fillCompanyHtml, fillCompanyText } from '@/lib/emailBrand';
 
 test('format fills {placeholders}, blanks missing values, leaves plain text alone', () => {
   assert.equal(format('Hi {name}, see you {day}.', { name: 'Ana', day: 'Friday' }), 'Hi Ana, see you Friday.');
@@ -36,9 +37,11 @@ test('translator uses the chosen language and falls back to English, then the ke
 
 test('client reminder text: Spanish for es, unchanged English otherwise', () => {
   const en = { serviceName: 'Deep Cleaning', dateLabel: 'Friday, September 25', timeLabel: '9:00 AM – 11:00 AM', horizon: '3 days' };
-  const before = '3U3 Cleaning: your Deep Cleaning is in 3 days — Friday, September 25 at 9:00 AM – 11:00 AM.';
+  const before = '[[company]]: your Deep Cleaning is in 3 days — Friday, September 25 at 9:00 AM – 11:00 AM.';
   assert.equal(bookingReminderText(en), before);
   assert.equal(bookingReminderText({ ...en, locale: 'en' }), before);
+  // The company's own name goes in at send time (lib/emailBrand.ts).
+  assert.equal(fillCompanyText(before, { name: 'Sparkle & Co.' }), 'Sparkle & Co.: your Deep Cleaning is in 3 days — Friday, September 25 at 9:00 AM – 11:00 AM.');
 
   const es = bookingReminderText({
     serviceName: 'Limpieza profunda',
@@ -47,7 +50,7 @@ test('client reminder text: Spanish for es, unchanged English otherwise', () => 
     horizon: whenLabel(72, 'es'),
     locale: 'es',
   });
-  assert.equal(es, '3U3 Cleaning: su Limpieza profunda es en 3 días — viernes, 25 de septiembre, 9:00 AM – 11:00 AM.');
+  assert.equal(es, '[[company]]: su Limpieza profunda es en 3 días — viernes, 25 de septiembre, 9:00 AM – 11:00 AM.');
   assert.ok(es.length <= before.length + 10, 'the Spanish text stays about as short as the English');
   assert.equal(whenLabel(24, 'es'), 'mañana');
   assert.equal(whenLabel(36, 'es'), 'en 36 horas');
@@ -59,15 +62,17 @@ test('client emails: Spanish subject, body and footer for es; English unchanged 
   const en = bookingReminderEmail(input);
   assert.deepEqual(bookingReminderEmail({ ...input, locale: 'en' }), en);
   assert.equal(en.subject, 'Reminder: your cleaning is in 3 days');
-  assert.match(en.html, /Family owned/);
+  assert.match(en.html, /\[\[brand-header\]\]/);
+  const filled = fillCompanyHtml(en.html, { name: 'Sparkle & Co.', house: false, logoUrl: null, inkColor: '#1E1035' });
+  assert.match(filled, /Sparkle &amp; Co\./);
+  assert.doesNotMatch(filled, /3U3|\[\[/);
 
   const es = bookingReminderEmail({ ...input, horizon: 'en 3 días', locale: 'es' });
   assert.equal(es.subject, 'Recordatorio: su limpieza es en 3 días');
   assert.match(es.html, /Hola, Ana:/);
-  assert.match(es.html, /Negocio familiar/);
   assert.doesNotMatch(es.html, /Family owned|heads-up/);
 
   const setup = passwordSetupEmail({ name: 'Ana', url: 'https://example.com/x', locale: 'es' });
-  assert.equal(setup.subject, 'Configure su cuenta de 3U3 Cleaning');
+  assert.equal(setup.subject, 'Configure su cuenta de [[company]]');
   assert.match(setup.html, /Crear su contraseña/);
 });

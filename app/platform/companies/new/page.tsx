@@ -9,7 +9,7 @@ export default function NewCompanyPage() {
       </Link>
       <div>
         <h1 className="mb-1 text-2xl font-bold text-ink">New company</h1>
-        <p className="text-slate">Provisions a complete, working starting stack — the same one 3U3 itself has.</p>
+        <p className="text-slate">Provisions a complete, working starting stack: services, checklists, a first team and the owner's login.</p>
       </div>
       <NewCompanyForm />
     </div>

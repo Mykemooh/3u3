@@ -4,6 +4,7 @@ import { eq, sql } from 'drizzle-orm';
 import { issuePasswordSetupToken } from '@/lib/passwordSetup';
 import { logNotification } from '@/lib/bookings';
 import { sendEmail, passwordResetEmail, passwordResetText } from '@/lib/email';
+import { companyForTenant, fillCompanyText } from '@/lib/emailBrand';
 import { sendSms, smsConfigured } from '@/lib/sms';
 import { appUrl } from '@/lib/url';
 
@@ -71,7 +72,7 @@ export async function requestPasswordReset(input: string): Promise<void> {
   if (channel === 'SMS') {
     const ok = await sendSms({
       to: user.phone!,
-      body: passwordResetText({ url, signInWith, locale: user.locale }),
+      body: fillCompanyText(passwordResetText({ url, signInWith, locale: user.locale }), await companyForTenant(user.tenantId)),
     });
     await log(user, 'SMS', user.phone!, ok);
     if (ok || !user.email) return;

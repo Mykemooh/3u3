@@ -63,7 +63,7 @@ export default async function AppShell({
   const [locale, tenant] = await Promise.all([getLocale(), getTenant()]);
   const t = translator(shellMessages, locale);
   const shown = tabs.map((tab) => ({ ...tab, label: tab.label in shellMessages.en ? t(tab.label as keyof typeof shellMessages.en) : tab.label }));
-  const brand = companyBrand(tenant ?? { name: '3U3 Cleaning' });
+  const brand = companyBrand(tenant ?? { name: 'Your cleaning company' });
   const column = wide ? 'max-w-4xl' : 'max-w-xl md:max-w-3xl';
 
   const mark =
@@ -78,7 +78,7 @@ export default async function AppShell({
         </span>
       </span>
     ) : (
-      <Logo variant="dark" size="sm" wrap />
+      <Logo variant="light" size="sm" wrap />
     );
 
   return (
@@ -91,18 +91,18 @@ export default async function AppShell({
         >
           <header
             className={
-              look === 'crew'
-                ? 'tc-dark sticky top-0 z-40 border-b border-white/[0.06] bg-tc-black'
-                : 'sticky top-0 z-40 border-b border-line bg-white/90 backdrop-blur-md'
+              // Black for everyone, like the TRASHCAN site's title bar; the
+              // client portal keeps its company's logo and colours below it.
+              'tc-dark sticky top-0 z-40 border-b border-white/[0.06] bg-tc-black'
             }
           >
             <div className={`mx-auto flex h-16 items-center justify-between gap-3 px-4 sm:px-5 ${column}`}>
               <Link href={homeHref} aria-label={t('home')} className="min-w-0 shrink rounded-lg">
                 {mark}
               </Link>
-              {showTabs && <HeaderTabs tabs={shown} label={t('sections')} tone={look === 'crew' ? 'dark' : 'light'} />}
+              {showTabs && <HeaderTabs tabs={shown} label={t('sections')} tone="dark" />}
               <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-                <LanguageToggle tone={look === 'crew' ? 'dark' : 'light'} />
+                <LanguageToggle tone="dark" />
                 {name && (
                   <PortalAccountMenu
                     name={name}

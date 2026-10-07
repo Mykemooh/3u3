@@ -9,6 +9,7 @@ import { sendEmail } from '@/lib/email';
 import { esc } from '@/lib/email';
 import { translator, type Locale } from '@/lib/i18n';
 import { notifyMessages } from '@/lib/i18n/messages/notify';
+import { COMPANY_TOKEN } from '@/lib/emailTokens';
 
 export class PayrollError extends Error {}
 
@@ -406,7 +407,7 @@ export async function markPayrollRunPaid(tenantId: string, runId: string): Promi
         to: row.email,
         subject: t('paySubject', { period: data.run.label }),
         html: `<div style="font-family:sans-serif;color:#0B1F3B;max-width:480px;margin:0 auto;">
-          <h2 style="color:#1D4ED8;">3U3 Cleaning</h2>
+          <h2 style="color:#1D4ED8;">${COMPANY_TOKEN}</h2>
           <p>${t('hiComma', { name: esc(row.name.split(' ')[0]) })}</p>
           <p>${t('payBody', {
             amount: `$${((row.entry.payCents + row.entry.tipCents) / 100).toFixed(2)}`,

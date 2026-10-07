@@ -9,7 +9,7 @@ import type { IconName } from '@/lib/adminNav';
 export const dynamic = 'force-dynamic';
 
 const PROOF = [
-  'Runs 3U3 Cleaning every day',
+  'Runs a real cleaning company every day',
   '$0 a month to start',
   'No per-seat fees',
   'AI receptionist included',
@@ -235,7 +235,7 @@ export default function TrashCanHome() {
         <div>
           <h2 className="tc-h1">Built inside a real cleaning company.</h2>
           <p className="tc-lead mt-4 max-w-[52ch]">
-            TRASHCAN started as the software behind 3U3 Cleaning, a family-owned company in Katy, Texas. Every screen was built for a job our own crews were doing that week — then opened up to other cleaning companies.
+            TRASHCAN started as the software behind a family-owned cleaning company in Katy, Texas. Every screen was built for a job our own crews were doing that week — then opened up to other cleaning companies.
           </p>
           <p className="mt-4 max-w-[52ch] text-[15px] leading-relaxed text-tc-700">
             That’s why it times rooms instead of promising hours, prices at the door instead of from a form, and pays crews by the rules you set.

@@ -35,7 +35,15 @@ export default function Logo({
       return (
         // A company's uploaded file: any size or shape, so a plain img sized by height.
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={brand.logoUrl} alt={brand.name} style={{ height: h }} className={`w-auto max-w-[220px] select-none object-contain ${className}`} />
+        variant === 'light' ? (
+          // On a dark bar an uploaded logo (often dark artwork) sits on a white chip so it always shows.
+          <span className={`inline-flex items-center rounded-lg bg-white px-2 py-1 ${className}`}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={brand.logoUrl} alt={brand.name} style={{ height: h - 8 }} className="w-auto max-w-[200px] select-none object-contain" />
+          </span>
+        ) : (
+          <img src={brand.logoUrl} alt={brand.name} style={{ height: h }} className={`w-auto max-w-[220px] select-none object-contain ${className}`} />
+        )
       );
     }
     if (wrap) {

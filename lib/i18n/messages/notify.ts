@@ -19,8 +19,8 @@ export const notifyMessages = defineMessages({
   en: {
     // Shared
     hiComma: 'Hi {name},',
-    footerKaty: '— 3U3 Cleaning, Katy, TX',
-    brandedFooter: '3U3 Cleaning · Family owned · Katy, TX',
+    footerKaty: '— [[company]]',
+    brandedFooter: '[[company]]',
     total: 'Total',
     viewBooking: 'View your booking',
     or: ' or ',
@@ -33,8 +33,8 @@ export const notifyMessages = defineMessages({
     qvBody: 'A team member will meet you at your home to take a look and give you an exact price on the spot — no obligation.',
 
     // Estimate (estimateEmail)
-    estSubject: 'Your estimate from 3U3 Cleaning — {amount}',
-    estHeading: '3U3 Cleaning — Your estimate',
+    estSubject: 'Your estimate from [[company]] — {amount}',
+    estHeading: '[[company]] — Your estimate',
     estIntro: "Hi {name}, thanks for having us out to take a look. Here's your price for <strong>{service}</strong>:",
     estApprove: 'Approve estimate',
     estDecline: 'No thanks',
@@ -81,7 +81,7 @@ export const notifyMessages = defineMessages({
     erSubject: 'Your crew is on the way',
     erSubjectEta: 'Your crew is on the way — arriving around {eta}',
     erHeading: 'On our way, {name}!',
-    erBody: 'Your 3U3 crew has just set off for your home{eta}. You can follow them on the map until they pull up.',
+    erBody: 'Your [[company]] crew has just set off for your home{eta}. You can follow them on the map until they pull up.',
     erBodyEta: ' and should arrive around <strong>{eta}</strong>',
     erButton: 'Track your crew',
     erFoot: 'Need to tell them something before they arrive? Just reply to this email.',
@@ -95,16 +95,16 @@ export const notifyMessages = defineMessages({
     bcPreheader: 'See you {when}.',
 
     // Password reset (passwordResetEmail + the text in lib/passwordReset.ts)
-    prSubject: 'Reset your 3U3 Cleaning password',
+    prSubject: 'Reset your [[company]] password',
     prIntro: 'We got a request to help you sign in. You can sign in with {ids}.',
     prChoose: 'To choose a new password, use the button below.',
     prButton: 'Choose a new password',
     prFine: "This link works once, for 1 hour. If you didn't ask for this, ignore this email — your password hasn't changed.",
     prPreheader: 'Your sign-in details and a link to reset your password.',
-    prText: '3U3 Cleaning: you sign in with {ids}. Reset your password (link works for 1 hour): {url}',
+    prText: '[[company]]: you sign in with {ids}. Reset your password (link works for 1 hour): {url}',
 
     // Account setup (passwordSetupEmail)
-    psSubject: 'Set up your 3U3 Cleaning account',
+    psSubject: 'Set up your [[company]] account',
     psHeading: 'Welcome, {name}',
     psBody: 'Create a password so you can sign in anytime to see your booking, before-and-after photos, and invoices.',
     psButton: 'Create your password',
@@ -116,16 +116,16 @@ export const notifyMessages = defineMessages({
     brIntro: 'Just a heads-up — your <strong>{service}</strong> is coming up in {horizon}:',
     brFine: 'Need to reschedule or cancel? You can do that from My Account up to 24 hours before — after that, just give us a call.',
     brPreheader: 'Your cleaning is in {horizon}.',
-    brText: '3U3 Cleaning: your {service} is in {horizon} — {date} at {time}.',
+    brText: '[[company]]: your {service} is in {horizon} — {date} at {time}.',
 
     // Estimate reminder (estimateReminderEmail / Text)
-    eqSubject: 'Still thinking it over? Your 3U3 Cleaning estimate — {amount}',
+    eqSubject: 'Still thinking it over? Your [[company]] estimate — {amount}',
     eqIntro: 'Just checking in — your estimate for <strong>{service}</strong> is still waiting on you:',
     eqButton: 'View and approve',
     eqOptOut: 'Not interested? {link}.',
     eqOptOutLink: 'Stop these reminders',
     eqPreheader: 'Your estimate is still waiting.',
-    eqText: '3U3 Cleaning: your {service} estimate ({amount}) is still open — {url}',
+    eqText: '[[company]]: your {service} estimate ({amount}) is still open — {url}',
 
     // Standby offer (standbyOfferEmail / Text)
     sbSubject: 'A spot opened up — {date}',
@@ -134,7 +134,7 @@ export const notifyMessages = defineMessages({
     sbButton: 'Claim this spot',
     sbFine: "First come, first served — this hold expires {expires}. If you don't claim it in time, we'll offer it to the next person waiting.",
     sbPreheader: 'A spot opened up on the day you wanted.',
-    sbText: '3U3 Cleaning: a spot opened up for {service} on {date} at {time} — claim it: {url}',
+    sbText: '[[company]]: a spot opened up for {service} on {date} at {time} — claim it: {url}',
 
     // Reminders & follow-ups (lib/automations.ts): the system's own bits
     // around a company's wording.
@@ -195,12 +195,12 @@ export const notifyMessages = defineMessages({
     payCleans: '{count} cleans',
     payCleansAt: '{count} cleans at {percent}%',
     payDays: '{count} days',
-    paySignoff: '— 3U3 Cleaning',
+    paySignoff: '— [[company]]',
   },
   es: {
     hiComma: 'Hola, {name}:',
-    footerKaty: '— 3U3 Cleaning, Katy, TX',
-    brandedFooter: '3U3 Cleaning · Negocio familiar · Katy, TX',
+    footerKaty: '— [[company]]',
+    brandedFooter: '[[company]]',
     total: 'Total',
     viewBooking: 'Ver su reserva',
     or: ' o ',
@@ -211,8 +211,8 @@ export const notifyMessages = defineMessages({
     qvForService: ' para <strong>{service}</strong>',
     qvBody: 'Un miembro de nuestro equipo lo visitará en su casa para revisarla y darle un precio exacto en el momento, sin compromiso.',
 
-    estSubject: 'Su presupuesto de 3U3 Cleaning — {amount}',
-    estHeading: '3U3 Cleaning — Su presupuesto',
+    estSubject: 'Su presupuesto de [[company]] — {amount}',
+    estHeading: '[[company]] — Su presupuesto',
     estIntro: 'Hola, {name}. Gracias por recibirnos para revisar su casa. Este es su precio para <strong>{service}</strong>:',
     estApprove: 'Aprobar presupuesto',
     estDecline: 'No, gracias',
@@ -254,7 +254,7 @@ export const notifyMessages = defineMessages({
     erSubject: 'Su equipo va en camino',
     erSubjectEta: 'Su equipo va en camino — llegará alrededor de las {eta}',
     erHeading: '¡Vamos en camino, {name}!',
-    erBody: 'Su equipo de 3U3 acaba de salir hacia su casa{eta}. Puede seguirlo en el mapa hasta que llegue.',
+    erBody: 'Su equipo de [[company]] acaba de salir hacia su casa{eta}. Puede seguirlo en el mapa hasta que llegue.',
     erBodyEta: ' y debería llegar alrededor de las <strong>{eta}</strong>',
     erButton: 'Seguir a su equipo',
     erFoot: '¿Necesita decirles algo antes de que lleguen? Solo responda a este correo.',
@@ -266,15 +266,15 @@ export const notifyMessages = defineMessages({
     bcFoot: 'Nuestro equipo de tres personas llegará al inicio de su horario. Al terminar, recibirá fotos del antes y el después de cada habitación.',
     bcPreheader: 'Nos vemos el {when}.',
 
-    prSubject: 'Restablezca su contraseña de 3U3 Cleaning',
+    prSubject: 'Restablezca su contraseña de [[company]]',
     prIntro: 'Recibimos una solicitud para ayudarle a iniciar sesión. Puede iniciar sesión con {ids}.',
     prChoose: 'Para elegir una nueva contraseña, use el botón de abajo.',
     prButton: 'Elegir una nueva contraseña',
     prFine: 'Este enlace funciona una sola vez, durante 1 hora. Si usted no lo solicitó, ignore este correo; su contraseña no ha cambiado.',
     prPreheader: 'Sus datos de inicio de sesión y un enlace para restablecer su contraseña.',
-    prText: '3U3 Cleaning: su usuario es {ids}. Restablezca su contraseña (enlace válido por 1 hora): {url}',
+    prText: '[[company]]: su usuario es {ids}. Restablezca su contraseña (enlace válido por 1 hora): {url}',
 
-    psSubject: 'Configure su cuenta de 3U3 Cleaning',
+    psSubject: 'Configure su cuenta de [[company]]',
     psHeading: 'Le damos la bienvenida, {name}',
     psBody: 'Cree una contraseña para iniciar sesión cuando quiera y ver su reserva, sus fotos del antes y el después, y sus facturas.',
     psButton: 'Crear su contraseña',
@@ -286,15 +286,15 @@ export const notifyMessages = defineMessages({
     brIntro: 'Le recordamos que su <strong>{service}</strong> es {horizon}:',
     brFine: '¿Necesita cambiar la fecha o cancelar? Puede hacerlo desde Mi cuenta hasta 24 horas antes; después de eso, llámenos.',
     brPreheader: 'Su limpieza es {horizon}.',
-    brText: '3U3 Cleaning: su {service} es {horizon} — {date}, {time}.',
+    brText: '[[company]]: su {service} es {horizon} — {date}, {time}.',
 
-    eqSubject: '¿Lo sigue pensando? Su presupuesto de 3U3 Cleaning — {amount}',
+    eqSubject: '¿Lo sigue pensando? Su presupuesto de [[company]] — {amount}',
     eqIntro: 'Solo queríamos saber de usted: su presupuesto para <strong>{service}</strong> sigue esperando su respuesta:',
     eqButton: 'Ver y aprobar',
     eqOptOut: '¿No le interesa? {link}.',
     eqOptOutLink: 'Dejar de recibir estos recordatorios',
     eqPreheader: 'Su presupuesto sigue pendiente.',
-    eqText: '3U3 Cleaning: su presupuesto de {service} ({amount}) sigue pendiente — {url}',
+    eqText: '[[company]]: su presupuesto de {service} ({amount}) sigue pendiente — {url}',
 
     sbSubject: 'Se abrió un espacio — {date}',
     sbHeading: '¡Buenas noticias, {name}!',
@@ -302,7 +302,7 @@ export const notifyMessages = defineMessages({
     sbButton: 'Reservar este espacio',
     sbFine: 'Se asigna por orden de llegada: esta oferta vence el {expires}. Si no la reserva a tiempo, se la ofreceremos a la siguiente persona en espera.',
     sbPreheader: 'Se abrió un espacio el día que usted quería.',
-    sbText: '3U3 Cleaning: se abrió un espacio para {service} el {date}, {time}. Resérvelo: {url}',
+    sbText: '[[company]]: se abrió un espacio para {service} el {date}, {time}. Resérvelo: {url}',
 
     autoUnsubscribe: '¿No desea recibir estos mensajes? Cancele la suscripción: {url}',
     autoStopQuoteReminders: '¿No le interesa? Deje de recibir estos recordatorios: {url}',
@@ -357,6 +357,6 @@ export const notifyMessages = defineMessages({
     payCleans: '{count} limpiezas',
     payCleansAt: '{count} limpiezas al {percent}%',
     payDays: '{count} días',
-    paySignoff: '— 3U3 Cleaning',
+    paySignoff: '— [[company]]',
   },
 });
