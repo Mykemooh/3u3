@@ -13,6 +13,7 @@ import { businessTodayISO } from '@/lib/time';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 import AppShell, { CREW_TABS } from '@/components/app/AppShell';
 import ServiceWorkerRegistrar from '@/components/crew/ServiceWorkerRegistrar';
+import InstallAppCard from '@/components/crew/InstallAppCard';
 import CrewDashboardCards from '@/components/crew/CrewDashboardCards';
 import { crewDashboard } from '@/lib/earnings';
 import { formatMoney } from '@/lib/format';
@@ -161,6 +162,7 @@ export default async function CrewHome() {
       </CrewBand>
 
       <div className="mt-6 space-y-7">
+        {role === 'CLEANER' && <InstallAppCard />}
         <Section t={t} locale={locale} week={week} title={t('homeSectionInProgress')} rows={inProgress.filter((r) => r !== heroRow)} />
         <Section t={t} locale={locale} week={week} title={t('homeSectionToday')} rows={todays.filter((r) => r !== heroRow)} />
         <Section t={t} locale={locale} title={t('homeSectionMissed')} rows={overdue} tone="warn" />
