@@ -18,11 +18,14 @@ export default function PricingHelper({
   intake,
   initial,
   onApply,
+  starting,
 }: {
   kind: 'POST_CONSTRUCTION' | 'COMMERCIAL';
   intake: Intake | null;
   initial: QuotePricing | null;
   onApply: (items: Item[], pricing: QuotePricing) => void;
+  /** The company's own starting rates (Settings → Quoting, lib/quoting.ts), over the published guide. */
+  starting?: { postConPerSqFt?: Partial<Record<'ROUGH' | 'FINAL' | 'TOUCH_UP', number>>; sqFtPerHour?: number; hourlyRateCents?: number };
 }) {
   const pcIntake = intake?.kind === 'POST_CONSTRUCTION' ? intake : null;
   const cmIntake = intake?.kind === 'COMMERCIAL' ? intake : null;
@@ -35,14 +38,14 @@ export default function PricingHelper({
     Object.fromEntries(POST_CON_PHASES.map((p) => [p.key, pcInit ? pcInit.phases.some((x) => x.key === p.key) : pcIntake ? pcIntake.phases.includes(p.key) : p.key === 'FINAL'])),
   );
   const [rates, setRates] = useState<Record<string, string>>(() =>
-    Object.fromEntries(POST_CON_PHASES.map((p) => [p.key, String(pcInit?.phases.find((x) => x.key === p.key)?.ratePerSqFt ?? POST_CON_RATE_GUIDE[p.key].suggested)])),
+    Object.fromEntries(POST_CON_PHASES.map((p) => [p.key, String(pcInit?.phases.find((x) => x.key === p.key)?.ratePerSqFt ?? starting?.postConPerSqFt?.[p.key] ?? POST_CON_RATE_GUIDE[p.key].suggested)])),
   );
   // Commercial
   const facility = cmIntake?.facilityType;
   const guide = productionGuideFor(facility);
-  const [production, setProduction] = useState(String(cmInit?.productionRate ?? guide.suggested));
+  const [production, setProduction] = useState(String(cmInit?.productionRate ?? starting?.sqFtPerHour ?? guide.suggested));
   const [visits, setVisits] = useState(String(cmInit?.visitsPerWeek ?? cmIntake?.visitsPerWeek ?? 1));
-  const [hourly, setHourly] = useState(cmInit ? String(cmInit.hourlyRateCents / 100) : '');
+  const [hourly, setHourly] = useState(cmInit ? String(cmInit.hourlyRateCents / 100) : starting?.hourlyRateCents ? String(starting.hourlyRateCents / 100) : '');
   const [supplies, setSupplies] = useState(cmInit ? String(cmInit.suppliesMonthlyCents / 100) : cmIntake?.suppliesBy === 'US' ? '' : '0');
 
   const post = useMemo(() => {

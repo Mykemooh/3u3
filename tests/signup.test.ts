@@ -49,9 +49,9 @@ test('open signup: emailed code, wrong codes counted, company created with only 
   // The code is spent.
   await assert.rejects(completeSignup({ email, code: devCode!, name: 'X', companyName: 'Again', password: 'a-long-password-1', answers: { ...answers, services: [...answers.services] }, acceptTerms: true }), SignupError);
 
-  // Setup guide puts their stated focus right after the basics.
+  // Setup guide: the basics (company, services, how they quote), then their stated focus.
   const steps = await setupSteps(tenant.id);
-  assert.deepEqual(steps.slice(0, 4).map((s) => s.key), ['profile', 'services', 'payments', 'automations']);
+  assert.deepEqual(steps.slice(0, 5).map((s) => s.key), ['profile', 'services', 'quoting', 'payments', 'automations']);
   assert.equal(await connectRouting(tenant.id, 10000), null, 'payments stay on the platform account until Connect is ready');
   await setSignupOpen(false);
 });

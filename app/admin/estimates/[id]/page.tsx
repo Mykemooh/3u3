@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { getEstimateWithItems, estimateUrl } from '@/lib/estimates';
 import { getTenant, getServiceTypes, formatMoney } from '@/lib/data';
 import EstimateEditor from '@/components/EstimateEditor';
+import { quotingForTenant } from '@/lib/quoting';
 import { parseIntake, describeIntake } from '@/lib/intake';
 import { parsePricing } from '@/lib/pricingGuides';
 
@@ -73,6 +74,8 @@ export default async function AdminEstimateDetail({ params }: { params: { id: st
             clientHasEmail={!!client?.email}
             intake={intake}
             initialPricing={pricing}
+            quoting={quotingForTenant(tenant).config}
+            home={address ? { bedrooms: address.bedrooms ?? null, bathrooms: address.bathrooms ?? null } : null}
           />
         ) : (
           <div>

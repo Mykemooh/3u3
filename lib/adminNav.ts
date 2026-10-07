@@ -100,6 +100,7 @@ export const ADMIN_SECTIONS: NavSection[] = [
     pages: [
       { href: '/admin/settings', label: 'Company' },
       { href: '/admin/services', label: 'Services' },
+      { href: '/admin/settings/quoting', label: 'Quoting' },
       { href: '/admin/automations', label: 'Reminders & follow-ups' },
       { href: '/admin/integrations', label: 'Integrations' },
       { href: '/admin/developers', label: 'API and webhooks' },
