@@ -88,6 +88,7 @@ export default async function AccountHome() {
       : null,
     balanceCents: needsPayment.reduce((sum, r) => sum + (r.invoice?.totalCents ?? 0), 0),
     unpaidHref: needsPayment[0] ? `/account/invoices/${needsPayment[0].invoice!.id}` : null,
+    unpaidPayOnline: !!needsPayment[0]?.invoice?.hostedInvoiceUrl,
     canBook: rates.length > 0,
     // The cleaning card above already shows the last clean when it's the
     // focus, so the glance panel doesn't repeat it.

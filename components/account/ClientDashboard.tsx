@@ -13,6 +13,8 @@ type Props = {
   lastClean: { jobId: string; date: string; photoCount: number; reviewed: boolean } | null;
   balanceCents: number;
   unpaidHref: string | null;
+  /** Has a card pay link; otherwise the invoice page explains how to pay. */
+  unpaidPayOnline?: boolean;
   canBook: boolean;
   /** The last clean is already the page's cleaning card — don't repeat it here. */
   lastInFocus?: boolean;
@@ -101,7 +103,7 @@ export default async function ClientDashboard(p: Props) {
       </Card>}
 
       <Card title={t('dashBillingTitle')} big={formatMoney(p.balanceCents)} sub={p.balanceCents ? t('dashDueNow') : t('dashNothingOwed')}>
-        {p.unpaidHref && <Link href={p.unpaidHref} className="ct-action">{t('dashPayNow')}</Link>}
+        {p.unpaidHref && <Link href={p.unpaidHref} className="ct-action">{p.unpaidPayOnline ? t('dashPayNow') : t('jobViewInvoice')}</Link>}
         <Link href="/account/invoices" className="ct-action">{t('dashInvoicesReceipts')}</Link>
         <Link href="/account/settings#payment" className="ct-action font-medium text-slate">{t('dashCardAutopay')}</Link>
       </Card>

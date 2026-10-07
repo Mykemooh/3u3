@@ -23,7 +23,7 @@ export default function TipButton({ invoiceId }: { invoiceId: string }) {
     });
     const data = await res.json().catch(() => ({}));
     setBusy(false);
-    if (!res.ok || !data.url) return setError(data.error || t('tipError'));
+    if (!res.ok || !data.url) return setError(data.error && data.error !== 'tips-unavailable' ? data.error : t('tipError'));
     window.location.href = data.url;
   }
 

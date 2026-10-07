@@ -19,7 +19,7 @@ export default async function SetupGuidePage() {
           {finished} of {steps.length} done. Each step ticks itself off when the work is done — skip anything you don't need.
         </p>
         <div className="mt-3 h-2 overflow-hidden rounded-full bg-line">
-          <div className="h-full rounded-full" style={{ width: `${(finished / steps.length) * 100}%`, backgroundImage: 'linear-gradient(90deg,#016AEE,#2DBD91)' }} />
+          <div className="h-full rounded-full bg-ink" style={{ width: `${(finished / steps.length) * 100}%` }} />
         </div>
       </div>
       <ol className="space-y-3">

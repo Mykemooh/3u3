@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminSession, forbidden } from '@/lib/adminApi';
 import { archiveItem, updateItem, RestockError } from '@/lib/restock';
-import { itemSchema } from '../route';
+import { itemSchema } from '@/lib/restock';
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const admin = await adminSession('supplies.manage');

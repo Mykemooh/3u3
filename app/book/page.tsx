@@ -2,7 +2,11 @@ import { enforceMfa, type SessionUser } from '@/lib/sessionUser';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
-import { getTenant, getServiceTypes, getClientRatesFor, formatMoney } from '@/lib/data';
+import { getTenant, getServiceTypes, getClientRatesFor, formatMoney, getAddressesFor } from '@/lib/data';
+import AddressForm from '@/components/AddressForm';
+import { getLocale } from '@/lib/i18n/server';
+import { translator } from '@/lib/i18n';
+import { bookMessages } from '@/lib/i18n/messages/book';
 import BookWizard from '@/components/BookWizard';
 import AppShell, { CUSTOMER_TABS } from '@/components/app/AppShell';
 import { homeForRole } from '@/lib/nav';
@@ -24,9 +28,11 @@ export default async function BookPage() {
 
   const tenant = await getTenant();
   if (!tenant) redirect('/');
+  const tb = translator(bookMessages, await getLocale());
 
   const services = await getServiceTypes(tenant.id);
   const rates = await getClientRatesFor((session.user as any).id);
+  const homes = await getAddressesFor((session.user as any).id);
   const addOns = await getAddOnsForClient(tenant.id, (session.user as any).id);
 
   const eligibleServices = services
@@ -43,7 +49,19 @@ export default async function BookPage() {
   // account menu and the tab bar) instead of dropping them on a bare page.
   return (
     <AppShell name={session.user.name} tabs={CUSTOMER_TABS} homeHref="/account">
-      <BookWizard customerName={(session.user as any).name ?? ''} services={eligibleServices} addOns={addOns} />
+      {homes.length === 0 && eligibleServices.length > 0 ? (
+        // Added by the office without an address: ask before anything else,
+        // so a booked visit never sends the crew nowhere.
+        <div className="card mx-auto max-w-xl space-y-4 px-6 py-7">
+          <div>
+            <h1 className="ct-title">{tb('needAddressTitle')}</h1>
+            <p className="ct-lead mt-1">{tb('needAddressBody')}</p>
+          </div>
+          <AddressForm startEditing endpoint="/api/account/address" initial={{ line1: '', city: '', state: '', zip: null, notes: null, bedrooms: null }} />
+        </div>
+      ) : (
+        <BookWizard customerName={(session.user as any).name ?? ''} services={eligibleServices} addOns={addOns} />
+      )}
     </AppShell>
   );
 }

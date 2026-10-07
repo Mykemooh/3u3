@@ -1,3 +1,4 @@
+import { normalizePhone, samePhone } from '@/lib/phone';
 import { db } from '@/db/client';
 import { crews, crewMembers, users, jobs, jobStaff } from '@/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
@@ -157,7 +158,7 @@ export async function addEmployee(
   const taken = (await db.select().from(users).where(eq(users.email, email)).limit(1))[0];
   if (taken) throw new TeamError('Someone already has an account with that email.', 409);
   if (input.phone) {
-    const phoneTaken = (await db.select().from(users).where(eq(users.phone, input.phone)).limit(1))[0];
+    const phoneTaken = (await db.select().from(users).where(samePhone(input.phone) ?? eq(users.phone, input.phone)).limit(1))[0];
     if (phoneTaken) throw new TeamError('Someone already has an account with that phone number.', 409);
   }
   if (input.crewId) await requireTeam(tenantId, input.crewId);
@@ -170,7 +171,7 @@ export async function addEmployee(
     staffRole: input.staffRole,
     name: input.name,
     email,
-    phone: input.phone || null,
+    phone: input.phone ? normalizePhone(input.phone) : input.phone || null,
     payType: input.payType ?? 'HOURLY',
     payRateCentsPerHour: input.payRateCentsPerHour ?? null,
     payRateCentsPerClean: input.payRateCentsPerClean ?? null,

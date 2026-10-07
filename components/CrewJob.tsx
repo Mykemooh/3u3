@@ -56,6 +56,8 @@ type Props = {
   client: { name: string; phone: string | null };
   serviceLabel: string;
   whenLabel: string;
+  /** Set when this visit isn't today — starting it then takes a second tap. */
+  otherDayLabel?: string | null;
   addressLabel: string | null;
   /** The free-text "cleaner needs to know" catch-all (components/AddressForm.tsx sets it). */
   cleanerNotes: string | null;
@@ -196,7 +198,13 @@ export default function CrewJob(props: Props) {
   // Leaving for the job: EN_ROUTE, and the client is emailed that the crew
   // is on the way. The phone's position goes with it (if it gives one in a
   // few seconds) so that email can carry an ETA.
+  // A job for another day (opened by mistake, or genuinely early) needs a
+  // second tap before the clock starts or the client is told we're coming.
+  const [earlyOk, setEarlyOk] = useState(false);
+  const needsEarlyOk = !!props.otherDayLabel && !earlyOk;
+
   async function startDriving() {
+    if (needsEarlyOk) return setEarlyOk(true);
     setBusy('drive');
     setError('');
     const at = await currentPosition();
@@ -226,6 +234,7 @@ export default function CrewJob(props: Props) {
 
   async function start() {
     if (notesBlockStart) return setError(t('jobErrReviewNotes'));
+    if (needsEarlyOk && status === 'PENDING') return setEarlyOk(true);
     setBusy('start');
     setError('');
     // The clock-in stamp: where the phone is when the team starts (a few
@@ -751,6 +760,11 @@ export default function CrewJob(props: Props) {
           className="tc-dark fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-40 rounded-t-[22px] bg-tc-black shadow-[0_-12px_32px_-12px_rgba(11,15,20,0.45)] md:bottom-0 md:pb-[env(safe-area-inset-bottom)]"
         >
           <div className="mx-auto max-w-xl px-4 pb-3 pt-3.5 sm:px-5 md:max-w-3xl md:pb-4">
+            {status === 'PENDING' && props.otherDayLabel && (
+              <p role="status" className={`mb-2.5 text-[13px] font-semibold ${earlyOk ? 'text-amber-300' : 'text-white/70'}`}>
+                {earlyOk ? t('jobOtherDayConfirm', { date: props.otherDayLabel }) : t('jobOtherDay', { date: props.otherDayLabel })}
+              </p>
+            )}
             {status === 'PENDING' && props.canLead ? (
               <div className="flex gap-2">
                 <button onClick={startDriving} disabled={busy !== null} className="tc-btn-lime crew-dock-btn flex-1">
@@ -1271,6 +1285,9 @@ function RoomTimer({ item, open, onStart }: { item: CrewItem; open: boolean; onS
         item.completedAt ? 'text-tc-500' : 'rounded-full bg-tc-lime-wash px-2.5 py-1 text-tc-lime-ink'
       }`}
       aria-live="off"
+      // A running clock is a second further along by the time the browser
+      // takes over; that difference is expected, not a page error.
+      suppressHydrationWarning
     >
       <ClockIcon /> {label}
     </p>

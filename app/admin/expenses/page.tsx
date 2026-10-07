@@ -83,7 +83,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: { m
                   <span className="font-semibold">{formatMoney(c.cents)}</span>
                 </div>
                 <div className="mt-1 h-2 rounded-full bg-surface">
-                  <div className="h-2 rounded-full bg-gradient-to-r from-gold to-green-light" style={{ width: `${(c.cents / Math.max(1, summary.totalCents)) * 100}%` }} />
+                  <div className="h-2 rounded-full bg-ink" style={{ width: `${(c.cents / Math.max(1, summary.totalCents)) * 100}%` }} />
                 </div>
               </div>
             ))}

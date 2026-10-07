@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import AddressInput, { type PickedAddress } from '@/components/AddressInput';
 import PhoneInput from '@/components/PhoneInput';
 
-export default function NewClientForm() {
+export default function NewClientForm({ startOpen = false }: { startOpen?: boolean }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(startOpen);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -26,7 +26,7 @@ export default function NewClientForm() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, phone, email: email || undefined, addressLine1: addressLine1 || undefined, address: address ?? undefined, locale }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
       setStatus('error');
       setError(data.error || 'Could not create client.');
@@ -47,20 +47,20 @@ export default function NewClientForm() {
   return (
     <form onSubmit={onSubmit} className="card grid grid-cols-1 gap-4 sm:grid-cols-2">
       <div>
-        <label className="label">Full name</label>
-        <input className="input" value={name} onChange={(e) => setName(e.target.value)} required />
+        <label className="label" htmlFor="new-client-name">Full name</label>
+        <input id="new-client-name" className="input" value={name} onChange={(e) => setName(e.target.value)} required />
       </div>
       <div>
-        <label className="label">Phone number</label>
-        <PhoneInput value={phone} onChange={setPhone} required />
+        <label className="label" htmlFor="new-client-phone">Phone number</label>
+        <PhoneInput id="new-client-phone" value={phone} onChange={setPhone} required />
       </div>
       <div>
-        <label className="label">Email (optional)</label>
-        <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <label className="label" htmlFor="new-client-email">Email (optional)</label>
+        <input id="new-client-email" className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
       </div>
       <div>
-        <label className="label">Home address (optional)</label>
-        <AddressInput value={addressLine1} onChange={setAddressLine1} picked={address} onPick={setAddress} />
+        <label className="label" htmlFor="new-client-address">Home address (optional)</label>
+        <AddressInput id="new-client-address" value={addressLine1} onChange={setAddressLine1} picked={address} onPick={setAddress} />
       </div>
       <div>
         <label className="label" htmlFor="new-client-locale">Language</label>

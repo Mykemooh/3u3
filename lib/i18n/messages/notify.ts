@@ -45,6 +45,8 @@ export const notifyMessages = defineMessages({
     invHeading: '{brand} — Invoice',
     invIntro: "Hi {name}, thanks for having us out! Here's your invoice:",
     invPay: 'Pay now',
+    invView: 'View invoice',
+    invHowToPay: '{brand} will let you know how to pay this one — just reply to this email with any questions.',
 
     // Payment received (paymentReceivedCustomerEmail)
     paidSubject: 'Payment received — thank you!',
@@ -220,6 +222,8 @@ export const notifyMessages = defineMessages({
     invHeading: '{brand} — Factura',
     invIntro: 'Hola, {name}. ¡Gracias por elegirnos! Aquí está su factura:',
     invPay: 'Pagar ahora',
+    invView: 'Ver factura',
+    invHowToPay: '{brand} le indicará cómo pagar esta factura. Si tiene preguntas, solo responda a este correo.',
 
     paidSubject: 'Pago recibido — ¡gracias!',
     paidHeading: 'Pago recibido',

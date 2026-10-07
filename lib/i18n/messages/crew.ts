@@ -282,6 +282,8 @@ export const crewMessages = defineMessages({
     roomNow: 'Now',
     roomNoPhotos: 'No photos taken',
     roomEdit: 'Edit',
+    jobOtherDay: 'This job is on {date}, not today.',
+    jobOtherDayConfirm: 'This job is on {date}. Tap again to start it anyway.',
   },
   es: {
     // Compartido
@@ -552,5 +554,7 @@ export const crewMessages = defineMessages({
     roomNow: 'Ahora',
     roomNoPhotos: 'No se tomaron fotos',
     roomEdit: 'Editar',
+    jobOtherDay: 'Este trabajo es el {date}, no hoy.',
+    jobOtherDayConfirm: 'Este trabajo es el {date}. Toca otra vez para empezarlo de todos modos.',
   },
 });

@@ -7,6 +7,7 @@ import { db } from '@/db/client';
 import { users } from '@/db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { isTrustedDevice, mfaState, verifyMfaCode, TRUST_COOKIE } from '@/lib/mfa';
+import { samePhone } from '@/lib/phone';
 
 /** Google sign-in is offered only once its keys are set (Vercel → Environment Variables). */
 export const googleConfigured = () => !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
@@ -63,9 +64,12 @@ export const authOptions: AuthOptions = {
         if (!credentials?.identifier || !credentials?.password) return null;
         const identifier = credentials.identifier.trim();
 
+        // Exact first; then by digits, so "(713) 555-0601" finds "+17135550601".
+        const byDigits = identifier.includes('@') ? null : samePhone(identifier);
         const byPhone = await db.select().from(users).where(eq(users.phone, identifier)).limit(1);
         const user =
           byPhone[0] ??
+          (byDigits ? (await db.select().from(users).where(byDigits).limit(1))[0] : undefined) ??
           (await db.select().from(users).where(sql`lower(${users.email}) = ${identifier.toLowerCase()}`).limit(1))[0];
 
         if (!user || !user.passwordHash) return null;

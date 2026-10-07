@@ -30,6 +30,9 @@ export function canAccess(role: string | null | undefined, pathname: string): bo
   if (pathname.startsWith('/admin')) return false;
   if (pathname.startsWith('/crew')) return role === 'CLEANER';
   if (pathname.startsWith('/book')) return role === 'CUSTOMER';
+  // Crew can open the client's before-and-after view of a job they're on
+  // ("See the client's view" when a job is finished); the page checks that.
+  if (pathname.startsWith('/account/jobs/')) return role === 'CUSTOMER' || role === 'CLEANER';
   if (pathname.startsWith('/account')) return role === 'CUSTOMER';
   return true;
 }

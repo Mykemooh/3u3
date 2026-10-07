@@ -36,7 +36,7 @@ function Stat({ label, value, hint, tone }: { label: string; value: string; hint
 function Bar({ value, max }: { value: number; max: number }) {
   return (
     <div className="h-2 w-full rounded-full bg-surface">
-      <div className="h-2 rounded-full bg-gradient-to-r from-gold to-green-light" style={{ width: `${max ? Math.max(2, (value / max) * 100) : 0}%` }} />
+      <div className="h-2 rounded-full bg-ink" style={{ width: `${max ? Math.max(2, (value / max) * 100) : 0}%` }} />
     </div>
   );
 }

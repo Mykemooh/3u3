@@ -3,9 +3,11 @@ import {
   tenants, serviceTypes, crews, clientRates, users, addresses, bookings,
   jobs, jobChecklistItems, crewMembers, notificationLog, invoices,
 } from '@/db/schema';
-import { asc, eq, and } from 'drizzle-orm';
+import { asc, eq, and, inArray, isNull } from 'drizzle-orm';
 import { getServerSession } from 'next-auth';
-import { headers } from 'next/headers';
+import { cookies, headers } from 'next/headers';
+import { samePhone } from '@/lib/phone';
+import { businessNowISO } from '@/lib/time';
 import { authOptions } from '@/lib/auth';
 
 /**
@@ -25,6 +27,9 @@ import { authOptions } from '@/lib/auth';
  * existing getTenant() call sites (admin/crew/account pages) keeps
  * working with no changes, and now resolves correctly per request.
  */
+/** Set by a company's booking link (app/c/[slug]) for a signed-out visitor. */
+export const COMPANY_COOKIE = 'tc_company';
+
 export async function getTenant() {
   const session = await getServerSession(authOptions).catch(() => null);
   const sessionTenantId = (session?.user as { tenantId?: string } | undefined)?.tenantId;
@@ -50,6 +55,14 @@ export async function getTenant() {
         if (bySlug && !bySlug.isPlatform) return bySlug;
       }
     }
+  }
+
+  // Came in through a company's own booking link (/c/<slug>, app/c) on a
+  // shared address — that company, until they sign in.
+  const chosen = cookies().get(COMPANY_COOKIE)?.value;
+  if (chosen) {
+    const byCookie = (await db.select().from(tenants).where(eq(tenants.slug, chosen)).limit(1))[0];
+    if (byCookie && !byCookie.isPlatform) return byCookie;
   }
 
   // The platform's first company — ordered, so it can't change as rows are updated.
@@ -80,7 +93,7 @@ export async function getClientRatesFor(userId: string) {
 }
 
 export async function getUserByPhone(phone: string) {
-  const rows = await db.select().from(users).where(eq(users.phone, phone)).limit(1);
+  const rows = await db.select().from(users).where(samePhone(phone) ?? eq(users.phone, phone)).limit(1);
   return rows[0];
 }
 
@@ -119,9 +132,10 @@ export async function getAllBookings(tenantId: string) {
 // backs the customer self-service settings page (reschedule/cadence/cancel).
 export async function getUpcomingBookingsForClient(clientId: string) {
   const rows = await db.select().from(bookings).where(eq(bookings.clientId, clientId));
-  const nowIso = new Date().toISOString();
+  // slotStart is the company's local wall-clock time, so compare it to local now.
+  const nowIso = businessNowISO();
   return rows
-    .filter((b) => !b.isQuoteVisit && b.status !== 'CANCELLED' && b.slotStart >= nowIso)
+    .filter((b) => !b.isQuoteVisit && b.status !== 'CANCELLED' && b.status !== 'COMPLETED' && b.slotStart >= nowIso)
     .sort((a, b) => a.slotStart.localeCompare(b.slotStart));
 }
 
@@ -182,3 +196,17 @@ export async function getUnreadAdminAlerts(tenantId: string, limit = 20) {
   return rows.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, limit);
 }
 
+
+/**
+ * Visits booked before the client had an address on file point the crew
+ * nowhere. Once an address exists, every not-yet-done visit without one
+ * gets it.
+ */
+export async function attachAddressToOpenVisits(clientId: string) {
+  const primary = (await getAddressesFor(clientId)).sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary))[0];
+  if (!primary) return;
+  await db
+    .update(bookings)
+    .set({ addressId: primary.id })
+    .where(and(eq(bookings.clientId, clientId), isNull(bookings.addressId), inArray(bookings.status, ['REQUESTED', 'CONFIRMED'])));
+}

@@ -10,7 +10,7 @@ const schema = z.object({ action: z.enum(['APPROVE', 'DECLINE']) });
 // estimate is sent, is unique, and grants nothing beyond answering this
 // one estimate.
 export async function POST(req: Request, { params }: { params: { token: string } }) {
-  const parsed = schema.safeParse(await req.json());
+  const parsed = schema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
 
   try {

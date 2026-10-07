@@ -45,7 +45,7 @@ export default function InboundLeadsList({ leads }: { leads: Lead[] }) {
               <p className="font-semibold text-ink">{l.name}</p>
               <span className="pill bg-surface text-slate">{l.source}</span>
               <span className={`pill ${l.status === 'NEW' ? 'bg-amber-100 text-amber-700' : 'bg-gold/10 text-bronze'}`}>{l.status === 'NEW' ? 'New' : 'Contacted'}</span>
-              {l.clientId && <span className="pill bg-green-light text-[#0E6B62]">Already a client</span>}
+              {l.clientId && <span className="pill bg-green-light text-green">Already a client</span>}
               {l.duplicateCount > 0 && <span className="pill bg-surface text-slate">Sent {l.duplicateCount + 1} times</span>}
             </div>
             <p className="mt-1 text-sm text-slate">

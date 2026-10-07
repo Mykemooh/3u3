@@ -9,6 +9,9 @@ import { defineMessages } from '@/lib/i18n';
  */
 export const bookMessages = defineMessages({
   en: {
+    // No address on file yet (/book asks before the wizard)
+    needAddressTitle: 'First, where’s your home?',
+    needAddressBody: 'Add your home address so the crew knows where to go. Then you can pick a time.',
     // Shared
     back: '← Back',
     continue: 'Continue',
@@ -60,6 +63,8 @@ export const bookMessages = defineMessages({
     seeInAccount: 'See it in your account',
   },
   es: {
+    needAddressTitle: 'Primero, ¿dónde está su casa?',
+    needAddressBody: 'Agregue la dirección de su casa para que el equipo sepa a dónde ir. Después podrá elegir la hora.',
     back: '← Atrás',
     continue: 'Continuar',
     backToAccountAria: 'Volver a su cuenta',

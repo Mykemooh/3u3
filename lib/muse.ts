@@ -3,7 +3,7 @@ import { db } from '@/db/client';
 import { adConcepts, serviceTypes, tenants } from '@/db/schema';
 import { logChange, type Actor } from '@/lib/audit';
 import { createCampaign, segmentCounts, SEGMENTS, type Segment } from '@/lib/marketing';
-import { appUrl } from '@/lib/url';
+import { appUrl, bookingLinkFor } from '@/lib/url';
 import { businessTodayISO } from '@/lib/time';
 
 /**
@@ -97,7 +97,7 @@ export async function companyFacts(tenantId: string) {
     winbackDays: tenant.winbackDays,
     counts,
     season: seasonFor(),
-    bookingLink: appUrl('/new'),
+    bookingLink: bookingLinkFor(tenant),
   };
 }
 
@@ -325,9 +325,15 @@ export async function toCampaign(tenantId: string, id: string, actor?: { id: str
   if (row.campaignId) throw new MuseError('This idea is already a campaign draft in Growth.');
   const campaignId = await createCampaign(
     tenantId,
-    { name: row.title, segment: (row.segment ?? 'ALL_ACTIVE') as Segment, subject: row.headline, body: `${row.primaryText}\n\n${row.cta}: ${appUrl('/new')}` },
+    { name: row.title, segment: (row.segment ?? 'ALL_ACTIVE') as Segment, subject: row.headline, body: `${row.primaryText}\n\n${row.cta}: ${await tenantBookingLink(tenantId)}` },
     actor,
   );
   await db.update(adConcepts).set({ campaignId, updatedAt: new Date() }).where(eq(adConcepts.id, id));
   return campaignId;
+}
+
+/** The company's own booking link (lib/url.ts bookingLinkFor), by id. */
+export async function tenantBookingLink(tenantId: string) {
+  const tenant = (await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1))[0];
+  return tenant ? bookingLinkFor(tenant) : appUrl('/new');
 }

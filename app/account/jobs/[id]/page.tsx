@@ -15,6 +15,7 @@ import BeforeAfter from '@/components/app/BeforeAfter';
 import LiveTrackingMap from '@/components/app/LiveTrackingMap';
 import SocialMediaConsent from '@/components/account/SocialMediaConsent';
 import ReviewPrompt from '@/components/account/ReviewPrompt';
+import ReportProblem from '@/components/account/ReportProblem';
 import ShareProofButton from '@/components/ShareProofButton';
 import { getTracking, publicMapboxToken } from '@/lib/tracking';
 import { getUserById } from '@/lib/data';
@@ -39,7 +40,7 @@ export default async function JobGallery({ params }: { params: { id: string } })
 
   const { job, booking, client, service, items, media } = data;
   const invoiceRow = (await db.select().from(invoices).where(eq(invoices.bookingId, booking.id)).limit(1))[0];
-  const invoice = invoiceRow && (viewer.role === 'ADMIN' || (invoiceRow.status !== 'DRAFT' && invoiceRow.status !== 'VOID')) ? invoiceRow : null;
+  const invoice = invoiceRow && (viewer.role === 'ADMIN' || (viewer.role === 'CUSTOMER' && invoiceRow.status !== 'DRAFT' && invoiceRow.status !== 'VOID')) ? invoiceRow : null;
   // Clients see the photos once the job is finished; staff see them live.
   const showMedia = job.status === 'COMPLETE' || viewer.role !== 'CUSTOMER';
   const serviceName = service ? serviceLabel(service.key, service.name, locale) : t('serviceFallback');
@@ -177,15 +178,7 @@ export default async function JobGallery({ params }: { params: { id: string } })
         />
       )}
 
-      {viewer.role === 'CUSTOMER' && showMedia && (
-        <div className="card text-center">
-          <h2 className="ct-h3">{t('jobNotRight')}</h2>
-          <p className="mx-auto mt-1 max-w-[42ch] text-[15px] text-slate">{t('jobNotRightHelp')}</p>
-          <Link href="/book" className="btn-primary mt-4">
-            {t('jobBookNext')}
-          </Link>
-        </div>
-      )}
+      {viewer.role === 'CUSTOMER' && job.status === 'COMPLETE' && <ReportProblem jobId={job.id} />}
     </div>
   );
 }

@@ -66,6 +66,16 @@
   .tc-dark :focus-visible {
     outline-color: #b8ff00;
   }
+  /* Headings focused by script (tabindex=-1, after a step change) and
+     anything marked outline-none keep no ring — the colour rules above
+     otherwise outrank Tailwind's transparent outline and draw a black box. */
+  .theme-tc .outline-none:focus-visible,
+  .tc-dark .outline-none:focus-visible,
+  [tabindex='-1']:focus:not(:focus-visible),
+  h1[tabindex='-1']:focus,
+  h2[tabindex='-1']:focus {
+    outline-color: transparent;
+  }
   .theme-tc ::-webkit-scrollbar {
     width: 10px;
     height: 10px;

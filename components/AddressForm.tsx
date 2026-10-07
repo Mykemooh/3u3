@@ -10,14 +10,17 @@ export default function AddressForm({
   endpoint,
   initial,
   onSaved,
+  startEditing = false,
 }: {
   endpoint: string;
+  /** Open straight into the form (no address yet, and it's needed now). */
+  startEditing?: boolean;
   initial: { line1: string; city: string; state: string; zip?: string | null; notes?: string | null; bedrooms?: number | null };
   onSaved?: () => void;
 }) {
   const t = useT(commonMessages);
   const router = useRouter();
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(startEditing);
   const [line1, setLine1] = useState(initial.line1 ?? '');
   const [city, setCity] = useState(initial.city ?? '');
   const [state, setState] = useState(initial.state ?? '');

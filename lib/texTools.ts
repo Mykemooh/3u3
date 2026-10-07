@@ -3,7 +3,7 @@ import { bookings, crews, invoices, notificationLog, serviceTypes, tenants, user
 import { and, asc, eq, ilike, inArray, ne, or, sql } from 'drizzle-orm';
 import { articlesFor, search, type Article } from '@/lib/help';
 import type { Audience } from '@/lib/help/content';
-import { appUrl } from '@/lib/url';
+import { appUrl, bookingLinkFor } from '@/lib/url';
 import { getAccountBookings } from '@/lib/account';
 import { getEstimatesForClient, estimateUrl } from '@/lib/estimates';
 import { crewDashboard } from '@/lib/earnings';
@@ -109,8 +109,8 @@ const companyInfo: Tool = {
     return {
       company: ctx.tenant.name,
       tagline: ctx.tenant.tagline,
-      services: offered.map((s) => ({ name: s.name, about: SERVICES.find((x) => x.key === s.key)?.tagline ?? null, request_link: appUrl(`/new?service=${s.key}`) })),
-      book_a_free_walkthrough: appUrl('/new'),
+      services: offered.map((s) => ({ name: s.name, about: SERVICES.find((x) => x.key === s.key)?.tagline ?? null, request_link: bookingLinkFor(ctx.tenant, `?service=${s.key}`) })),
+      book_a_free_walkthrough: bookingLinkFor(ctx.tenant),
       help_center: appUrl('/help'),
       sign_in: appUrl('/signin'),
       text_us: ctx.tenant.smsNumber ?? null,
@@ -178,7 +178,7 @@ const leaveContact: Tool = {
     let texted = false;
     if (ctx.channel !== 'WEB' && phone) {
       try {
-        await sendText({ tenantId: ctx.tenant.id, phone, body: `Hi ${name.split(' ')[0]}, it's Tex from ${ctx.tenant.name}. Thanks for reaching out! You can book a free walkthrough here: ${appUrl('/new')}`, byTex: true });
+        await sendText({ tenantId: ctx.tenant.id, phone, body: `Hi ${name.split(' ')[0]}, it's Tex from ${ctx.tenant.name}. Thanks for reaching out! You can book a free walkthrough here: ${bookingLinkFor(ctx.tenant)}`, byTex: true });
         texted = true;
       } catch (err) {
         if (!(err instanceof MessagingError)) throw err;
@@ -187,7 +187,7 @@ const leaveContact: Tool = {
     return {
       ok: true,
       note: `The team has it${ctx.open ? ' and will get back to them soon' : ' and will get back to them first thing when the office opens'}.${texted ? ' A text with the booking link was just sent.' : ''}`,
-      book_a_free_walkthrough: appUrl('/new'),
+      book_a_free_walkthrough: bookingLinkFor(ctx.tenant),
     };
   },
 };

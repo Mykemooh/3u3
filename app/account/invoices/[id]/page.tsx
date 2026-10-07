@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { getServerSession } from 'next-auth';
 import { notFound, redirect } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
-import { getInvoiceWithItems, invoiceLabel } from '@/lib/invoices';
+import { getInvoiceWithItems, invoiceLabel, onlinePaymentsReady } from '@/lib/invoices';
 import { formatMoney } from '@/lib/data';
 import { serviceName as serviceLabel } from '@/lib/format';
 import { formatSlotDateLong } from '@/lib/time';
@@ -37,7 +37,7 @@ export default async function InvoiceView({ params, searchParams }: { params: { 
   const t = translator(accountMessages, locale);
   const data = await getInvoiceWithItems(params.id);
   if (!data) notFound();
-  const { invoice, items, client, booking, address, service, brand } = data;
+  const { invoice, lines, client, booking, address, service, brand } = data;
   // A client sees only their own invoices, and only once sent — a draft is
   // the office's working copy.
   if (user.role !== 'ADMIN' && (invoice.clientId !== user.id || invoice.status === 'DRAFT' || invoice.status === 'VOID')) notFound();
@@ -45,11 +45,20 @@ export default async function InvoiceView({ params, searchParams }: { params: { 
   const job = booking ? (await db.select().from(jobs).where(eq(jobs.bookingId, booking.id)).limit(1))[0] : undefined;
   const issued = invoice.sentAt ?? invoice.createdAt;
   const dueDate = new Date(issued.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const serviceName = service ? serviceLabel(service.key, service.name, locale) : t('invServiceFallback');
   // The tip has its own dedicated row below — never counted in the
   // billable subtotal/total, which stays "what the business charged".
-  const billableItems = items.filter((i) => !i.isTip);
+  // billableLines() fills in a service line or an adjustment when the
+  // stored items don't add up to the total, so the two always agree.
+  const billableItems = lines.map((l) =>
+    l.id === 'service' && l.synthetic
+      ? { ...l, description: booking ? `${serviceName} — ${formatSlotDateLong(booking.slotStart, locale)}` : serviceName }
+      : l.id === 'adjustment' && l.synthetic
+      ? { ...l, description: t('invAdjustment') }
+      : l,
+  );
   const subtotal = billableItems.reduce((s, i) => s + i.amountCents, 0);
-  const serviceName = service ? serviceLabel(service.key, service.name, locale) : t('invServiceFallback');
+  const noPayLink = invoice.status === 'SENT' && !invoice.hostedInvoiceUrl;
 
   return (
     <div className="space-y-5">
@@ -94,7 +103,7 @@ export default async function InvoiceView({ params, searchParams }: { params: { 
           <Logo variant="light" size="sm" />
           <div className="shrink-0 text-right">
             <p className="text-sm font-medium text-white/75">{t('invHeader')}</p>
-            <p className="font-display text-xl font-bold text-white">{invoiceLabel(invoice)}</p>
+            <h1 className="font-display text-xl font-bold text-white">{invoiceLabel(invoice)}</h1>
           </div>
         </header>
         <div className="flow-line" aria-hidden="true" />
@@ -161,6 +170,8 @@ export default async function InvoiceView({ params, searchParams }: { params: { 
 
           {invoice.status === 'PAID' ? (
             <p className="ct-status ct-status-done rounded-full bg-green-light px-4 py-1.5 text-[15px]">{t('invPaidThanks')}</p>
+          ) : noPayLink ? (
+            <p className="max-w-[60ch] rounded-xl bg-cream px-4 py-3 text-[15px] text-ink">{t('invNoPayLink', { brand: brand.name })}</p>
           ) : (
             <p className="max-w-[60ch] text-[15px] text-slate">{t('invDueTerms')}</p>
           )}
@@ -183,7 +194,7 @@ export default async function InvoiceView({ params, searchParams }: { params: { 
             {t('cardReceipt')}
           </a>
         )}
-        {invoice.status === 'PAID' && user.role !== 'ADMIN' && <TipButton invoiceId={invoice.id} />}
+        {invoice.status === 'PAID' && user.role !== 'ADMIN' && (await onlinePaymentsReady(invoice.tenantId, 500).catch(() => false)) && <TipButton invoiceId={invoice.id} />}
       </div>
     </div>
   );

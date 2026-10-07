@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/db/client';
 import { crews } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 const schema = z.object({
   crewId: z.string(),
@@ -26,11 +26,11 @@ const schema = z.object({
 // setting here recalculates future availability windows automatically;
 // already-confirmed bookings are untouched.
 export async function PATCH(req: Request) {
-  const session = await getServerSession(authOptions);
-  if (!(await adminSession())) {
+  const admin = await adminSession();
+  if (!admin) {
     return NextResponse.json({ error: 'Admin only' }, { status: 403 });
   }
-  const body = await req.json();
+  const body = await req.json().catch(() => ({}));
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: 'Invalid settings' }, { status: 400 });
 
@@ -39,6 +39,8 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: 'Working hours end must be after start.' }, { status: 400 });
   }
 
-  await db.update(crews).set(rest).where(eq(crews.id, crewId));
+  // Only this company's own team.
+  const updated = await db.update(crews).set(rest).where(and(eq(crews.id, crewId), eq(crews.tenantId, admin.tenantId))).returning({ id: crews.id });
+  if (!updated.length) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   return NextResponse.json({ ok: true });
 }

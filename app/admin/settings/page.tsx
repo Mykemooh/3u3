@@ -1,3 +1,4 @@
+import CopyBookingLink from '@/components/admin/CopyBookingLink';
 import { db } from '@/db/client';
 import { crews } from '@/db/schema';
 import { eq } from 'drizzle-orm';
@@ -6,7 +7,7 @@ import { getPayrollSettings } from '@/lib/payroll';
 import TenantSettingsForm from '@/components/admin/TenantSettingsForm';
 import ServiceAreaForm from '@/components/admin/ServiceAreaForm';
 import CompanySettingsForm from '@/components/admin/CompanySettingsForm';
-import { appUrl } from '@/lib/url';
+import { bookingLinkFor } from '@/lib/url';
 import { isStripeConfigured } from '@/lib/stripe';
 import ConnectStripeCard from '@/components/admin/ConnectStripeCard';
 import GooglePlaceFinder from '@/components/admin/GooglePlaceFinder';
@@ -39,7 +40,7 @@ export default async function AdminSettings({ searchParams }: { searchParams?: {
     winbackDays: tenant.winbackDays,
     mfaRequiredForCrew: tenant.mfaRequiredForCrew,
   };
-  const bookingLink = appUrl('/new');
+  const bookingLink = bookingLinkFor(tenant);
 
   return (
     <div className="space-y-6">
@@ -53,10 +54,10 @@ export default async function AdminSettings({ searchParams }: { searchParams?: {
         <CompanySettingsForm section="profile" initial={initial} />
       </div>
 
-      <div id="booking-link" className="card max-w-2xl">
+      <div id="booking-link" className="card max-w-2xl scroll-mt-24">
         <h2 className="mb-1 font-semibold text-ink">Booking link</h2>
         <p className="mb-3 text-sm text-slate">Put this on your website, Google profile and social pages. New clients book a free walkthrough from it.</p>
-        <p className="rounded-xl bg-surface px-4 py-3 font-mono text-sm text-ink">{bookingLink}</p>
+        <CopyBookingLink link={bookingLink} />
       </div>
 
       <div id="payments" className="card max-w-2xl scroll-mt-24">
@@ -64,7 +65,7 @@ export default async function AdminSettings({ searchParams }: { searchParams?: {
         <p className="text-sm text-slate">
           {isStripeConfigured()
             ? 'Online payments are on. Clients pay from their invoice or portal; tips go to the crew through payroll.'
-            : 'Online payments are off until Stripe keys are added (Vercel → Settings → Environment Variables: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY).'}
+            : 'Card payments aren’t switched on for TRASHCAN here yet, so invoices go out without a pay button. Clients still see every invoice in their portal, and you mark one paid with “Record a payment” when cash, a check or a transfer comes in.'}
         </p>
         {isStripeConfigured() && (
           <ConnectStripeCard

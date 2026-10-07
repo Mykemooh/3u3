@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { db } from '@/db/client';
 import { users, serviceTypes } from '@/db/schema';
 import { inArray } from 'drizzle-orm';
-import { getTenant, formatMoney } from '@/lib/data';
+import { getTenant, formatMoney, getClientsForTenant, getServiceTypes } from '@/lib/data';
+import NewEstimateForm from '@/components/admin/NewEstimateForm';
 import { getEstimatesForTenant } from '@/lib/estimates';
 
 const STATUS_STYLE: Record<string, string> = {
@@ -13,10 +14,14 @@ const STATUS_STYLE: Record<string, string> = {
   EXPIRED: 'bg-line text-muted',
 };
 
-export default async function AdminEstimates() {
+export default async function AdminEstimates({ searchParams }: { searchParams?: { new?: string } }) {
   const tenant = await getTenant();
   if (!tenant) return null;
-  const estimates = await getEstimatesForTenant(tenant.id);
+  const [estimates, allClients, allServices] = await Promise.all([
+    getEstimatesForTenant(tenant.id),
+    getClientsForTenant(tenant.id),
+    getServiceTypes(tenant.id),
+  ]);
 
   const clientIds = [...new Set(estimates.map((e) => e.clientId))];
   const clients = clientIds.length ? await db.select().from(users).where(inArray(users.id, clientIds)) : [];
@@ -31,10 +36,17 @@ export default async function AdminEstimates() {
   return (
     <div>
       <h1 className="mb-1 text-2xl font-bold text-ink">Estimates</h1>
-      <p className="mb-6 text-slate">
+      <p className="mb-4 text-slate">
         What you quote after a walkthrough. Approving one puts the price on file and lets the client book
         themselves.
       </p>
+      <div className="mb-6">
+        <NewEstimateForm
+          startOpen={searchParams?.new === '1'}
+          clients={allClients.map((c) => ({ id: c.id, name: c.name, phone: c.phone }))}
+          services={allServices.filter((sv) => sv.offered).map((sv) => ({ id: sv.id, name: sv.name }))}
+        />
+      </div>
 
       <div className="grid grid-cols-1 gap-3">
         {estimates.map((estimate) => {
@@ -61,7 +73,7 @@ export default async function AdminEstimates() {
         })}
         {estimates.length === 0 && (
           <div className="card text-center text-muted">
-            No estimates yet — start one from a lead after you've done the walkthrough.
+            No quotes yet. Start one with “New quote”, or from a lead after the walkthrough.
           </div>
         )}
       </div>

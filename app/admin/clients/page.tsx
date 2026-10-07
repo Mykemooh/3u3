@@ -5,7 +5,7 @@ import { inArray } from 'drizzle-orm';
 import { getTenant, getClientsForTenant } from '@/lib/data';
 import NewClientForm from '@/components/NewClientForm';
 
-export default async function AdminClients({ searchParams }: { searchParams: { q?: string } }) {
+export default async function AdminClients({ searchParams }: { searchParams: { q?: string; new?: string } }) {
   const tenant = await getTenant();
   if (!tenant) return null;
   // The workspace search bar (AdminShell) lands here with ?q=.
@@ -50,7 +50,7 @@ export default async function AdminClients({ searchParams }: { searchParams: { q
         </div>
       )}
 
-      <NewClientForm />
+      <NewClientForm startOpen={searchParams.new === '1'} />
 
       <div className="card overflow-x-auto p-0">
         <table className="w-full text-sm">

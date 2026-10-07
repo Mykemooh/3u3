@@ -5,7 +5,6 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { sendInvoice, InvoiceError } from '@/lib/invoices';
-import { isStripeConfigured } from '@/lib/stripe';
 
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
@@ -15,17 +14,10 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
   }
   if (!(await belongsTo(guardAdmin.tenantId, 'invoice', params.id))) return notFound();
 
-  if (!isStripeConfigured()) {
-    return NextResponse.json(
-      { error: 'Stripe is not configured yet — add STRIPE_SECRET_KEY before sending invoices.' },
-      { status: 400 },
-    );
-  }
-
   try {
-    const { url } = await sendInvoice(params.id);
-    await logChange({ tenantId: guardAdmin.tenantId, actor: { id: guardAdmin.userId, name: guardAdmin.name }, entityType: 'invoice', entityId: params.id, action: 'sent', summary: 'Sent the invoice' });
-    return NextResponse.json({ ok: true, url });
+    const { url, online } = await sendInvoice(params.id);
+    await logChange({ tenantId: guardAdmin.tenantId, actor: { id: guardAdmin.userId, name: guardAdmin.name }, entityType: 'invoice', entityId: params.id, action: 'sent', summary: online ? 'Sent the invoice' : 'Sent the invoice (no card payment link)' });
+    return NextResponse.json({ ok: true, url, online });
   } catch (err) {
     if (err instanceof InvoiceError) return NextResponse.json({ error: err.message }, { status: 400 });
     console.error(err);

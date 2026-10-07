@@ -36,7 +36,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
   const clientId = (session.user as any).id as string;
 
-  const body = await req.json();
+  const body = await req.json().catch(() => ({}));
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
 

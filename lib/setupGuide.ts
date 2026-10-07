@@ -46,7 +46,7 @@ export async function setupSteps(tenantId: string): Promise<SetupStep[]> {
     { key: 'payments', title: 'Get paid online', why: 'Clients pay from their invoice or portal, with tips that go straight to the crew.', href: '/admin/settings#payments', cta: 'Connect payments', done: paymentsReady },
     { key: 'automations', title: 'Choose reminders and follow-ups', why: 'Turn each one on or off and edit the wording. Nothing to code.', href: '/admin/automations', cta: 'Open settings', done: autos.length > 0 },
     { key: 'tex', title: 'Teach Tex about your company', why: 'Tex answers client questions in the portal, by text and by phone, from your help articles.', href: '/admin/help', cta: 'Open help articles', done: articles.length > 0 || !!tenant.smsNumber },
-    { key: 'booking', title: 'Share your booking link', why: 'Put it on your website, Google profile and social pages.', href: '/admin/settings#booking-link', cta: 'Get the link', done: false },
+    { key: 'booking', title: 'Share your booking link', why: 'Put it on your website, Google profile and social pages.', href: '/admin/settings#booking-link', cta: 'Get the link', done: skipped.has('booking-shared') },
     { key: 'integrations', title: 'Connect your accounting', why: 'Paid invoices go to QuickBooks Online on their own, without duplicates.', href: '/admin/integrations', cta: 'Connect QuickBooks', done: integ.length > 0 },
   ];
   // What the owner said they want help with first (signup question 5)

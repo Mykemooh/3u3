@@ -32,7 +32,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     return NextResponse.json({ error: 'Admin only' }, { status: 403 });
   }
   if (!(await belongsTo(guardAdmin.tenantId, 'quote', params.id))) return notFound();
-  const parsed = schema.safeParse(await req.json());
+  const parsed = schema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
 
   try {
