@@ -69,12 +69,12 @@ export default async function AppShell({
   const mark =
     look === 'crew' ? (
       <span className="flex min-w-0 items-center gap-2.5">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-tc-black">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-white/[0.08] ring-1 ring-inset ring-white/10">
           <TcIcon size={20} />
         </span>
         <span className="min-w-0 leading-tight">
-          <span className="block truncate font-tc-display text-[15px] font-bold tracking-[-0.01em] text-tc-black">{brand.name}</span>
-          <span className="block text-[12px] font-semibold text-tc-500">{t('crewApp')}</span>
+          <span className="block truncate font-tc-display text-[15px] font-bold tracking-[-0.01em] text-white">{brand.name}</span>
+          <span className="block text-[12px] font-semibold text-white/55">{t('crewApp')}</span>
         </span>
       </span>
     ) : (
@@ -87,16 +87,22 @@ export default async function AppShell({
         {look === 'client' && <BrandVars brand={brand} />}
         <div
           lang={locale}
-          className={`min-h-screen ${look === 'crew' ? 'portal-crew theme-tc bg-[#F6F7F9] text-tc-900' : 'portal-client bg-surface'}`}
+          className={`min-h-screen ${look === 'crew' ? 'portal-crew theme-tc overflow-x-clip bg-tc-100 text-tc-900' : 'portal-client bg-surface'}`}
         >
-          <header className="sticky top-0 z-40 border-b border-line bg-white/90 backdrop-blur-md">
+          <header
+            className={
+              look === 'crew'
+                ? 'tc-dark sticky top-0 z-40 border-b border-white/[0.06] bg-tc-black'
+                : 'sticky top-0 z-40 border-b border-line bg-white/90 backdrop-blur-md'
+            }
+          >
             <div className={`mx-auto flex h-16 items-center justify-between gap-3 px-4 sm:px-5 ${column}`}>
               <Link href={homeHref} aria-label={t('home')} className="min-w-0 shrink rounded-lg">
                 {mark}
               </Link>
-              {showTabs && <HeaderTabs tabs={shown} label={t('sections')} />}
+              {showTabs && <HeaderTabs tabs={shown} label={t('sections')} tone={look === 'crew' ? 'dark' : 'light'} />}
               <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-                <LanguageToggle tone="light" />
+                <LanguageToggle tone={look === 'crew' ? 'dark' : 'light'} />
                 {name && (
                   <PortalAccountMenu
                     name={name}
@@ -109,7 +115,7 @@ export default async function AppShell({
               </div>
             </div>
           </header>
-          <main className={`mx-auto px-4 pb-32 pt-6 sm:px-5 md:pb-16 md:pt-8 ${column}`}>
+          <main className={`mx-auto px-4 sm:px-5 ${look === 'crew' ? 'pb-36 pt-0 md:pb-20' : 'pb-32 pt-6 md:pb-16 md:pt-8'} ${column}`}>
             <AccessNotice />
             {children}
             {look === 'client' && (
@@ -124,7 +130,7 @@ export default async function AppShell({
               </p>
             )}
           </main>
-          {showTabs && <BottomTabs tabs={shown} label={t('sections')} />}
+          {showTabs && <BottomTabs tabs={shown} label={t('sections')} tone={look === 'crew' ? 'dark' : 'light'} />}
         </div>
       </CompanyBrandProvider>
     </LocaleProvider>

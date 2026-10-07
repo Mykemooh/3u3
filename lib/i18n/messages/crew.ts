@@ -269,6 +269,19 @@ export const crewMessages = defineMessages({
     timerStart: 'Start room timer',
     timerTookUnderMinute: 'Took under a minute',
     timerTookMinutes: 'Took {count} min',
+
+    // Redesign (Oct 2026): status chips, home hero, job page sections
+    statusInProgress: 'In progress',
+    statusMissed: 'Still open',
+    homeTomorrow: 'Tomorrow',
+    homeNothingNext: 'Nothing on your schedule',
+    homeNothingNextHint: 'New jobs show up here as soon as the office books them.',
+    homeSuppliesHint: 'Running low on something?',
+    jobRoomsProgress: '{done} of {total} done',
+    jobRoomsPlan: 'The plan for this visit. Photos open once the job starts.',
+    roomNow: 'Now',
+    roomNoPhotos: 'No photos taken',
+    roomEdit: 'Edit',
   },
   es: {
     // Compartido
@@ -445,7 +458,7 @@ export const crewMessages = defineMessages({
     jobNoPhotosNeeded: 'No se necesitan fotos en este trabajo',
     jobCompleteTitle: 'Trabajo terminado',
     jobCompleteJustNow: 'Al cliente le llegó un correo con sus fotos de antes y después, y la factura quedó en borrador para que la oficina la revise.',
-    jobFinishedAt: 'Terminado a las {time}. Las fotos ya no se pueden cambiar.',
+    jobFinishedAt: 'Terminado a las {time}; las fotos ya no se pueden cambiar.',
     jobFinished: 'Terminado. Las fotos ya no se pueden cambiar.',
     jobNextJob: 'Siguiente trabajo',
     jobReviewInvoice: 'Revisar factura',
@@ -526,5 +539,18 @@ export const crewMessages = defineMessages({
     timerStart: 'Iniciar cronómetro del cuarto',
     timerTookUnderMinute: 'Tomó menos de un minuto',
     timerTookMinutes: 'Tomó {count} min',
+
+    // Rediseño (oct 2026)
+    statusInProgress: 'En curso',
+    statusMissed: 'Sigue abierto',
+    homeTomorrow: 'Mañana',
+    homeNothingNext: 'No tienes nada en la agenda',
+    homeNothingNextHint: 'Los trabajos nuevos aparecen aquí en cuanto la oficina los reserva.',
+    homeSuppliesHint: '¿Se está acabando algo?',
+    jobRoomsProgress: '{done} de {total} listos',
+    jobRoomsPlan: 'El plan de esta visita. Las fotos se abren cuando empieza el trabajo.',
+    roomNow: 'Ahora',
+    roomNoPhotos: 'No se tomaron fotos',
+    roomEdit: 'Editar',
   },
 });

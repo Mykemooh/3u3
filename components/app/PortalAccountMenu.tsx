@@ -55,7 +55,8 @@ export default function PortalAccountMenu({
     };
   }, [open]);
 
-  const avatar = tone === 'crew' ? 'bg-tc-black text-tc-lime font-tc-display font-extrabold' : 'bg-ink text-white font-display font-bold';
+  // The cleaner app's header is black (components/app/AppShell.tsx), so its avatar is the lime one.
+  const avatar = tone === 'crew' ? 'bg-tc-lime text-tc-black font-tc-display font-extrabold' : 'bg-ink text-white font-display font-bold';
   const item =
     tone === 'crew'
       ? 'flex items-center gap-2.5 rounded-lg px-3 py-2 text-[14px] text-ink hover:bg-surface'
@@ -69,11 +70,11 @@ export default function PortalAccountMenu({
         aria-expanded={open}
         aria-label={t('accountMenu')}
         onClick={() => setOpen((o) => !o)}
-        className="flex h-11 items-center gap-2 rounded-[10px] pl-1.5 pr-1.5 hover:bg-surface sm:pr-2"
+        className={`flex h-11 items-center gap-2 rounded-[10px] pl-1.5 pr-1.5 sm:pr-2 ${tone === 'crew' ? 'hover:bg-white/10' : 'hover:bg-surface'}`}
       >
         <span className={`flex h-8 w-8 items-center justify-center rounded-full text-[12px] ${avatar}`}>{initialsOf(name) || '·'}</span>
-        <span className="hidden max-w-[140px] truncate text-[14px] font-semibold text-ink sm:inline">{name.split(' ')[0]}</span>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="hidden text-muted sm:block" aria-hidden="true">
+        <span className={`hidden max-w-[140px] truncate text-[14px] font-semibold sm:inline ${tone === 'crew' ? 'text-white' : 'text-ink'}`}>{name.split(' ')[0]}</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`hidden sm:block ${tone === 'crew' ? 'text-white/50' : 'text-muted'}`} aria-hidden="true">
           <path d="m6 9 6 6 6-6" />
         </svg>
       </button>

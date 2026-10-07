@@ -449,6 +449,31 @@
     @apply flex flex-col items-center justify-center gap-1 rounded-xl border border-line bg-white px-2 py-3 text-xs font-semibold text-ink
       transition hover:border-gold hover:bg-cream/60 active:scale-[0.98];
   }
+  /* Cleaner app (components/CrewJob.tsx): the driveway actions on the black
+     job header, and the big buttons in the black action bar. */
+  .crew-quick {
+    @apply flex min-h-[68px] flex-col items-center justify-center gap-1.5 rounded-[14px] bg-white/[0.07] px-2 py-2.5 text-center text-[13px] font-semibold leading-tight text-white
+      ring-1 ring-inset ring-white/10 transition-colors duration-150 hover:bg-white/[0.12] active:scale-[0.98];
+  }
+  .crew-quick-tight {
+    @apply min-h-[46px] flex-row gap-2 py-2;
+  }
+  .crew-quick svg {
+    color: #b8ff00;
+  }
+  .crew-dock-btn {
+    @apply min-h-[52px] text-[16px] font-bold;
+  }
+  .crew-dock-btn:disabled,
+  .crew-dock-btn:disabled:hover {
+    @apply cursor-not-allowed bg-white/10 text-white/55;
+    transform: none;
+    box-shadow: none;
+  }
+  .tc-btn-ghost-dark.crew-dock-btn:disabled,
+  .tc-btn-ghost-dark.crew-dock-btn:disabled:hover {
+    @apply border-white/10 bg-transparent text-white/35;
+  }
   /* The "add photo / add video" tile in a room's before/after grid. */
   .media-add {
     @apply flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-gold/60 bg-white
@@ -523,6 +548,9 @@
   .theme-tc .eyebrow {
     letter-spacing: 0.08em;
     color: #6b7280;
+  }
+  .theme-tc .media-add {
+    @apply border-tc-300 bg-tc-50 text-[12px] text-tc-900 hover:border-tc-black hover:bg-white;
   }
   .theme-tc .rail-label {
     background: #0b0f14;

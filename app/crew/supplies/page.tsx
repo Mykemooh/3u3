@@ -7,6 +7,7 @@ import { getSupplyReportsForCrew } from '@/lib/supplies';
 import { homeForRole } from '@/lib/nav';
 import AppShell, { CREW_TABS } from '@/components/app/AppShell';
 import SupplyReportForm from '@/components/crew/SupplyReportForm';
+import { CrewPageHead } from '@/components/crew/CrewBand';
 import { getT } from '@/lib/i18n/server';
 import { crewMessages } from '@/lib/i18n/messages/crew';
 
@@ -15,9 +16,9 @@ export const dynamic = 'force-dynamic';
 const STATUS_LABEL_KEY = { LOW: 'supplyLow', OUT: 'supplyOut', DAMAGED: 'supplyDamaged' } as const;
 
 const STATUS_STYLE: Record<string, string> = {
-  LOW: 'bg-amber-100 text-amber-700',
-  OUT: 'bg-red-100 text-red-700',
-  DAMAGED: 'bg-red-100 text-red-700',
+  LOW: 'bg-amber-50 text-amber-800',
+  OUT: 'bg-red-50 text-red-700',
+  DAMAGED: 'bg-red-50 text-red-700',
 };
 
 export default async function CrewSuppliesPage() {
@@ -33,38 +34,33 @@ export default async function CrewSuppliesPage() {
 
   return (
     <AppShell name={session.user.name} tabs={CREW_TABS} homeHref="/crew">
-      <div className="space-y-6">
-        <div>
-          <p className="eyebrow">{t('suppliesEyebrow')}</p>
-          <h1 className="mt-1 text-2xl font-bold text-ink">{t('suppliesTitle')}</h1>
-          <p className="mt-1 text-slate">{t('suppliesIntro')}</p>
-        </div>
-
+      <CrewPageHead title={t('suppliesTitle')} intro={t('suppliesIntro')} />
+      <div className="mt-5 space-y-5">
         {!crew ? (
-          <div className="card text-slate">{t('noTeam')}</div>
+          <div className="rounded-2xl border border-tc-200 bg-white p-5 text-tc-700">{t('noTeam')}</div>
         ) : (
-          <div className="card">
+          <div className="rounded-2xl border border-tc-200 bg-white p-4 sm:p-6">
             <SupplyReportForm />
           </div>
         )}
 
         {recent.length > 0 && (
-          <div className="card">
-            <h2 className="mb-3 font-semibold text-ink">{t('suppliesRecent')}</h2>
-            <div className="space-y-2">
+          <section>
+            <h2 className="mb-2.5 px-1 font-tc-display text-[17px] font-bold tracking-[-0.01em] text-tc-900">{t('suppliesRecent')}</h2>
+            <ul className="divide-y divide-tc-200 overflow-hidden rounded-2xl border border-tc-200 bg-white">
               {recent.map((r) => (
-                <div key={r.id} className="flex items-center justify-between border-b border-line py-2 text-sm last:border-0">
-                  <div>
-                    <p className="font-medium text-ink">{r.productName}</p>
-                    {r.notes && <p className="text-xs text-muted">{r.notes}</p>}
+                <li key={r.id} className="flex min-h-[60px] items-center justify-between gap-3 px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-tc-900">{r.productName}</p>
+                    {r.notes && <p className="text-[13px] text-tc-500">{r.notes}</p>}
                   </div>
-                  <span className={`pill ${r.resolved ? 'bg-emerald-100 text-green' : STATUS_STYLE[r.status]}`}>
+                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-[12px] font-semibold ${r.resolved ? 'bg-emerald-50 text-emerald-700' : STATUS_STYLE[r.status]}`}>
                     {r.resolved ? t('suppliesResolved') : t(STATUS_LABEL_KEY[r.status as 'LOW' | 'OUT' | 'DAMAGED'])}
                   </span>
-                </div>
+                </li>
               ))}
-            </div>
-          </div>
+            </ul>
+          </section>
         )}
       </div>
     </AppShell>

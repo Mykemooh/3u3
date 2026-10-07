@@ -20,12 +20,12 @@ export default function OfflineBanner({
   return (
     <div
       role="status"
-      className={`flex flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-3 text-sm font-medium ${
-        isOnline ? 'bg-amber-50 text-amber-800' : 'bg-ink text-white'
+      className={`flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-2xl px-4 py-3 text-[15px] font-medium ${
+        isOnline ? 'border border-amber-300 bg-[#FFFBEB] text-amber-950' : 'tc-dark bg-tc-black text-white'
       }`}
     >
       <span className="flex items-center gap-2">
-        <span className={`h-2 w-2 shrink-0 rounded-full ${isOnline ? 'bg-amber-500' : 'bg-red-400'}`} aria-hidden="true" />
+        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${isOnline ? 'bg-amber-500' : 'bg-red-400'}`} aria-hidden="true" />
         {!isOnline
           ? pendingCount > 0
             ? t('offlineNoSignalWaiting', { count: pendingCount })
@@ -33,7 +33,7 @@ export default function OfflineBanner({
           : t(pendingCount === 1 ? 'offlineWaitingOne' : 'offlineWaitingMany', { count: pendingCount })}
       </span>
       {isOnline && pendingCount > 0 && (
-        <button type="button" onClick={onSyncNow} disabled={syncing} className="text-xs font-semibold underline underline-offset-2 disabled:opacity-60">
+        <button type="button" onClick={onSyncNow} disabled={syncing} className="min-h-[40px] rounded-lg border border-amber-300 bg-white px-3 text-[14px] font-semibold text-tc-900 disabled:opacity-60">
           {syncing ? t('offlineSyncing') : t('offlineSyncNow')}
         </button>
       )}

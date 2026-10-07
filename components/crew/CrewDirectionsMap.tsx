@@ -789,7 +789,7 @@ export default function CrewDirectionsMap({ jobId, addressLabel: fallbackAddress
           {(setup.status === 'loading' || destination !== null) && routes.status !== 'noLocation' && routes.status !== 'error' && (
             <div>
               <div className="mb-2 flex items-center justify-between">
-                <p className="text-xs font-bold uppercase tracking-wide text-muted">{t('mapRoutesTitle')}</p>
+                <p className="text-[13px] font-semibold text-tc-700">{t('mapRoutesTitle')}</p>
                 {routesBusy && (
                   <p className="text-xs text-muted" role="status">
                     {routes.status === 'locating' ? t('mapLocating') : t('mapRoutesLoading')}

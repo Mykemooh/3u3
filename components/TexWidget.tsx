@@ -55,6 +55,45 @@ export default function TexWidget() {
   const [onTcSurface, setOnTcSurface] = useState(false);
   useEffect(() => setOnTcSurface(!!document.querySelector('[data-tc-surface]')), [pathname]);
 
+  // Stay clear of whatever is pinned to the bottom of the screen — a tab bar,
+  // a job's action bar (anything marked data-tex-avoid) — so the bubble never
+  // sits on top of a button. Measured, because those bars come and go and
+  // change height (components/app/TabBar.tsx, components/CrewJob.tsx).
+  const [lift, setLift] = useState<number | null>(null);
+  useEffect(() => {
+    let raf = 0;
+    const sizes = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => measure()) : null;
+    function measure() {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const h = window.innerHeight;
+        let top = h;
+        sizes?.disconnect();
+        // Bars stack (a job's action bar sits on the tab bar), so walk up
+        // from the bottom edge through every bar touching the one below it.
+        const rects = Array.from(document.querySelectorAll<HTMLElement>('[data-tex-avoid]'))
+          .map((el) => {
+            sizes?.observe(el);
+            return el.getBoundingClientRect();
+          })
+          .filter((r) => r.height > 0)
+          .sort((a, b) => b.bottom - a.bottom);
+        for (const r of rects) if (r.bottom >= top - 2 && r.top < top) top = r.top;
+        setLift(Math.max(0, Math.round(h - top)));
+      });
+    }
+    measure();
+    const changes = new MutationObserver(measure);
+    changes.observe(document.body, { childList: true, subtree: true });
+    window.addEventListener('resize', measure);
+    return () => {
+      cancelAnimationFrame(raf);
+      changes.disconnect();
+      sizes?.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [pathname]);
+
   if (onTcSurface) return null;
   if (HIDDEN.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return null;
   const lifted = WITH_TABS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
@@ -81,9 +120,17 @@ export default function TexWidget() {
   }
 
   return (
-    <div className={`fixed right-4 z-40 ${lifted ? 'bottom-24 md:bottom-6' : 'bottom-6'} ${workspace ? 'theme-tc' : ''}`}>
+    <div
+      className={`fixed right-3 z-40 md:right-4 ${lift === null ? (lifted ? 'bottom-24 md:bottom-6' : 'bottom-6') : ''} ${workspace ? 'theme-tc' : ''}`}
+      style={lift === null ? undefined : { bottom: lift > 0 ? lift + 12 : 20 }}
+    >
       {open && (
-        <div role="dialog" aria-label="Ask Tex" className="mb-3 flex h-[min(32rem,calc(100vh-9rem))] w-[min(23rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-card-lg">
+        <div
+          role="dialog"
+          aria-label="Ask Tex"
+          className="mb-3 flex w-[min(23rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-card-lg"
+          style={{ height: `min(32rem, calc(100dvh - ${(lift ?? 96) + 150}px))` }}
+        >
           <header className="flex items-center justify-between bg-ink px-4 py-3 text-white">
             <div>
               <p className="font-semibold">Tex</p>
@@ -148,7 +195,7 @@ export default function TexWidget() {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-label={open ? 'Close Tex' : 'Ask Tex'}
-        className={`ml-auto flex h-14 w-14 items-center justify-center rounded-full shadow-card-lg transition hover:scale-105 ${
+        className={`ml-auto flex h-12 w-12 items-center justify-center rounded-full shadow-card-lg transition hover:scale-105 md:h-14 md:w-14 ${
           workspace ? 'bg-tc-black text-tc-lime ring-1 ring-white/10' : 'bg-gradient-to-br from-gold to-green-light text-white'
         }`}
       >
