@@ -76,7 +76,11 @@ export default function Inbox({
     return () => clearInterval(t);
   }, [active, loadMessages, loadThreads]);
 
-  useEffect(() => bottom.current?.scrollIntoView({ block: 'end' }), [messages.length]);
+  // Braces matter: newer Chrome returns a Promise from scrollIntoView, and an
+  // effect that returns anything but a function crashes React on cleanup.
+  useEffect(() => {
+    bottom.current?.scrollIntoView({ block: 'end' });
+  }, [messages.length]);
 
   const matches = useMemo(() => {
     const q = search.trim().toLowerCase();
