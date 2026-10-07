@@ -55,14 +55,14 @@ export default function NotificationPreferences({
           </p>
         </>
       )}
-      <div className="space-y-2">
+      <div className="space-y-0.5">
         {OPTIONS.map((opt) => {
           const disabled = busy || (opt.needsPhone && !hasPhone);
           return (
-            <label key={opt.value} className={`flex items-center gap-2 text-sm ${disabled ? 'opacity-50' : ''}`}>
-              <input type="radio" name="notificationChannel" checked={channel === opt.value} disabled={disabled} onChange={() => choose(opt.value)} />
+            <label key={opt.value} className={`flex min-h-[44px] cursor-pointer flex-wrap items-center gap-x-3 gap-y-0.5 text-[15px] text-ink ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}>
+              <input className="h-5 w-5 accent-[rgb(var(--c-gold))]" type="radio" name="notificationChannel" checked={channel === opt.value} disabled={disabled} onChange={() => choose(opt.value)} />
               {t(opt.label)}
-              {opt.needsPhone && !hasPhone && <span className="text-xs text-muted">{t('notifNeedsPhone')}</span>}
+              {opt.needsPhone && !hasPhone && <span className="text-sm text-muted">{t('notifNeedsPhone')}</span>}
             </label>
           );
         })}

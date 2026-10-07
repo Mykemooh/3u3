@@ -130,21 +130,21 @@ export default function NewCustomerPage() {
       </Link>
 
       {stepNumber && (
-        <div className="mb-6 flex flex-wrap items-center justify-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted">
+        <ol className="mb-6 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm font-semibold text-muted">
           {steps.map((k, i) => (
-            <span key={k} className="flex items-center gap-2">
-              {i > 0 && <span className="text-muted">—</span>}
+            <li key={k} className="flex items-center gap-3" aria-current={stepNumber === i + 1 ? 'step' : undefined}>
+              {i > 0 && <span className="h-px w-4 bg-line" aria-hidden="true" />}
               <span className={stepNumber === i + 1 ? 'text-bronze' : ''}>
                 {i + 1}. {stepLabels[k]}
               </span>
-            </span>
+            </li>
           ))}
-        </div>
+        </ol>
       )}
 
       {step === 'service' && (
         <div className="card w-full max-w-md">
-          <h1 className="text-xl font-bold mb-1">{t('newServiceTitle')}</h1>
+          <h1 className="ct-title mb-1">{t('newServiceTitle')}</h1>
           <p className="text-sm text-slate mb-6">
             {t('newServiceIntro')}
           </p>
@@ -174,7 +174,7 @@ export default function NewCustomerPage() {
           <button onClick={() => setStep('service')} className="text-sm text-muted mb-4 hover:text-ink">
             {t('back')}
           </button>
-          <h1 className="text-xl font-bold mb-1">{t('newFormTitle')}</h1>
+          <h1 className="ct-title mb-1">{t('newFormTitle')}</h1>
           <p className="text-sm text-slate mb-6">
             {selectedService ? t('newFormIntroService', { service: nameOf(selectedService) }) : t('newFormIntro')}
           </p>
@@ -208,7 +208,7 @@ export default function NewCustomerPage() {
                 autoComplete="email"
                 required
               />
-              <p className="mt-1 text-xs text-muted">
+              <p className="mt-1 text-sm text-muted">
                 {t('newEmailHelp')}
               </p>
             </div>
@@ -257,7 +257,7 @@ export default function NewCustomerPage() {
                   </option>
                 ))}
               </select>
-              <p className="mt-1 text-xs text-muted">{t('newBedroomsHelp')}</p>
+              <p className="mt-1 text-sm text-muted">{t('newBedroomsHelp')}</p>
             </div>
             )}
             <button type="submit" className="btn-primary w-full">
@@ -286,7 +286,7 @@ export default function NewCustomerPage() {
           <button onClick={() => setStep(project ? 'project' : 'form')} className="text-sm text-muted mb-4 hover:text-ink">
             {t('back')}
           </button>
-          <h1 className="text-xl font-bold mb-1">{project ? t('newWalkthroughTitle') : t('newVisitTitle')}</h1>
+          <h1 className="ct-title mb-1">{project ? t('newWalkthroughTitle') : t('newVisitTitle')}</h1>
           <p className="text-sm text-slate mb-6">
             {project ? t('newWalkthroughIntro') : t('newVisitIntro')}
           </p>
@@ -332,7 +332,7 @@ export default function NewCustomerPage() {
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gold/15 text-2xl">
             ✓
           </div>
-          <h1 className="text-xl font-bold mb-2">{t('newBookedTitle')}</h1>
+          <h1 className="ct-title mb-2">{t('newBookedTitle')}</h1>
           <p className="text-sm text-slate mb-1">
             {selectedService && nameOf(selectedService)}
             {selectedService ? ' — ' : ''}

@@ -50,7 +50,7 @@ export default function LanguageSetting() {
             aria-checked={active === l}
             disabled={pending}
             onClick={() => choose(l)}
-            className={`rounded-full border px-4 py-1.5 text-sm font-semibold transition ${
+            className={`min-h-[44px] rounded-full border px-5 text-[15px] font-semibold transition ${
               active === l ? 'border-ink bg-ink text-white' : 'border-line bg-white text-slate hover:text-ink'
             }`}
           >
@@ -58,7 +58,7 @@ export default function LanguageSetting() {
           </button>
         ))}
       </div>
-      {error && <p className="mt-2 text-xs text-red-600">{t('setLanguageError')}</p>}
+      {error && <p className="mt-2 text-sm text-red-600">{t('setLanguageError')}</p>}
     </div>
   );
 }

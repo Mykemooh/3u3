@@ -35,7 +35,7 @@ export const accountMessages = defineMessages({
     homeEyebrow: 'Your home, cared for',
     homeHi: 'Hi {name}',
     homeHiNoName: 'Hi there',
-    homeSettingsLink: 'Account settings →',
+    homeSettingsLink: 'Settings',
     homeEmptyTitle: 'Ready when you are',
     homeEmptyCanBook: 'Pick a time that suits you. You will see your crew, your before-and-after photos and your invoice right here.',
     homeEmptyNeedsEstimate: "Once your estimate is approved, you'll be able to book here.",
@@ -74,7 +74,7 @@ export const accountMessages = defineMessages({
     dashAria: 'Your dashboard',
     dashNextTitle: 'Next clean',
     dashNothingBooked: 'Nothing booked',
-    dashOnTheWay: 'Your crew is on the way — see the map below.',
+    dashOnTheWay: 'Your crew is on the way — see the map above.',
     dashReschedule: 'Reschedule or change',
     dashCanBookLater: 'You can book once your estimate is approved.',
     dashQuotesTitle: 'Quotes',
@@ -177,6 +177,7 @@ export const accountMessages = defineMessages({
     jobDragHint: 'Drag the handle to compare',
     jobTimestamps: 'Before {before} · After {after}',
     jobNoPhotos: 'No photos for this room yet.',
+    jobNoPhotosRooms: 'No photos yet for these rooms',
     jobVideo: 'video',
     jobMediaAltBefore: '{room} before',
     jobMediaAltAfter: '{room} after',
@@ -232,7 +233,7 @@ export const accountMessages = defineMessages({
     mapHomeMarker: 'Your home',
 
     // Add to calendar
-    calAdd: '+ Add to calendar',
+    calAdd: 'Add to calendar',
     calOther: 'Apple, Skylight, or other (.ics)',
 
     // Settings (/account/settings)
@@ -288,7 +289,7 @@ export const accountMessages = defineMessages({
     homeEyebrow: 'Su hogar, bien cuidado',
     homeHi: 'Hola, {name}',
     homeHiNoName: 'Hola',
-    homeSettingsLink: 'Configuración de la cuenta →',
+    homeSettingsLink: 'Ajustes',
     homeEmptyTitle: 'Listos cuando usted quiera',
     homeEmptyCanBook: 'Elija la hora que le convenga. Aquí mismo verá a su equipo, sus fotos de antes y después y su factura.',
     homeEmptyNeedsEstimate: 'Cuando se apruebe su cotización, podrá reservar aquí.',
@@ -327,7 +328,7 @@ export const accountMessages = defineMessages({
     dashAria: 'Su panel',
     dashNextTitle: 'Próxima limpieza',
     dashNothingBooked: 'Nada reservado',
-    dashOnTheWay: 'Su equipo va en camino — vea el mapa abajo.',
+    dashOnTheWay: 'Su equipo va en camino — vea el mapa arriba.',
     dashReschedule: 'Cambiar fecha o modificar',
     dashCanBookLater: 'Podrá reservar cuando se apruebe su cotización.',
     dashQuotesTitle: 'Cotizaciones',
@@ -430,6 +431,7 @@ export const accountMessages = defineMessages({
     jobDragHint: 'Arrastre el control para comparar',
     jobTimestamps: 'Antes {before} · Después {after}',
     jobNoPhotos: 'Todavía no hay fotos de este cuarto.',
+    jobNoPhotosRooms: 'Todavía no hay fotos de estos cuartos',
     jobVideo: 'video',
     jobMediaAltBefore: '{room} antes',
     jobMediaAltAfter: '{room} después',
@@ -485,7 +487,7 @@ export const accountMessages = defineMessages({
     mapHomeMarker: 'Su casa',
 
     // Add to calendar
-    calAdd: '+ Agregar al calendario',
+    calAdd: 'Agregar al calendario',
     calOther: 'Apple, Skylight u otro (.ics)',
 
     // Settings

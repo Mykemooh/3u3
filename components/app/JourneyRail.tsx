@@ -48,10 +48,10 @@ export default function JourneyRail({ steps, compact = false }: { steps: Journey
           </span>
           {!compact && (
             <>
-              <span className={`mt-2 text-[12px] font-semibold leading-tight ${s.state === 'todo' ? 'text-muted' : 'text-ink'}`}>
+              <span className={`mt-2 max-w-full text-[12px] font-semibold leading-tight [hyphens:auto] sm:text-[13px] ${s.state === 'todo' ? 'text-muted' : 'text-ink'}`}>
                 {s.label}
               </span>
-              {s.detail && <span className="mt-0.5 text-[11px] leading-tight text-muted">{s.detail}</span>}
+              {s.detail && <span className="money mt-0.5 text-[12px] leading-tight text-muted">{s.detail}</span>}
             </>
           )}
           <span className="sr-only">

@@ -56,22 +56,18 @@ export default async function AccountSettings() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="eyebrow">{t('setMyAccount')}</p>
-        <h1 className="mt-1 text-3xl font-extrabold">{t('setTitle')}</h1>
-        <p className="mt-2 text-slate">{t('setIntro')}</p>
-      </div>
+      <header>
+        <h1 className="ct-title">{t('setTitle')}</h1>
+        <p className="ct-lead mt-1 max-w-[60ch]">{t('setIntro')}</p>
+      </header>
 
-      <section className="card">
-        <h2 className="mb-4 text-lg font-bold text-ink">{t('setMyAccount')}</h2>
-        <div className="grid gap-6 sm:grid-cols-3">
-          <div>
-            <h3 className="mb-2 text-sm font-semibold text-ink">{t('setProfilePicture')}</h3>
+      <section className="overflow-hidden rounded-2xl border border-line bg-white">
+        <h2 className="ct-h2 px-5 pt-5 sm:px-6">{t('setMyAccount')}</h2>
+        <div className="divide-y divide-line">
+          <Row title={t('setProfilePicture')}>
             <AvatarUpload name={me.name} initialUrl={me.avatarUrl} />
-          </div>
-          <div>
-            <h3 className="mb-2 text-sm font-semibold text-ink">{t('setMyAddress')}</h3>
-            <p className="mb-3 text-xs text-slate">{t('setAddressHelp')}</p>
+          </Row>
+          <Row title={t('setMyAddress')} help={t('setAddressHelp')}>
             <AddressForm
               endpoint="/api/account/address"
               initial={{
@@ -83,15 +79,13 @@ export default async function AccountSettings() {
                 bedrooms: primaryAddress?.bedrooms,
               }}
             />
-          </div>
-          <div>
-            <h3 className="mb-2 text-sm font-semibold text-ink">{t('setNotifications')}</h3>
-            <p className="mb-3 text-xs text-slate">{t('setNotificationsHelp')}</p>
+          </Row>
+          <Row title={t('setNotifications')} help={t('setNotificationsHelp')}>
             <NotificationPreferences initial={me.notificationChannel} hasPhone={!!me.phone} bare />
-            <h3 className="mb-2 mt-6 text-sm font-semibold text-ink">{t('setLanguage')}</h3>
-            <p className="mb-3 text-xs text-slate">{t('setLanguageHelp')}</p>
+          </Row>
+          <Row title={t('setLanguage')} help={t('setLanguageHelp')}>
             <LanguageSetting />
-          </div>
+          </Row>
         </div>
       </section>
 
@@ -99,8 +93,8 @@ export default async function AccountSettings() {
 
       {primaryAddress && (
         <section id="home" className="card scroll-mt-24">
-          <h2 className="mb-1 text-lg font-bold text-ink">{t('setHomeProfile')}</h2>
-          <p className="mb-4 text-sm text-slate">{t('setHomeProfileHelp')}</p>
+          <h2 className="ct-h2">{t('setHomeProfile')}</h2>
+          <p className="mb-5 mt-1 max-w-[60ch] text-[15px] text-slate">{t('setHomeProfileHelp')}</p>
           <HomeProfileEditor
             endpoint="/api/account/home-profile"
             entryCodeConfigured={encryptionConfigured()}
@@ -117,11 +111,10 @@ export default async function AccountSettings() {
         </section>
       )}
 
-      <section id="payment" className="card scroll-mt-24 space-y-6">
-        <h2 className="text-lg font-bold text-ink">{t('setPayment')}</h2>
-
-        <div>
-          <h3 className="mb-2 text-sm font-semibold text-ink">{t('setPaymentMethod')}</h3>
+      <section id="payment" className="scroll-mt-24 overflow-hidden rounded-2xl border border-line bg-white">
+        <h2 className="ct-h2 px-5 pt-5 sm:px-6">{t('setPayment')}</h2>
+        <div className="divide-y divide-line">
+        <Row title={t('setPaymentMethod')}>
           <PaymentMethodCard
             publishableKey={publicStripeKey()}
             saved={
@@ -137,22 +130,19 @@ export default async function AccountSettings() {
             }
             bare
           />
-        </div>
-
-        <div>
-          <h3 className="mb-2 text-sm font-semibold text-ink">{t(pending.length === 1 ? 'setPendingOne' : 'setPendingMany')}</h3>
+        </Row>
+        <Row title={t(pending.length === 1 ? 'setPendingOne' : 'setPendingMany')}>
           <PendingInvoices invoices={pending} />
-        </div>
-
-        <div>
-          <h3 className="mb-2 text-sm font-semibold text-ink">{t('setPaymentHistory')}</h3>
+        </Row>
+        <Row title={t('setPaymentHistory')}>
           <PaymentHistoryByMonth months={paymentMonths} />
+        </Row>
         </div>
       </section>
 
       <section id="bookings" className="card scroll-mt-24">
-        <h2 className="mb-1 text-lg font-bold text-ink">{t('setUpcoming')}</h2>
-        <p className="mb-4 text-sm text-slate">{t('setUpcomingHelp')}</p>
+        <h2 className="ct-h2">{t('setUpcoming')}</h2>
+        <p className="mb-5 mt-1 max-w-[60ch] text-[15px] text-slate">{t('setUpcomingHelp')}</p>
         <div className="space-y-4">
           {upcoming.map((b) => {
             const service = services.find((s) => s.id === b.serviceTypeId);
@@ -174,9 +164,25 @@ export default async function AccountSettings() {
               />
             );
           })}
-          {upcoming.length === 0 && <p className="text-sm text-muted">{t('setNothingScheduled')}</p>}
+          {upcoming.length === 0 && <p className="text-[15px] text-muted">{t('setNothingScheduled')}</p>}
         </div>
       </section>
+    </div>
+  );
+}
+
+/**
+ * One setting: what it is (and a line on why) beside the control on wide
+ * screens, above it on a phone.
+ */
+function Row({ title, help, children }: { title: string; help?: string; children: React.ReactNode }) {
+  return (
+    <div className="grid gap-3 px-5 py-5 sm:px-6 md:grid-cols-[minmax(0,14rem)_1fr] md:gap-8">
+      <div>
+        <h3 className="text-base font-semibold text-ink">{title}</h3>
+        {help && <p className="ct-meta mt-1">{help}</p>}
+      </div>
+      <div className="min-w-0">{children}</div>
     </div>
   );
 }

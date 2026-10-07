@@ -702,3 +702,97 @@ body:has(.portal-company) .brand-watermark {
   outline-offset: 4px;
   border-radius: 8px;
 }
+
+/* =========================================================================
+   Client type — what a household client reads: the portal (AppShell's
+   client branch, .portal-client), booking, and the sign-in screens
+   (AuthLocaleFrame). Same faces as the brand book — Plus Jakarta Sans for
+   headings, Inter for everything else — set for reading on a phone rather
+   than for a marketing headline:
+
+   - Jakarta at 700, never 800, and almost no negative tracking. Its own
+     spacing is already snug; the site-wide -0.02em (and the old
+     extrabold + tracking-tight) closed its counters up ("Hi Dana" read as
+     one word). Big sizes take a hair of tightening, small ones none.
+   - One scale, used the same on every page:
+       28/32  page title (.ct-title)          Jakarta 700, 1.2
+       22     hero line, e.g. a cleaning date (.ct-hero)
+       19     section heading (.ct-h2)        Jakarta 700, 1.3
+       17     card / row title (.ct-h3)       Jakarta 700, 1.35
+       16     body                            Inter 400, 1.55
+       14     labels (.ct-label) and meta (.ct-meta) — sentence case
+       12     the smallest anything gets (tab labels, rail details)
+   - No all-caps tracked labels: a label is a short sentence-case line.
+   - Money and times line up: tabular, lining figures (.money).
+   Only brand tokens, so every company's portal follows its colours.
+   ========================================================================= */
+@layer components {
+  .portal-client,
+  .client-type {
+    font-size: 16px;
+    line-height: 1.55;
+  }
+  /* :where() keeps these at element specificity, so a heading's own
+     utility classes (text size, weight) still win. */
+  :where(.portal-client, .client-type) :where(h1, h2, h3, h4) {
+    letter-spacing: 0;
+    line-height: 1.25;
+  }
+  :where(.portal-client, .client-type) .eyebrow {
+    @apply text-sm font-semibold normal-case tracking-normal text-bronze;
+  }
+  :where(.portal-client, .client-type) .label {
+    @apply text-[15px];
+  }
+  :where(.portal-client, .client-type) .pill {
+    @apply px-2.5 py-0.5 text-[13px];
+  }
+
+  .ct-title {
+    @apply font-display text-[28px] font-bold leading-[1.2] tracking-[-0.01em] text-ink md:text-[32px];
+  }
+  .ct-hero {
+    @apply font-display text-[22px] font-bold leading-[1.25] tracking-[-0.005em] text-ink sm:text-2xl;
+  }
+  .ct-h2 {
+    @apply font-display text-[19px] font-bold leading-[1.3] tracking-normal text-ink;
+  }
+  .ct-h3 {
+    @apply font-display text-[17px] font-bold leading-[1.35] tracking-normal text-ink;
+  }
+  .ct-lead {
+    @apply text-base leading-[1.55] text-slate;
+  }
+  .ct-label {
+    @apply text-sm font-semibold leading-snug text-slate;
+  }
+  .ct-meta {
+    @apply text-sm leading-snug text-muted;
+  }
+  .money {
+    font-variant-numeric: tabular-nums lining-nums;
+    font-feature-settings: 'tnum' 1, 'lnum' 1;
+  }
+  /* A text action with a finger-sized target, for lists of links in cards. */
+  .ct-action {
+    @apply -mx-2 inline-flex min-h-[40px] items-center gap-1.5 rounded-lg px-2 text-[15px] font-semibold text-bronze
+      transition-colors hover:bg-surface hover:text-ink
+      focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-bronze;
+  }
+  /* The status line above a cleaning: a coloured dot and a plain phrase. */
+  .ct-status {
+    @apply inline-flex items-center gap-2 text-sm font-semibold text-bronze;
+  }
+  .ct-status::before {
+    content: '';
+    @apply h-2 w-2 shrink-0 rounded-full bg-current;
+  }
+  /* Green is a fill, not a text colour: the house aqua is under 3:1 on
+     white. Done reads as ink words beside a green dot. */
+  .ct-status-done {
+    @apply text-ink;
+  }
+  .ct-status-done::before {
+    @apply bg-green;
+  }
+}

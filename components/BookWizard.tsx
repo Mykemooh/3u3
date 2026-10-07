@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import LogoBadge from '@/components/LogoBadge';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 import { formatMoney, serviceName } from '@/lib/format';
 import BookingCalendar from '@/components/BookingCalendar';
@@ -185,67 +184,66 @@ export default function BookWizard({
 
   if (services.length === 0) {
     return (
-      <main className="min-h-screen bg-white flex flex-col items-center justify-center px-6 py-12 text-center">
-        <LogoBadge size="sm" />
-        <p className="mt-8 max-w-sm text-slate">
+      <div className="card mx-auto max-w-xl px-6 py-8 text-center">
+        <p className="ct-lead mx-auto max-w-[36ch]">
           {customerName ? t('noRateNamed', { name: customerName }) : t('noRate')}
         </p>
         <Link href="/account" className="btn-secondary mt-6">
           {t('backToAccount')}
         </Link>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-white flex flex-col items-center px-6 py-10 text-ink">
-      <Link href="/account" className="mb-8" aria-label={t('backToAccountAria')}>
-        <LogoBadge size="sm" />
-      </Link>
+    // Sits in the client portal's frame (app/book/page.tsx → AppShell), so
+    // the header, tabs and company mark are already there.
+    <div className="w-full max-w-xl text-ink">
 
       {step === 'service' && (
-        <div className="card w-full max-w-md">
-          <h1 className="text-xl font-bold mb-1">{firstName ? t('welcomeNamed', { name: firstName }) : t('welcome')}</h1>
-          <p className="text-sm text-slate mb-6">{t('pickService')}</p>
+        <section className="w-full">
+          <h1 className="ct-title">{firstName ? t('welcomeNamed', { name: firstName }) : t('welcome')}</h1>
+          <p className="ct-lead mb-6 mt-1">{t('pickService')}</p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {services.map((s) => (
               <button
                 key={s.id}
                 onClick={() => pickService(s)}
-                className="card-interactive flex flex-col items-start gap-2 text-left"
+                className="card-interactive flex min-h-[112px] flex-col items-start justify-between gap-3 p-5 text-left"
               >
-                <span className="font-semibold">{nameOf(s)}</span>
-                <span className="pill bg-gold/15 text-bronze">{s.rateLabel}</span>
+                <span className="ct-h3">{nameOf(s)}</span>
+                <span className="money text-[17px] font-semibold text-bronze">{s.rateLabel}</span>
               </button>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
       {step === 'schedule' && service && (
-        <div className="card w-full max-w-lg">
-          <button onClick={() => setStep('service')} className="text-sm text-muted mb-4 hover:text-ink">
+        <section className="w-full">
+          <button onClick={() => setStep('service')} className="ct-action mb-2 text-slate">
             {t('back')}
           </button>
-          <h1 className="text-xl font-bold mb-1">{nameOf(service)}</h1>
-          <p className="text-sm text-slate mb-6">
-            {rich(t('yourRate'), { rate: <span className="font-semibold text-bronze">{service.rateLabel}</span> })}
+          <h1 className="ct-title">{nameOf(service)}</h1>
+          <p className="ct-lead mb-6 mt-1">
+            {rich(t('yourRate'), { rate: <span className="money font-semibold text-ink">{service.rateLabel}</span> })}
           </p>
+          <div className="card p-4 sm:p-6">
           {loadingSlots ? (
-            <p className="text-sm text-muted">{t('loadingAvailability')}</p>
+            <p className="ct-meta py-10 text-center">{t('loadingAvailability')}</p>
           ) : (
             <>
               <BookingCalendar availability={availability} selectedDate={selectedDate} onSelectDate={pickDate} />
 
               {selectedDate && directSlots.length > 0 && (
                 <div className="mt-5">
-                  <p className="text-sm font-semibold text-bronze mb-2">{dateLabel(selectedDate)}</p>
-                  <div className="grid grid-cols-2 gap-2">
+                  <p className="ct-h3 mb-3">{dateLabel(selectedDate)}</p>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {directSlots.map((slot) => (
                       <button
                         key={slot.start}
                         onClick={() => setSelected(slot)}
-                        className={`rounded-lg border-2 px-3 py-2 text-sm font-medium transition ${
+                        className={`money min-h-[48px] whitespace-nowrap rounded-xl border-2 px-3 text-[15px] font-medium transition ${
                           selected?.start === slot.start ? 'border-gold bg-gold/10 text-ink' : 'border-line hover:border-gold'
                         }`}
                       >
@@ -258,23 +256,23 @@ export default function BookWizard({
 
               {selectedDate && directSlots.length === 0 && (
                 <div className="mt-5">
-                  <p className="text-sm font-semibold text-ink mb-1">{t('nothingOpenOn', { date: dateLabel(selectedDate) })}</p>
-                  <p className="text-sm text-slate mb-3">{t('nearbyIntro', { before: NEARBY_BEFORE_DAYS, after: NEARBY_AFTER_DAYS / 7 })}</p>
+                  <p className="ct-h3 mb-1">{t('nothingOpenOn', { date: dateLabel(selectedDate) })}</p>
+                  <p className="mb-3 text-[15px] text-slate">{t('nearbyIntro', { before: NEARBY_BEFORE_DAYS, after: NEARBY_AFTER_DAYS / 7 })}</p>
                   {nearbyDays.length === 0 ? (
-                    <p className="text-sm text-muted">{t('nothingNearby')}</p>
+                    <p className="text-[15px] text-muted">{t('nothingNearby')}</p>
                   ) : (
-                    <div className="max-h-[220px] space-y-4 overflow-y-auto pr-1">
+                    <div className="max-h-[260px] space-y-4 overflow-y-auto pr-1">
                       {nearbyDays.map((day) => (
                         <div key={day.date}>
-                          <p className="text-xs font-semibold text-bronze mb-1.5">{dateLabel(day.date)}</p>
-                          <div className="grid grid-cols-2 gap-2">
+                          <p className="mb-2 text-sm font-semibold text-ink">{dateLabel(day.date)}</p>
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                             {day.slots
                               .filter((s) => s.available)
                               .map((slot) => (
                                 <button
                                   key={slot.start}
                                   onClick={() => setSelected(slot)}
-                                  className={`rounded-lg border-2 px-3 py-2 text-sm font-medium transition ${
+                                  className={`money min-h-[48px] whitespace-nowrap rounded-xl border-2 px-3 text-[15px] font-medium transition ${
                                     selected?.start === slot.start ? 'border-gold bg-gold/10 text-ink' : 'border-line hover:border-gold'
                                   }`}
                                 >
@@ -289,18 +287,18 @@ export default function BookWizard({
 
                   <div className="mt-4 rounded-xl bg-cream px-4 py-3">
                     {standbyStatus === 'saved' ? (
-                      <p className="text-sm font-semibold text-bronze">
+                      <p className="text-[15px] font-semibold text-ink">
                         {t('standbySaved', { date: dateLabel(selectedDate) })}
                       </p>
                     ) : (
                       <>
-                        <p className="text-sm text-ink">
+                        <p className="text-[15px] text-ink">
                           {rich(t('standbyOffer'), { date: <strong>{dateLabel(selectedDate)}</strong> })}
                         </p>
                         <button
                           onClick={requestStandby}
                           disabled={standbyStatus === 'saving'}
-                          className="btn-secondary !px-4 !py-2 mt-2 text-sm"
+                          className="btn-secondary btn-sm mt-3 min-h-[44px]"
                         >
                           {standbyStatus === 'saving' ? t('standbySaving') : t('standbyButton', { date: dateLabel(selectedDate) })}
                         </button>
@@ -311,25 +309,26 @@ export default function BookWizard({
               )}
 
               {choseAlternateDay && standbyStatus !== 'saved' && (
-                <p className="mt-3 text-xs text-muted">
+                <p className="mt-3 text-sm text-muted">
                   {t('alternateDay', { booked: dateLabel(selected!.start.slice(0, 10)), wanted: dateLabel(selectedDate!) })}
                 </p>
               )}
             </>
           )}
+          </div>
           <button disabled={!selected} onClick={proceedFromSchedule} className="btn-primary w-full mt-6">
             {t('continue')}
           </button>
-        </div>
+        </section>
       )}
 
       {step === 'addons' && service && selected && (
-        <div className="card w-full max-w-md">
-          <button onClick={() => setStep('schedule')} className="text-sm text-muted mb-4 hover:text-ink">
+        <section className="w-full">
+          <button onClick={() => setStep('schedule')} className="ct-action mb-2 text-slate">
             {t('back')}
           </button>
-          <h1 className="text-xl font-bold mb-1">{t('addOnsTitle')}</h1>
-          <p className="text-sm text-slate mb-6">{t('addOnsIntro')}</p>
+          <h1 className="ct-title">{t('addOnsTitle')}</h1>
+          <p className="ct-lead mb-6 mt-1">{t('addOnsIntro')}</p>
           <div className="space-y-2 mb-6">
             {addOns.map((a) => {
               const checked = selectedAddOnIds.has(a.id);
@@ -338,7 +337,7 @@ export default function BookWizard({
                   key={a.id}
                   type="button"
                   onClick={() => toggleAddOn(a.id)}
-                  className={`flex w-full items-start justify-between gap-3 rounded-xl border-2 px-4 py-3 text-left transition ${
+                  className={`flex min-h-[56px] w-full items-start justify-between gap-3 rounded-xl border-2 bg-white px-4 py-3.5 text-left transition ${
                     checked ? 'border-gold bg-gold/10' : 'border-line hover:border-gold'
                   }`}
                 >
@@ -353,38 +352,38 @@ export default function BookWizard({
                     </span>
                     <span>
                       <span className="block font-semibold text-ink">{a.name}</span>
-                      {a.description && <span className="block text-sm text-slate">{a.description}</span>}
+                      {a.description && <span className="mt-0.5 block text-[15px] text-slate">{a.description}</span>}
                     </span>
                   </span>
-                  <span className="shrink-0 font-semibold text-bronze">{formatMoney(a.priceCents)}</span>
+                  <span className="money shrink-0 font-semibold text-ink">{formatMoney(a.priceCents)}</span>
                 </button>
               );
             })}
           </div>
           {selectedAddOns.length > 0 && (
-            <p className="mb-4 text-sm text-slate">
-              {rich(t('addOnsTotal'), { total: <span className="font-semibold text-ink">{formatMoney(addOnsTotalCents)}</span> })}
+            <p className="mb-4 text-[15px] text-slate">
+              {rich(t('addOnsTotal'), { total: <span className="money font-semibold text-ink">{formatMoney(addOnsTotalCents)}</span> })}
             </p>
           )}
           <button onClick={proceedFromAddOns} className="btn-primary w-full">
             {t('continue')}
           </button>
-        </div>
+        </section>
       )}
 
       {step === 'cadence' && service && selected && (
-        <div className="card w-full max-w-md">
-          <button onClick={() => setStep(addOns.length > 0 ? 'addons' : 'schedule')} className="text-sm text-muted mb-4 hover:text-ink">
+        <section className="w-full">
+          <button onClick={() => setStep(addOns.length > 0 ? 'addons' : 'schedule')} className="ct-action mb-2 text-slate">
             {t('back')}
           </button>
-          <h1 className="text-xl font-bold mb-1">{t('cadenceTitle')}</h1>
-          <p className="text-sm text-slate mb-6">{t('cadenceIntro', { service: nameOf(service).toLowerCase() })}</p>
+          <h1 className="ct-title">{t('cadenceTitle')}</h1>
+          <p className="ct-lead mb-6 mt-1">{t('cadenceIntro', { service: nameOf(service).toLowerCase() })}</p>
           <div className="grid grid-cols-1 gap-3 mb-6 sm:grid-cols-3">
             {(['ONE_TIME', 'BIWEEKLY', 'MONTHLY'] as Cadence[]).map((c) => (
               <button
                 key={c}
                 onClick={() => setCadence(c)}
-                className={`rounded-xl border-2 px-4 py-3 text-center font-medium transition ${
+                className={`min-h-[56px] rounded-xl border-2 bg-white px-4 py-3 text-center font-semibold transition ${
                   cadence === c ? 'border-gold bg-gold/10' : 'border-line hover:border-gold'
                 }`}
               >
@@ -393,7 +392,7 @@ export default function BookWizard({
             ))}
           </div>
           {cadence !== 'ONE_TIME' && (
-            <p className="mb-4 rounded-lg bg-surface px-4 py-3 text-sm text-slate">
+            <p className="mb-4 rounded-xl border border-line bg-white px-4 py-3 text-[15px] text-slate">
               {t(cadence === 'BIWEEKLY' ? 'cadenceBiweeklySummary' : 'cadenceMonthlySummary', {
                 weekday: new Date(selected.start).toLocaleDateString(intlLocale(locale), { weekday: 'long' }),
                 time: formatSlotLabel(selected.start, selected.end, locale),
@@ -404,17 +403,17 @@ export default function BookWizard({
           <button disabled={submitting} onClick={() => submit(cadence)} className="btn-primary w-full">
             {submitting ? t('booking') : t('confirmBooking')}
           </button>
-        </div>
+        </section>
       )}
 
       {step === 'confirmed' && service && selected && (
-        <div className="card w-full max-w-md text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gold/15 text-2xl">
-            ✓
+        <section className="card w-full px-6 py-8 text-center shadow-card">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-light text-green">
+            <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>
           </div>
-          <h1 className="text-xl font-bold mb-2">{t('confirmedTitle')}</h1>
-          <div className="mb-6 space-y-1 text-sm text-slate">
-            <p className="font-semibold text-ink">{nameOf(service)}</p>
+          <h1 className="ct-title">{t('confirmedTitle')}</h1>
+          <div className="money mb-6 mt-3 space-y-1 text-[15px] text-slate">
+            <p className="ct-h3">{nameOf(service)}</p>
             <p>{dateLabel(selected.start.split('T')[0])}</p>
             <p>{formatSlotLabel(selected.start, selected.end, locale)}</p>
             <p>{t(CADENCE_LABEL[cadence])} · {service.rateLabel}</p>
@@ -422,14 +421,14 @@ export default function BookWizard({
               <p>+ {selectedAddOns.map((a) => a.name).join(', ')} ({formatMoney(addOnsTotalCents)})</p>
             )}
           </div>
-          <p className="mb-6 text-xs text-muted">
+          <p className="mx-auto mb-6 max-w-[40ch] text-sm text-muted">
             {t('confirmedNote')}
           </p>
           <Link href="/account" className="btn-primary w-full">
             {t('seeInAccount')}
           </Link>
-        </div>
+        </section>
       )}
-    </main>
+    </div>
   );
 }

@@ -15,7 +15,7 @@ export default async function AuthLocaleFrame({ children }: { children: React.Re
   return (
     <LocaleProvider locale={locale}>
       <CompanyBrandFrame>
-      <div className="relative" lang={locale}>
+      <div className="client-type relative" lang={locale}>
         <div className="absolute right-4 top-4 z-10">
           <LanguageToggle tone="light" />
         </div>

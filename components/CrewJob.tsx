@@ -429,13 +429,6 @@ export default function CrewJob(props: Props) {
   }
 
   const address = props.addressLabel;
-  const directionLinks = address
-    ? [
-        { label: 'Google Maps', href: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}` },
-        { label: 'Apple Maps', href: `https://maps.apple.com/?q=${encodeURIComponent(address)}` },
-        { label: 'Waze', href: `https://waze.com/ul?q=${encodeURIComponent(address)}&navigate=yes` },
-      ]
-    : [];
 
   async function copyAddress() {
     if (!address) return;
@@ -746,21 +739,8 @@ export default function CrewJob(props: Props) {
             <div className="mt-3">
               <CrewDirectionsMap jobId={props.job.id} addressLabel={address} />
             </div>
-            <p className="mb-2 mt-4 text-xs font-bold uppercase tracking-wide text-muted">{t('jobOpenInMaps')}</p>
-            <div className="space-y-2">
-              {directionLinks.map((link) => (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  onClick={() => setShowDirections(false)}
-                  className="flex items-center justify-between rounded-xl border border-line bg-white px-4 py-3 text-sm font-semibold text-ink transition hover:border-gold hover:bg-cream/60"
-                >
-                  {link.label}
-                  <span aria-hidden="true" className="text-muted">↗</span>
-                </a>
-              ))}
+            {/* In-app directions only (owner, Oct 2026): no hand-off to Google/Apple Maps or Waze. */}
+            <div className="mt-4">
               <button
                 type="button"
                 onClick={copyAddress}

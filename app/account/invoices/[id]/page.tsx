@@ -11,6 +11,7 @@ import { jobs } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import PrintButton from '@/components/account/PrintButton';
 import TipButton from '@/components/account/TipButton';
+import Logo from '@/components/Logo';
 import { getLocale } from '@/lib/i18n/server';
 import { translator, intlLocale } from '@/lib/i18n';
 import { accountMessages } from '@/lib/i18n/messages/account';
@@ -55,7 +56,7 @@ export default async function InvoiceView({ params, searchParams }: { params: { 
       <div className="no-print flex flex-wrap items-center justify-between gap-3">
         <Link
           href={user.role === 'ADMIN' ? `/admin/invoices/${invoice.id}` : '/account/invoices'}
-          className="inline-flex items-center gap-1 text-sm font-semibold text-muted hover:text-ink"
+          className="ct-action text-slate"
         >
           <span aria-hidden="true">←</span> {user.role === 'ADMIN' ? t('invBackAdmin') : t('allInvoices')}
         </Link>
@@ -75,36 +76,34 @@ export default async function InvoiceView({ params, searchParams }: { params: { 
       </div>
 
       {user.role === 'ADMIN' && invoice.status === 'DRAFT' && (
-        <p className="no-print rounded-xl bg-cream px-4 py-3 text-sm text-bronze">
+        <p className="no-print rounded-xl bg-cream px-4 py-3 text-[15px] text-slate">
           {t('invDraftPreview')}
         </p>
       )}
 
       {searchParams.tip === 'thanks' && (
-        <p className="no-print rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
+        <p className="no-print rounded-xl bg-green-light px-4 py-3 text-[15px] font-semibold text-ink">
           {t('invTipThanks')}
         </p>
       )}
 
       <article className="print-sheet overflow-hidden rounded-2xl border border-line bg-white shadow-card">
         <header className="flex items-center justify-between gap-4 bg-ink px-6 py-5 text-white sm:px-8">
-          {brand.logoUrl ? (
-            <img src={brand.logoUrl} alt={brand.name} className="h-auto max-h-12 w-auto" />
-          ) : (
-            <img src="/brand/logo-640.png" alt={brand.name} className="h-auto w-36 sm:w-44" />
-          )}
-          <div className="text-right">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-gold">{t('invHeader')}</p>
-            <p className="mt-1 text-xl font-bold text-white">{invoiceLabel(invoice)}</p>
+          {/* The company's own mark in its light version — the navy 3U3 file
+              disappeared into this band, and other companies got 3U3's. */}
+          <Logo variant="light" size="sm" />
+          <div className="shrink-0 text-right">
+            <p className="text-sm font-medium text-white/75">{t('invHeader')}</p>
+            <p className="font-display text-xl font-bold text-white">{invoiceLabel(invoice)}</p>
           </div>
         </header>
         <div className="flow-line" aria-hidden="true" />
 
         <div className="space-y-8 px-6 py-7 sm:px-8">
-          <div className="grid gap-6 sm:grid-cols-2">
+          <div className="grid gap-6 sm:grid-cols-[1fr_auto]">
             <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-muted">{t('invBilledTo')}</p>
-              <p className="mt-1 font-semibold">{client?.name}</p>
+              <p className="ct-label text-muted">{t('invBilledTo')}</p>
+              <p className="mt-1 font-semibold text-ink">{client?.name}</p>
               {address && (
                 <p className="text-slate">
                   {address.line1}
@@ -115,7 +114,7 @@ export default async function InvoiceView({ params, searchParams }: { params: { 
               {client?.email && <p className="text-slate">{client.email}</p>}
               {client?.phone && <p className="text-slate">{formatPhone(client.phone)}</p>}
             </div>
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:text-right">
+            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-[15px] sm:text-right [&_dd]:sm:whitespace-nowrap">
               <dt className="text-muted">{t('invServiceDate')}</dt>
               <dd className="font-semibold">{booking ? formatSlotDateLong(booking.slotStart, locale) : '—'}</dd>
               <dt className="text-muted">{t('invIssued')}</dt>
@@ -129,41 +128,41 @@ export default async function InvoiceView({ params, searchParams }: { params: { 
 
           <table className="w-full text-left">
             <thead>
-              <tr className="border-b-2 border-ink text-xs uppercase tracking-wide text-muted">
-                <th className="pb-2 font-bold">{t('invDescription')}</th>
-                <th className="pb-2 text-right font-bold">{t('amount')}</th>
+              <tr className="border-b-2 border-ink text-sm text-muted">
+                <th className="pb-2 font-semibold">{t('invDescription')}</th>
+                <th className="pb-2 text-right font-semibold">{t('amount')}</th>
               </tr>
             </thead>
             <tbody>
               {billableItems.map((item) => (
                 <tr key={item.id} className="border-b border-line">
                   <td className="py-3 pr-4">{item.description}</td>
-                  <td className="py-3 text-right tabular-nums">{formatMoney(item.amountCents)}</td>
+                  <td className="money py-3 text-right">{formatMoney(item.amountCents)}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
               <tr>
                 <td className="pt-4 text-right text-slate">{t('invSubtotal')}</td>
-                <td className="pt-4 text-right tabular-nums">{formatMoney(subtotal)}</td>
+                <td className="money pt-4 text-right">{formatMoney(subtotal)}</td>
               </tr>
               <tr>
-                <td className="pt-2 text-right text-lg font-bold">{t('total')}</td>
-                <td className="pt-2 text-right text-lg font-bold tabular-nums">{formatMoney(invoice.totalCents)}</td>
+                <td className="pt-2 text-right font-display text-lg font-bold text-ink">{t('total')}</td>
+                <td className="money pt-2 text-right text-lg font-bold text-ink">{formatMoney(invoice.totalCents)}</td>
               </tr>
               {invoice.tipCents > 0 && (
                 <tr>
                   <td className="pt-1 text-right text-slate">{t('invTip')}</td>
-                  <td className="pt-1 text-right tabular-nums text-slate">{formatMoney(invoice.tipCents)}</td>
+                  <td className="money pt-1 text-right text-slate">{formatMoney(invoice.tipCents)}</td>
                 </tr>
               )}
             </tfoot>
           </table>
 
           {invoice.status === 'PAID' ? (
-            <p className="inline-flex rounded-full border-2 border-green px-4 py-1 text-sm font-bold uppercase tracking-wide text-green">{t('invPaidThanks')}</p>
+            <p className="ct-status ct-status-done rounded-full bg-green-light px-4 py-1.5 text-[15px]">{t('invPaidThanks')}</p>
           ) : (
-            <p className="text-sm text-slate">{t('invDueTerms')}</p>
+            <p className="max-w-[60ch] text-[15px] text-slate">{t('invDueTerms')}</p>
           )}
 
           <footer className="border-t border-line pt-5 text-sm text-muted">

@@ -24,15 +24,15 @@ export default function ShareProofButton({ jobId }: { jobId: string }) {
     }
   }
   return (
-    <div className="text-sm">
-      <button type="button" onClick={go} className="font-semibold text-bronze hover:underline">
+    <div className="text-[15px]">
+      <button type="button" onClick={go} className="ct-action">
         {copied ? t('proofCopied') : t('proofShare')}
       </button>
-      {url && !copied && <p className="mt-1 break-all text-xs text-muted">{url}</p>}
+      {url && !copied && <p className="mt-1 break-all text-sm text-muted">{url}</p>}
       {url && (
-        <a href={url} target="_blank" rel="noreferrer" className="ml-3 text-xs text-muted hover:text-ink">{t('proofOpen')}</a>
+        <a href={url} target="_blank" rel="noreferrer" className="ml-3 text-sm font-semibold text-slate underline underline-offset-2 hover:text-ink">{t('proofOpen')}</a>
       )}
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
     </div>
   );
 }

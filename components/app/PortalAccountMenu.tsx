@@ -55,8 +55,11 @@ export default function PortalAccountMenu({
     };
   }, [open]);
 
-  const avatar = tone === 'crew' ? 'bg-tc-black text-tc-lime font-tc-display' : 'bg-ink text-white font-display';
-  const item = 'flex items-center gap-2.5 rounded-lg px-3 py-2 text-[14px] text-ink hover:bg-surface';
+  const avatar = tone === 'crew' ? 'bg-tc-black text-tc-lime font-tc-display font-extrabold' : 'bg-ink text-white font-display font-bold';
+  const item =
+    tone === 'crew'
+      ? 'flex items-center gap-2.5 rounded-lg px-3 py-2 text-[14px] text-ink hover:bg-surface'
+      : 'flex min-h-[44px] items-center gap-2.5 rounded-lg px-3 text-[15px] text-ink hover:bg-surface';
 
   return (
     <div ref={ref} className="relative">
@@ -66,9 +69,9 @@ export default function PortalAccountMenu({
         aria-expanded={open}
         aria-label={t('accountMenu')}
         onClick={() => setOpen((o) => !o)}
-        className="flex h-10 items-center gap-2 rounded-[10px] pl-1 pr-1 hover:bg-surface sm:pr-2"
+        className="flex h-11 items-center gap-2 rounded-[10px] pl-1.5 pr-1.5 hover:bg-surface sm:pr-2"
       >
-        <span className={`flex h-8 w-8 items-center justify-center rounded-full text-[12px] font-extrabold ${avatar}`}>{initialsOf(name) || '·'}</span>
+        <span className={`flex h-8 w-8 items-center justify-center rounded-full text-[12px] ${avatar}`}>{initialsOf(name) || '·'}</span>
         <span className="hidden max-w-[140px] truncate text-[14px] font-semibold text-ink sm:inline">{name.split(' ')[0]}</span>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="hidden text-muted sm:block" aria-hidden="true">
           <path d="m6 9 6 6 6-6" />
@@ -77,8 +80,8 @@ export default function PortalAccountMenu({
       {open && (
         <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-64 rounded-2xl border border-line bg-white p-1.5 shadow-card-lg">
           <div className="px-3 pb-2 pt-2">
-            <p className="truncate text-[14px] font-semibold text-ink">{name}</p>
-            <p className="truncate text-[12px] text-muted">{company}</p>
+            <p className="truncate text-[15px] font-semibold text-ink">{name}</p>
+            <p className="truncate text-[13px] text-muted">{company}</p>
           </div>
           <div className="my-1 h-px bg-line" />
           {settingsHref && (

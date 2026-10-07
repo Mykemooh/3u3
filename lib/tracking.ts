@@ -7,6 +7,7 @@ import { notifyClient } from '@/lib/notify';
 import { automationState, automationT, clientLocale, sendAutomationMessage } from '@/lib/automations';
 import { appUrl } from '@/lib/url';
 import { formatClock } from '@/lib/time';
+import { ensureTripStarted } from '@/lib/trips';
 
 /**
  * "Cleaner en route" + the client's live map. The crew taps Start driving
@@ -108,7 +109,7 @@ async function fetchRoute(from: LngLat, to: LngLat) {
     }
     const route = (await res.json())?.routes?.[0];
     if (!route?.geometry) return null;
-    return { geojson: JSON.stringify(route.geometry), durationSeconds: Math.round(route.duration) };
+    return { geojson: JSON.stringify(route.geometry), durationSeconds: Math.round(route.duration), distanceMeters: typeof route.distance === 'number' ? Math.round(route.distance) : null };
   } catch (err) {
     console.error('[tracking] directions failed:', err);
     return null;
@@ -122,6 +123,7 @@ async function fetchRoute(from: LngLat, to: LngLat) {
 async function saveLocation(job: TripJob, bookingAddressId: string | null, at: LngLat, force = false) {
   const now = new Date();
   const patch: Partial<typeof jobs.$inferInsert> = { crewLat: at.lat, crewLng: at.lng, crewLocationAt: now };
+  let distanceMeters: number | null = null;
   const stale = !job.routeUpdatedAt || now.getTime() - job.routeUpdatedAt.getTime() >= ROUTE_REFRESH_SECONDS * 1000;
   if (force || stale) {
     const destination = await destinationFor(job, bookingAddressId);
@@ -130,10 +132,11 @@ async function saveLocation(job: TripJob, bookingAddressId: string | null, at: L
       patch.routeGeojson = route.geojson;
       patch.routeDurationSeconds = route.durationSeconds;
       patch.routeUpdatedAt = now;
+      distanceMeters = route.distanceMeters;
     }
   }
   await db.update(jobs).set(patch).where(eq(jobs.id, job.id));
-  return patch;
+  return { ...patch, distanceMeters };
 }
 
 /**
@@ -152,10 +155,20 @@ export async function startDriving(jobId: string, viewer: Viewer | null, at: Lng
   await db.update(jobs).set({ status: 'EN_ROUTE', enRouteAt }).where(eq(jobs.id, jobId));
 
   let etaSeconds: number | null = null;
+  let distanceMeters: number | null = null;
   if (at) {
     const data = await loadJob(jobId);
     const saved = await saveLocation(job, data?.booking.addressId ?? null, at, true);
     etaSeconds = saved.routeDurationSeconds ?? null;
+    distanceMeters = saved.distanceMeters;
+  }
+
+  // The trip record for Reports → Travel (lib/trips.ts). A route picked in
+  // the crew app's directions replaces this estimate. Never blocks the trip.
+  try {
+    await ensureTripStarted(job, viewer?.id ?? null, enRouteAt, at ? { distanceMeters, durationSeconds: etaSeconds } : null);
+  } catch (err) {
+    console.error('[tracking] could not open the trip record for job', jobId, err);
   }
 
   try {

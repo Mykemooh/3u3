@@ -15,7 +15,7 @@ export default function TeamNoteButton({ bookingId, initial }: { bookingId: stri
 
   if (!open) {
     return (
-      <button type="button" onClick={() => setOpen(true)} className="block text-left font-semibold text-bronze hover:underline">
+      <button type="button" onClick={() => setOpen(true)} className="ct-action text-left">
         {initial ? t('noteEdit') : t('noteAdd')}
       </button>
     );
@@ -38,12 +38,12 @@ export default function TeamNoteButton({ bookingId, initial }: { bookingId: stri
         }
       }}
     >
-      <textarea className="input min-h-[70px] !py-2 text-sm" maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('notePlaceholder')} />
-      <div className="flex gap-3">
+      <textarea className="input min-h-[88px] !py-2.5 text-[15px]" maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('notePlaceholder')} />
+      <div className="flex items-center gap-2">
         <button className="btn-primary btn-sm" disabled={state === 'saving'}>{t('noteSave')}</button>
-        <button type="button" className="text-sm text-muted" onClick={() => setOpen(false)}>{t('cancel')}</button>
+        <button type="button" className="ct-action mx-0 text-slate" onClick={() => setOpen(false)}>{t('cancel')}</button>
       </div>
-      {state === 'error' && <p className="text-xs text-red-600">{t('noteError')}</p>}
+      {state === 'error' && <p className="text-sm text-red-600">{t('noteError')}</p>}
     </form>
   );
 }

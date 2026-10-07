@@ -40,7 +40,7 @@ export default function PaymentMethodCard({
     return (
       <div className={wrapClass}>
         {!bare && <h2 className="mb-1 font-semibold text-ink">{t('payMethodTitle')}</h2>}
-        <p className="text-sm text-muted">{t('payMethodNotEnabled')}</p>
+        <p className="text-[15px] text-muted">{t('payMethodNotEnabled')}</p>
       </div>
     );
   }
@@ -58,7 +58,7 @@ export default function PaymentMethodCard({
       {card ? (
         <SavedCardView card={card} onChanged={setCard} onReplace={() => setAdding(true)} />
       ) : adding ? null : (
-        <button onClick={() => setAdding(true)} className="btn-secondary !px-4 !py-2 text-sm">
+        <button onClick={() => setAdding(true)} className="btn-secondary btn-sm min-h-[44px]">
           {t('payMethodAdd')}
         </button>
       )}
@@ -110,28 +110,28 @@ function SavedCardView({ card, onChanged, onReplace }: { card: SavedCard; onChan
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between rounded-xl border border-line px-4 py-3">
-        <div className="text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line px-4 py-3">
+        <div className="text-[15px]">
           <p className="font-semibold capitalize text-ink">
             {card.brand ?? t('payMethodCard')} •••• {card.last4}
           </p>
           {card.expMonth && card.expYear && (
-            <p className="text-muted">
+            <p className="money text-sm text-muted">
               {t('payMethodExpires', { date: `${String(card.expMonth).padStart(2, '0')}/${card.expYear}` })}
             </p>
           )}
         </div>
-        <div className="flex gap-3">
-          <button onClick={onReplace} className="text-sm font-semibold text-bronze hover:underline">
+        <div className="flex gap-2">
+          <button onClick={onReplace} className="ct-action mx-0">
             {t('payMethodReplace')}
           </button>
-          <button onClick={remove} disabled={busy} className="text-sm text-muted hover:text-ink">
+          <button onClick={remove} disabled={busy} className="ct-action mx-0 text-slate">
             {t('payMethodRemove')}
           </button>
         </div>
       </div>
-      <label className="flex items-start gap-2 text-sm text-ink">
-        <input type="checkbox" className="mt-0.5" checked={card.autopayEnabled} disabled={busy} onChange={(e) => toggleAutopay(e.target.checked)} />
+      <label className="flex cursor-pointer items-start gap-3 text-[15px] text-ink">
+        <input type="checkbox" className="mt-0.5 h-5 w-5 shrink-0 accent-[rgb(var(--c-gold))]" checked={card.autopayEnabled} disabled={busy} onChange={(e) => toggleAutopay(e.target.checked)} />
         <span>
           <span className="font-semibold">{t('payMethodAutopay')}</span> {t('payMethodAutopayHelp')}
         </span>
@@ -222,11 +222,11 @@ function CardFormInner({ onSaved, onCancel, showCancel }: { onSaved: (c: SavedCa
       <PaymentElement />
       {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex gap-2">
-        <button type="submit" disabled={busy || !stripe} className="btn-primary !px-4 !py-2 text-sm">
+        <button type="submit" disabled={busy || !stripe} className="btn-primary btn-sm min-h-[44px]">
           {busy ? t('saving') : t('payMethodSave')}
         </button>
         {showCancel && (
-          <button type="button" onClick={onCancel} className="btn-secondary !px-4 !py-2 text-sm" disabled={busy}>
+          <button type="button" onClick={onCancel} className="btn-secondary btn-sm min-h-[44px]" disabled={busy}>
             {t('cancel')}
           </button>
         )}

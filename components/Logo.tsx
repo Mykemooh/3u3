@@ -19,10 +19,13 @@ export default function Logo({
   variant = 'dark',
   size = 'md',
   className = '',
+  wrap = false,
 }: {
   variant?: 'dark' | 'light';
   size?: 'sm' | 'md' | 'lg';
   className?: string;
+  /** A company name set as text may take two lines on a phone instead of being cut off (portal header). */
+  wrap?: boolean;
 }) {
   const brand = useCompanyBrand();
   const h = HEIGHTS[size];
@@ -35,8 +38,15 @@ export default function Logo({
         <img src={brand.logoUrl} alt={brand.name} style={{ height: h }} className={`w-auto max-w-[220px] select-none object-contain ${className}`} />
       );
     }
+    if (wrap) {
+      return (
+        <span className={`line-clamp-2 block max-w-[52vw] md:line-clamp-none md:whitespace-nowrap font-display text-[17px] font-extrabold leading-[1.15] tracking-[-0.01em] sm:max-w-[280px] sm:text-[20px] ${variant === 'light' ? 'text-white' : 'text-ink'} ${className}`}>
+          {brand.name}
+        </span>
+      );
+    }
     return (
-      <span className={`block max-w-[60vw] truncate whitespace-nowrap font-display font-extrabold leading-tight tracking-[-0.03em] sm:max-w-[280px] ${TEXT[size]} ${variant === 'light' ? 'text-white' : 'text-ink'} ${className}`}>
+      <span className={`block max-w-[60vw] truncate whitespace-nowrap font-display font-extrabold leading-tight tracking-[-0.015em] sm:max-w-[280px] ${TEXT[size]} ${variant === 'light' ? 'text-white' : 'text-ink'} ${className}`}>
         {brand.name}
       </span>
     );

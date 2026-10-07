@@ -4,14 +4,10 @@ import { redirect } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
 import { getTenant, getServiceTypes, getClientRatesFor, formatMoney } from '@/lib/data';
 import BookWizard from '@/components/BookWizard';
-import CompanyBrandFrame from '@/components/brand/CompanyBrandFrame';
-import AccessNotice from '@/components/AccessNotice';
+import AppShell, { CUSTOMER_TABS } from '@/components/app/AppShell';
 import { homeForRole } from '@/lib/nav';
 import { HIDDEN_SERVICE_KEYS } from '@/lib/services';
 import { getAddOnsForClient } from '@/lib/addons';
-import LocaleProvider from '@/components/i18n/LocaleProvider';
-import LanguageToggle from '@/components/i18n/LanguageToggle';
-import { getLocale } from '@/lib/i18n/server';
 
 // Reads the signed-in customer's session and live rate/service data —
 // never statically cacheable.
@@ -42,27 +38,12 @@ export default async function BookPage() {
     }))
     .filter((s) => s.rateCents != null);
 
-  const locale = await getLocale();
-
-  // /book sits outside AppShell, so it hands down its own language and
-  // carries its own EN | ES toggle (top-right, above the wizard's logo).
+  // Booking is one of the client's tabs, so it wears the same frame as the
+  // rest of the portal (AppShell: company colours and mark, EN | ES, the
+  // account menu and the tab bar) instead of dropping them on a bare page.
   return (
-    <LocaleProvider locale={locale}>
-      <CompanyBrandFrame>
-      <div className="relative" lang={locale}>
-        <div className="absolute right-4 top-4 z-10">
-          <LanguageToggle tone="light" />
-        </div>
-        <div className="mx-auto max-w-xl px-6 pt-6">
-          <AccessNotice />
-        </div>
-        <BookWizard
-          customerName={(session.user as any).name ?? ''}
-          services={eligibleServices}
-          addOns={addOns}
-        />
-      </div>
-      </CompanyBrandFrame>
-    </LocaleProvider>
+    <AppShell name={session.user.name} tabs={CUSTOMER_TABS} homeHref="/account">
+      <BookWizard customerName={(session.user as any).name ?? ''} services={eligibleServices} addOns={addOns} />
+    </AppShell>
   );
 }

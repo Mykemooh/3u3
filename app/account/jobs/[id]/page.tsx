@@ -44,18 +44,22 @@ export default async function JobGallery({ params }: { params: { id: string } })
   const showMedia = job.status === 'COMPLETE' || viewer.role !== 'CUSTOMER';
   const serviceName = service ? serviceLabel(service.key, service.name, locale) : t('serviceFallback');
   const tracking = job.status === 'EN_ROUTE' ? getTracking(job) : null;
+  // Rooms with nothing to show share one quiet list instead of a card each.
+  const hasMedia = (id: string) => media.some((m) => m.itemId === id);
+  const shownRooms = items.filter((i) => i.status === 'SKIPPED' || hasMedia(i.id));
+  const bareRooms = items.filter((i) => i.status !== 'SKIPPED' && !hasMedia(i.id));
 
   return (
     <div className="space-y-6">
-      <Link href={viewer.role === 'CUSTOMER' ? '/account' : `/crew/jobs/${job.id}`} className="inline-flex items-center gap-1 text-sm font-semibold text-muted hover:text-ink">
+      <Link href={viewer.role === 'CUSTOMER' ? '/account' : `/crew/jobs/${job.id}`} className="ct-action text-slate">
         <span aria-hidden="true">←</span> {viewer.role === 'CUSTOMER' ? t('jobBackAccount') : t('jobBackJob')}
       </Link>
 
-      <header className="card space-y-5">
+      <header className="card space-y-6 shadow-card">
         <div>
-          <p className="eyebrow">{serviceName}</p>
-          <h1 className="mt-1 text-2xl font-bold">{formatDateLabel(booking.slotStart.slice(0, 10), locale)}</h1>
-          <p className="mt-1 text-slate">
+          <p className="ct-label text-bronze">{serviceName}</p>
+          <h1 className="ct-hero mt-1">{formatDateLabel(booking.slotStart.slice(0, 10), locale)}</h1>
+          <p className="money mt-1 font-semibold text-ink">
             {job.startedAt && job.completedAt
               ? t('jobOnSite', { start: formatClock(job.startedAt, locale), end: formatClock(job.completedAt, locale) })
               : formatSlotLabel(booking.slotStart, booking.slotEnd, locale)}
@@ -72,7 +76,7 @@ export default async function JobGallery({ params }: { params: { id: string } })
       {tracking?.status === 'EN_ROUTE' && <LiveTrackingMap jobId={job.id} token={publicMapboxToken()} initial={tracking} />}
 
       {!showMedia ? (
-        <p className="card text-slate">
+        <p className="card ct-lead">
           {job.status === 'EN_ROUTE'
             ? t('jobWaitEnRoute')
             : job.status === 'IN_PROGRESS'
@@ -84,7 +88,7 @@ export default async function JobGallery({ params }: { params: { id: string } })
           {viewer.role === 'CUSTOMER' && (
             <SocialMediaConsent initialConsent={(await getUserById(viewer.id))?.socialMediaConsent ?? null} />
           )}
-          {items.map((item) => {
+          {shownRooms.map((item) => {
           const roomMedia = media.filter((m) => m.itemId === item.id);
           const before = roomMedia.filter((m) => m.phase === 'BEFORE');
           const after = roomMedia.filter((m) => m.phase === 'AFTER');
@@ -94,23 +98,23 @@ export default async function JobGallery({ params }: { params: { id: string } })
           return (
             <section key={item.id} className="card space-y-4 p-5" aria-labelledby={`g-${item.id}`}>
               <div className="flex items-center justify-between gap-3">
-                <h2 id={`g-${item.id}`} className="text-lg font-bold">
+                <h2 id={`g-${item.id}`} className="ct-h3">
                   {item.roomName}
                 </h2>
                 {item.status === 'SKIPPED' && <span className="pill bg-amber-100 text-amber-800">{t('jobNotCleaned')}</span>}
               </div>
               {item.status === 'SKIPPED' ? (
-                <p className="text-sm text-slate">{t('jobSkipReason', { reason: item.skipReason })}</p>
+                <p className="text-[15px] text-slate">{t('jobSkipReason', { reason: item.skipReason })}</p>
               ) : firstBefore && firstAfter ? (
                 <>
                   <BeforeAfter before={firstBefore.url} after={firstAfter.url} room={item.roomName} />
-                  <p className="text-center text-xs text-muted">{t('jobDragHint')}</p>
-                  <p className="text-center text-xs text-muted">
+                  <p className="text-center text-sm text-muted">{t('jobDragHint')}</p>
+                  <p className="money text-center text-sm text-muted">
                     {t('jobTimestamps', { before: timestampLabel(firstBefore.createdAt, locale), after: timestampLabel(firstAfter.createdAt, locale) })}
                   </p>
                 </>
               ) : (
-                <p className="text-sm text-muted">{t('jobNoPhotos')}</p>
+                <p className="text-[15px] text-muted">{t('jobNoPhotos')}</p>
               )}
               {extras.length > 0 && (
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -124,7 +128,7 @@ export default async function JobGallery({ params }: { params: { id: string } })
                         </a>
                       )}
                       <figcaption
-                        className={`pointer-events-none absolute left-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        className={`pointer-events-none absolute left-2 top-2 rounded-full px-2 py-0.5 text-[12px] font-semibold ${
                           m.phase === 'AFTER' ? 'bg-gold text-white' : 'bg-ink/75 text-white'
                         }`}
                       >
@@ -132,7 +136,7 @@ export default async function JobGallery({ params }: { params: { id: string } })
                         {m.kind === 'VIDEO' ? ` · ${t('jobVideo')}` : ''}
                       </figcaption>
                       {m.kind === 'VIDEO' && (
-                        <span className="pointer-events-none absolute bottom-1 right-1 rounded bg-ink/70 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                        <span className="money pointer-events-none absolute bottom-1 right-1 rounded bg-ink/70 px-1.5 py-0.5 text-[12px] font-medium text-white">
                           {timestampLabel(m.createdAt, locale)}
                         </span>
                       )}
@@ -143,6 +147,18 @@ export default async function JobGallery({ params }: { params: { id: string } })
             </section>
           );
         })}
+          {bareRooms.length > 0 && (
+            <section className="card p-5" aria-labelledby="bare-rooms">
+              <h2 id="bare-rooms" className="ct-label">{t('jobNoPhotosRooms')}</h2>
+              <ul className="mt-2 divide-y divide-line">
+                {bareRooms.map((item) => (
+                  <li key={item.id} className="py-2.5 font-semibold text-ink">
+                    {item.roomName}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </>
       )}
 
@@ -163,8 +179,8 @@ export default async function JobGallery({ params }: { params: { id: string } })
 
       {viewer.role === 'CUSTOMER' && showMedia && (
         <div className="card text-center">
-          <p className="font-semibold">{t('jobNotRight')}</p>
-          <p className="mt-1 text-sm text-slate">{t('jobNotRightHelp')}</p>
+          <h2 className="ct-h3">{t('jobNotRight')}</h2>
+          <p className="mx-auto mt-1 max-w-[42ch] text-[15px] text-slate">{t('jobNotRightHelp')}</p>
           <Link href="/book" className="btn-primary mt-4">
             {t('jobBookNext')}
           </Link>

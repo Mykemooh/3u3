@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-type Expense = { id: string; spentOn: string; category: string; vendor: string | null; amountCents: number; notes: string | null; crewId: string | null };
+/** `job`: the visit it was for — set on tolls the crew app records (lib/trips.ts). */
+type Expense = { id: string; spentOn: string; category: string; vendor: string | null; amountCents: number; notes: string | null; crewId: string | null; job?: { id: string; client: string } | null };
 type Option = { id: string; name: string };
 
 const money = (c: number) => `$${(c / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -129,6 +131,14 @@ export default function ExpensesManager({
               <p className="truncate text-sm text-slate">
                 {e.vendor ? e.category : ''}
                 {e.crewId ? `${e.vendor ? ' · ' : ''}${crews.find((c) => c.id === e.crewId)?.name ?? 'Team'}` : ''}
+                {e.job && (
+                  <>
+                    {e.vendor || e.crewId ? ' · ' : ''}
+                    <Link href={`/crew/jobs/${e.job.id}`} className="font-semibold text-bronze hover:underline">
+                      {e.job.client}’s clean
+                    </Link>
+                  </>
+                )}
                 {e.notes ? ` · ${e.notes}` : ''}
               </p>
             </div>

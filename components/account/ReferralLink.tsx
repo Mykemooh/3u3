@@ -24,8 +24,8 @@ export default function ReferralLink({ link }: { link: string }) {
   }
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <code className="min-w-0 flex-1 truncate rounded-lg bg-surface px-3 py-2 text-xs text-slate">{link}</code>
-      <button type="button" onClick={share} className="btn-primary !px-4 !py-2 text-sm">
+      <span className="min-w-0 flex-1 truncate rounded-lg bg-surface px-3 py-2.5 text-sm text-slate">{link}</span>
+      <button type="button" onClick={share} className="btn-primary btn-sm min-h-[44px]">
         {copied ? t('referCopied') : t('referShare')}
       </button>
     </div>

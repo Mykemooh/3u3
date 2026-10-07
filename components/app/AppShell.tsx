@@ -78,7 +78,7 @@ export default async function AppShell({
         </span>
       </span>
     ) : (
-      <Logo variant="dark" size="sm" />
+      <Logo variant="dark" size="sm" wrap />
     );
 
   return (
@@ -113,10 +113,10 @@ export default async function AppShell({
             <AccessNotice />
             {children}
             {look === 'client' && (
-              <p className="mt-14 flex items-center justify-center gap-1.5 text-[12px] text-muted">
+              <p className="mt-16 flex items-center justify-center gap-1.5 text-[13px] text-muted">
                 {t('poweredBy')}
                 <a href="/trashcan" className="inline-flex items-center gap-1 font-semibold text-slate hover:text-ink">
-                  <span className="flex h-4 w-4 items-center justify-center rounded bg-[#0B0F14]" aria-hidden="true">
+                  <span className="flex h-4 w-4 items-center justify-center rounded bg-tc-black" aria-hidden="true">
                     <TcIcon size={11} />
                   </span>
                   TrashCan

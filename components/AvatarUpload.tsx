@@ -52,17 +52,17 @@ export default function AvatarUpload({ name, initialUrl }: { name: string; initi
       )}
       <div>
         <div className="flex gap-2">
-          <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className="btn-secondary !px-4 !py-2 text-sm">
+          <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className="btn-secondary btn-sm min-h-[44px]">
             {busy ? t('avatarUploading') : url ? t('avatarChange') : t('avatarAdd')}
           </button>
           {url && (
-            <button type="button" onClick={remove} disabled={busy} className="text-sm text-muted hover:text-ink">
+            <button type="button" onClick={remove} disabled={busy} className="ct-action mx-0 text-slate">
               {t('remove')}
             </button>
           )}
         </div>
         <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={onPick} />
-        {error && <p className="mt-1.5 text-xs text-red-600">{error}</p>}
+        {error && <p className="mt-1.5 text-sm text-red-600">{error}</p>}
       </div>
     </div>
   );

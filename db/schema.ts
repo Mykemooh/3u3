@@ -1146,6 +1146,47 @@ export const expenses = pgTable('expenses', {
   ...timestamps,
 });
 
+// ---------------------------------------------------------------------------
+// The drive to each job (lib/trips.ts) — for the Travel section of Admin →
+// Reports: miles, drive time, planned vs actual, and tolls by team. One row
+// per job, started by "Start driving" or by starting in-app navigation,
+// closed on arrival. Deliberately no coordinates or route geometry: only
+// the numbers a report needs (lib/geocoding.ts on why positions aren't kept).
+// ---------------------------------------------------------------------------
+export const jobTrips = pgTable('job_trips', {
+  id: id(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id),
+  jobId: text('job_id').notNull().references(() => jobs.id),
+  crewId: text('crew_id').notNull(),
+  driverUserId: text('driver_user_id'),
+  startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+  arrivedAt: timestamp('arrived_at', { withTimezone: true }),
+  // 'map' (the in-app navigation saw them arrive) or 'job_start' (the crew tapped "I've arrived").
+  arrivalSource: text('arrival_source'),
+  plannedDistanceMeters: integer('planned_distance_meters'),
+  plannedDurationSeconds: integer('planned_duration_seconds'),
+  actualDurationSeconds: integer('actual_duration_seconds'),
+  // 'google' / 'mapbox': a route picked in the crew app. 'tracking': only
+  // the live-map route from "Start driving". 'none': nothing known.
+  provider: text('provider').notNull().default('none'),
+  routeLabel: text('route_label'),
+  routeSummary: text('route_summary'),
+  // NONE / PRICED / UNPRICED (on a toll road, price unknown) / UNKNOWN (no route picked).
+  tollState: text('toll_state').notNull().default('UNKNOWN'),
+  tollCents: integer('toll_cents'),
+  tollPass: text('toll_pass'),
+  avoidTollsOn: boolean('avoid_tolls_on').notNull().default(false),
+  // Toll roads were on offer and the crew took a toll-free route.
+  avoidedTolls: boolean('avoided_tolls').notNull().default(false),
+  // The "Tolls" expense this trip added — the idempotency key (never two per trip).
+  tollExpenseId: text('toll_expense_id'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).$onUpdate(() => new Date()),
+  ...timestamps,
+}, (t) => ({
+  jobUnique: uniqueIndex('job_trips_job_unique').on(t.jobId),
+  tenantStartedIdx: index('job_trips_tenant_started_idx').on(t.tenantId, t.startedAt),
+}));
+
 // A company's own help articles, alongside the product FAQs and SOPs that
 // ship in code (lib/help/content.ts). Tex reads both.
 export const kbArticles = pgTable('kb_articles', {

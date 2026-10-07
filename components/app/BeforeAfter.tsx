@@ -36,8 +36,8 @@ export default function BeforeAfter({ before, after, room }: { before: string; a
       <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
         <img src={before} alt={t('baAltBefore', { room })} className="h-full w-full object-cover" draggable={false} />
       </div>
-      <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-ink/75 px-2.5 py-1 text-[11px] font-bold text-white">{t('before')}</span>
-      <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-gold px-2.5 py-1 text-[11px] font-bold text-white">{t('after')}</span>
+      <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-ink/75 px-2.5 py-1 text-[12px] font-semibold text-white">{t('before')}</span>
+      <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-gold px-2.5 py-1 text-[12px] font-semibold text-white">{t('after')}</span>
       <div className="pointer-events-none absolute inset-y-0" style={{ left: `${pos}%` }}>
         <div className="absolute inset-y-0 -ml-px w-0.5 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.15)]" />
       </div>

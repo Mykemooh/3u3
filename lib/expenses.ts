@@ -15,6 +15,8 @@ export const EXPENSE_CATEGORIES = [
   'Cleaning supplies',
   'Equipment',
   'Fuel and mileage',
+  // Added automatically when a crew drives a toll route (lib/trips.ts).
+  'Tolls',
   'Vehicle',
   'Insurance',
   'Marketing',

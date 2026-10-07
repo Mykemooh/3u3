@@ -110,29 +110,27 @@ export default function MyBookingCard({
   }
 
   return (
-    <div className="rounded-xl border border-line p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p className="font-semibold text-ink">{booking.serviceName}</p>
-          <p className="text-sm text-slate">
-            {formatDateLabel(booking.slotStart.split('T')[0], locale)} · {formatSlotLabel(booking.slotStart, booking.slotEnd, locale)}
-          </p>
-          <p className="text-sm text-slate">
-            {t(CADENCE_KEY[booking.cadence])} · {booking.priceLabel}
+    <div className="rounded-xl border border-line px-4 py-4 sm:px-5">
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+        <div className="min-w-0">
+          <p className="ct-h3">{formatDateLabel(booking.slotStart.split('T')[0], locale)}</p>
+          <p className="money mt-0.5 text-[15px] font-medium text-ink">{formatSlotLabel(booking.slotStart, booking.slotEnd, locale)}</p>
+          <p className="money text-[15px] text-slate">
+            {booking.serviceName} · {t(CADENCE_KEY[booking.cadence])} · {booking.priceLabel}
           </p>
         </div>
         {booking.canModify ? (
           mode === 'view' && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex w-full flex-wrap gap-x-5 border-t border-line pt-2 sm:w-auto sm:border-0 sm:pt-0">
+              <button onClick={() => setMode('reschedule')} className="ct-action">
+                {t('bookReschedule')}
+              </button>
               {booking.recurringEligible && (
-                <button onClick={() => setMode('cadence')} className="btn-secondary !px-3 !py-1.5 text-xs">
+                <button onClick={() => setMode('cadence')} className="ct-action">
                   {t('bookChangeFrequency')}
                 </button>
               )}
-              <button onClick={() => setMode('reschedule')} className="btn-secondary !px-3 !py-1.5 text-xs">
-                {t('bookReschedule')}
-              </button>
-              <button onClick={cancelBooking} disabled={saving} className="btn-secondary !px-3 !py-1.5 text-xs !border-red-200 !text-red-600">
+              <button onClick={cancelBooking} disabled={saving} className="ct-action text-red-700 hover:text-red-800">
                 {t('cancel')}
               </button>
             </div>
@@ -143,7 +141,7 @@ export default function MyBookingCard({
       </div>
 
       {!booking.canModify && (
-        <p className="mt-2 text-xs text-muted">
+        <p className="mt-2 text-sm text-muted">
           {t('bookLockedHelp')}
         </p>
       )}
@@ -155,7 +153,7 @@ export default function MyBookingCard({
               <button
                 key={c}
                 onClick={() => setCadence(c)}
-                className={`rounded-lg border-2 px-3 py-1.5 text-sm font-medium transition ${
+                className={`min-h-[44px] rounded-xl border-2 px-4 text-[15px] font-medium transition ${
                   cadence === c ? 'border-gold bg-gold/10' : 'border-line hover:border-gold'
                 }`}
               >
@@ -165,10 +163,10 @@ export default function MyBookingCard({
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex gap-2">
-            <button onClick={saveCadence} disabled={saving} className="btn-primary !px-4 !py-2 text-sm">
+            <button onClick={saveCadence} disabled={saving} className="btn-primary btn-sm min-h-[44px]">
               {saving ? t('saving') : t('bookSaveFrequency')}
             </button>
-            <button onClick={() => setMode('view')} className="btn-secondary !px-4 !py-2 text-sm">
+            <button onClick={() => setMode('view')} className="btn-secondary btn-sm min-h-[44px]">
               {t('cancel')}
             </button>
           </div>
@@ -182,13 +180,13 @@ export default function MyBookingCard({
             {days.filter((d) => d.slots.some((s) => s.available)).map((day) => (
               <div key={day.date}>
                 <p className="mb-2 text-sm font-semibold text-bronze">{formatDateLabel(day.date, locale)}</p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {day.slots.map((slot) => (
                     <button
                       key={slot.start}
                       disabled={!slot.available}
                       onClick={() => setSelected(slot)}
-                      className={`rounded-lg border-2 px-3 py-2 text-sm font-medium transition ${
+                      className={`money min-h-[48px] whitespace-nowrap rounded-xl border-2 px-3 text-[15px] font-medium transition ${
                         !slot.available
                           ? 'cursor-not-allowed border-line bg-surface text-muted line-through'
                           : selected?.start === slot.start
@@ -208,10 +206,10 @@ export default function MyBookingCard({
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex gap-2">
-            <button onClick={saveReschedule} disabled={saving || !selected} className="btn-primary !px-4 !py-2 text-sm">
+            <button onClick={saveReschedule} disabled={saving || !selected} className="btn-primary btn-sm min-h-[44px]">
               {saving ? t('saving') : t('bookConfirmTime')}
             </button>
-            <button onClick={() => setMode('view')} className="btn-secondary !px-4 !py-2 text-sm">
+            <button onClick={() => setMode('view')} className="btn-secondary btn-sm min-h-[44px]">
               {t('cancel')}
             </button>
           </div>

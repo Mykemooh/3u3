@@ -44,7 +44,7 @@ export default function ForgotPage() {
       <div className="w-full max-w-sm">
         {sent ? (
           <>
-            <h1 className="text-2xl font-bold text-ink">{sent === 'email' ? t('forgotCheckEmail') : t('forgotCheckMessages')}</h1>
+            <h1 className="ct-title">{sent === 'email' ? t('forgotCheckEmail') : t('forgotCheckMessages')}</h1>
             <p className="mt-2 text-slate">
               {rich(t(sent === 'phone' ? 'forgotSentPhone' : 'forgotSentEmail'), {
                 identifier: <span className="font-semibold text-ink">{identifier.trim()}</span>,
@@ -69,7 +69,7 @@ export default function ForgotPage() {
           </>
         ) : (
           <>
-            <h1 className="text-2xl font-bold text-ink">{t('forgotTitle')}</h1>
+            <h1 className="ct-title">{t('forgotTitle')}</h1>
             <p className="mb-6 mt-1 text-sm text-slate">
               {t('forgotIntro')}
             </p>
