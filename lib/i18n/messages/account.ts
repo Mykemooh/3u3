@@ -54,8 +54,8 @@ export const accountMessages = defineMessages({
     focusVideosMany: '{count} videos',
     focusViewAndPay: 'View and pay',
     focusPhotosSoon: "We'll email you before-and-after photos of every room as soon as the crew finishes.",
-    calendarTitle: '{service} — 3U3 Cleaning',
-    calendarDescription: 'Your {service} with 3U3 Cleaning.',
+    calendarTitle: '{service} — {company}',
+    calendarDescription: 'Your {service} with {company}.',
 
     // Journey rail (Booked → Cleaning → Done → Invoice → Paid)
     journeyBooked: 'Booked',
@@ -308,8 +308,8 @@ export const accountMessages = defineMessages({
     focusVideosMany: '{count} videos',
     focusViewAndPay: 'Ver y pagar',
     focusPhotosSoon: 'Le enviaremos por correo fotos de antes y después de cada cuarto en cuanto el equipo termine.',
-    calendarTitle: '{service} — 3U3 Cleaning',
-    calendarDescription: 'Su {service} con 3U3 Cleaning.',
+    calendarTitle: '{service} — {company}',
+    calendarDescription: 'Su {service} con {company}.',
 
     // Journey rail
     journeyBooked: 'Reservada',

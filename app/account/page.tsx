@@ -42,6 +42,7 @@ export default async function AccountHome() {
   const locale = await getLocale();
   const t = translator(accountMessages, locale);
   const tenant = await getTenant();
+  const companyName = tenant?.name ?? '';
   const [rows, rates, quoteRows, reviewRows, referralOn, me] = await Promise.all([
     getAccountBookings(user.id),
     getClientRatesFor(user.id),
@@ -119,6 +120,7 @@ export default async function AccountHome() {
           rateHref={focus.job?.status === 'COMPLETE' && !reviewed.has(focus.booking.id) ? `/account/jobs/${focus.job.id}#rate` : null}
           tracking={tracking}
           locale={locale}
+          companyName={companyName}
           t={t}
         />
       ) : (
@@ -155,8 +157,8 @@ export default async function AccountHome() {
                     bookingId={r.booking.id}
                     event={{
                       uid: `booking-${r.booking.id}@3u3cleaning`,
-                      title: t('calendarTitle', { service: serviceName(r, locale, t) }),
-                      description: t('calendarDescription', { service: serviceName(r, locale, t).toLowerCase() }),
+                      title: t('calendarTitle', { service: serviceName(r, locale, t), company: companyName }),
+                      description: t('calendarDescription', { service: serviceName(r, locale, t).toLowerCase(), company: companyName }),
                       location: r.address ? `${r.address.line1}, ${r.address.city}` : undefined,
                       slotStart: r.booking.slotStart,
                       slotEnd: r.booking.slotEnd,
@@ -220,6 +222,7 @@ function FocusCard({
   tracking,
   locale,
   t,
+  companyName,
 }: {
   row: AccountBooking;
   isPast: boolean;
@@ -228,6 +231,7 @@ function FocusCard({
   tracking: TrackingState | null;
   locale: Locale;
   t: T;
+  companyName: string;
 }) {
   const { booking, job, invoice } = row;
   const status = job?.status;
@@ -269,8 +273,8 @@ function FocusCard({
               bookingId={booking.id}
               event={{
                 uid: `booking-${booking.id}@3u3cleaning`,
-                title: t('calendarTitle', { service: serviceName(row, locale, t) }),
-                description: t('calendarDescription', { service: serviceName(row, locale, t).toLowerCase() }),
+                title: t('calendarTitle', { service: serviceName(row, locale, t), company: companyName }),
+                description: t('calendarDescription', { service: serviceName(row, locale, t).toLowerCase(), company: companyName }),
                 location: row.address ? `${row.address.line1}, ${row.address.city}` : undefined,
                 slotStart: booking.slotStart,
                 slotEnd: booking.slotEnd,

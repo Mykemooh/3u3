@@ -8,7 +8,8 @@ The full guide is `docs/brand/trashcan-brand-guidelines-v1.pdf`; the logo refere
 |---|---|---|
 | TRASHCAN marketing site (`/trashcan`, or `/` on a `PLATFORM_HOSTS` domain), signup (`/start`), legal, status, platform sign-in | TRASHCAN | `components/tc/TcSite.tsx` (wraps `.theme-tc`) |
 | The owner's workspace (`/admin/*`) and the platform console (`/platform/*`) | TRASHCAN frame, the company's name and logo in the rail | `components/admin/AdminShell.tsx`, `app/platform/layout.tsx` |
-| A company's public site, client portal (`/account`), crew app (`/crew`), booking, invoices | The company (3U3's navy/blue/teal today) | `:root` tokens |
+| The crew app (`/crew`) — the tool a company's team works in | TRASHCAN: black "right now" band, lime for the one primary action, the company's name beside the TRASHCAN mark | `components/app/AppShell.tsx` (crew branch, `.theme-tc`), `components/crew/CrewBand.tsx` |
+| A company's public site, client portal (`/account`), booking, sign-in, invoices | The company: 3U3's brand book, or another company's own colours and logo, with "Powered by TrashCan" | `:root` tokens, re-pointed per company by `lib/brand.ts` |
 
 The semantic tokens (`gold`, `ink`, `slate`, `muted`, `line`, `surface`, `bronze`, `green`, `cream`) are CSS variables (`app/globals.css`). `:root` holds the company brand; `.theme-tc` re-points them to TRASHCAN. Wrapping anything in `.theme-tc` re-skins it with no per-component edits. `tc-*` classes (`bg-tc-lime`, `text-tc-black`, …) are the literal TRASHCAN colours.
 
