@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { getBookingById, getServiceType, getAddressesFor, SERVICE_LABELS } from '@/lib/data';
 import { buildIcs } from '@/lib/calendar';
+import { companyForTenant } from '@/lib/emailBrand';
 import { formatSlotLabel } from '@/lib/scheduling';
 
 // A downloadable .ics for one booking — the universal option on the
@@ -21,17 +22,20 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
-  const [service, addresses] = await Promise.all([
+  const [service, addresses, company] = await Promise.all([
     booking.serviceTypeId ? getServiceType(booking.serviceTypeId) : Promise.resolve(undefined),
     getAddressesFor(booking.clientId),
+    companyForTenant(booking.tenantId),
   ]);
   const address = addresses.find((a) => a.id === booking.addressId) ?? addresses[0];
   const serviceName = service ? SERVICE_LABELS[service.key as keyof typeof SERVICE_LABELS] ?? service.name : 'Cleaning';
 
   const ics = buildIcs({
+    // The uid's domain is only an identifier — kept as-is so events already
+    // added to someone's calendar update instead of duplicating.
     uid: `booking-${booking.id}@3u3cleaning`,
-    title: `${serviceName} — 3U3 Cleaning`,
-    description: `Your ${serviceName.toLowerCase()} with 3U3 Cleaning, ${formatSlotLabel(booking.slotStart, booking.slotEnd)}.`,
+    title: `${serviceName} — ${company.name}`,
+    description: `Your ${serviceName.toLowerCase()} with ${company.name}, ${formatSlotLabel(booking.slotStart, booking.slotEnd)}.`,
     location: address ? `${address.line1}, ${address.city}, ${address.state}${address.zip ? ` ${address.zip}` : ''}` : undefined,
     slotStart: booking.slotStart,
     slotEnd: booking.slotEnd,

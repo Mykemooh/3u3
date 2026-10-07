@@ -256,7 +256,7 @@ export const INTEGRATIONS: IntegrationDef[] = [
     name: 'Resend email',
     group: 'Messages',
     does: 'Sends every email: confirmations, reminders, sign-in codes, invoices and receipts.',
-    env: [{ name: 'RESEND_API_KEY' }, { name: 'EMAIL_FROM', optional: true, note: 'For example "3U3 Cleaning <hello@3u3cleaning.com>". Verify the domain in Resend first.' }],
+    env: [{ name: 'RESEND_API_KEY' }, { name: 'EMAIL_FROM', optional: true, note: 'The address emails come from, for example "hello@yourcompany.com". Each email shows the sending company\'s name. Verify the domain in Resend first.' }],
     steps: ['Verify your sending domain in Resend → Domains.', 'Create an API key in Resend → API Keys.', 'Add RESEND_API_KEY and EMAIL_FROM in Vercel, then redeploy.'],
     getFrom: { label: 'resend.com/api-keys', url: 'https://resend.com/api-keys' },
   },

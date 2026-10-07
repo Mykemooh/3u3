@@ -166,7 +166,7 @@ async function findOrCreateQbCustomer(tenantId: string, client: typeof users.$in
   const created = await qbFetch(tenantId, '/customer?minorversion=65', {
     method: 'POST',
     body: JSON.stringify({
-      DisplayName: `${client.name} (3U3 #${client.id.slice(0, 8)})`,
+      DisplayName: `${client.name} (#${client.id.slice(0, 8)})`,
       PrimaryEmailAddr: client.email ? { Address: client.email } : undefined,
       PrimaryPhone: client.phone ? { FreeFormNumber: client.phone } : undefined,
     }),

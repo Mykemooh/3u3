@@ -2,6 +2,7 @@ import { appUrl } from '@/lib/url';
 import { intlLocale, plural, translator, type Locale } from '@/lib/i18n';
 import { notifyMessages } from '@/lib/i18n/messages/notify';
 import { serviceName as builtInServiceName } from '@/lib/format';
+import { BRAND_HEADER_TOKEN, COMPANY_TOKEN } from '@/lib/emailTokens';
 
 /**
  * Templates sent to a client (or to a cleaner about their own account)
@@ -22,15 +23,12 @@ export function localizedServiceName(locale: Locale | undefined, englishName: st
 }
 
 /**
- * A tenant's own name/colors/logo for the handful of templates that carry
- * real money (invoice, payment-received) — the ones a company's own
- * branding actually needs to show up on, not every notification. Most of
- * this file's other templates are still hardcoded to 3U3 itself (a
- * known gap, not an oversight): rebranding all of them means threading
- * a tenant through every call site across the app, which hasn't been
- * done yet. FROM_EMAIL below is unaffected either way — one shared
- * Resend sender for the whole platform, since per-tenant sending would
- * need each company to verify its own domain with Resend.
+ * A tenant's own name/colors/logo for the templates that carry real money
+ * (invoice, payment received). Every other template writes COMPANY_TOKEN /
+ * BRAND_HEADER_TOKEN (lib/emailTokens.ts) and sendEmail fills them with the
+ * recipient's company (lib/emailBrand.ts). One shared Resend address sends
+ * for every company, under that company's display name; sending from each
+ * company's own domain would need them to verify it with Resend.
  */
 export type EmailBrand = { name: string; tagline: string | null; primaryColor: string; bronzeColor: string; logoUrl: string | null };
 
@@ -54,13 +52,23 @@ function brandFooter(brand: EmailBrand) {
 // instead of throwing — so the booking flow itself never fails just
 // because email delivery isn't wired up yet.
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const FROM_EMAIL = process.env.EMAIL_FROM || '3U3 Cleaning <onboarding@resend.dev>';
+const FROM_EMAIL = process.env.EMAIL_FROM || 'onboarding@resend.dev';
+/** The bare address from EMAIL_FROM ("Name <a@b.c>" or "a@b.c"); the display name is the sending company's. */
+const FROM_ADDRESS = /<([^>]+)>/.exec(FROM_EMAIL)?.[1] ?? FROM_EMAIL.trim();
 
 export function emailConfigured() {
   return !!RESEND_API_KEY;
 }
 
-export async function sendEmail(input: { to: string; subject: string; html: string }): Promise<boolean> {
+export async function sendEmail(input: { to: string; subject: string; html: string; tenantId?: string | null }): Promise<boolean> {
+  // In the name of the company the recipient belongs to (lib/emailBrand.ts).
+  // Imported here, not at the top, so templates stay importable without a database.
+  const brand = await import('@/lib/emailBrand');
+  const company = await (input.tenantId ? brand.companyForTenant(input.tenantId) : brand.companyForRecipient(input.to)).catch(() => null);
+  if (company) {
+    input = { ...input, subject: brand.fillCompanyText(input.subject, company), html: brand.fillCompanyHtml(input.html, company) };
+  }
+  const from = company ? `${company.name.replace(/["<>]/g, '')} <${FROM_ADDRESS}>` : FROM_EMAIL;
   if (!RESEND_API_KEY) {
     console.warn(`[email] RESEND_API_KEY not set — would have sent "${input.subject}" to ${input.to}`);
     return false;
@@ -72,7 +80,7 @@ export async function sendEmail(input: { to: string; subject: string; html: stri
         Authorization: `Bearer ${RESEND_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ from: FROM_EMAIL, to: input.to, subject: input.subject, html: input.html }),
+      body: JSON.stringify({ from, to: input.to, subject: input.subject, html: input.html }),
     });
     if (!res.ok) {
       console.error('[email] Resend rejected the request:', await res.text());
@@ -97,7 +105,7 @@ export function quoteVisitCustomerEmail(input: {
     subject: t('qvSubject', { date: input.dateLabel, time: input.timeLabel }),
     html: `
       <div style="font-family:sans-serif;color:#0B1F3B;max-width:480px;margin:0 auto;">
-        <h2 style="color:#1D4ED8;">3U3 Cleaning</h2>
+        <h2 style="color:#1D4ED8;">${COMPANY_TOKEN}</h2>
         <p>${t('hiComma', { name: esc(input.name) })}</p>
         <p>${t('qvIntro', { forService: input.serviceName ? t('qvForService', { service: esc(input.serviceName) }) : '' })}</p>
         <p style="font-size:18px;font-weight:bold;margin:16px 0;">
@@ -327,17 +335,15 @@ export function newLeadOwnerEmail(input: {
 }
 
 // ---------------------------------------------------------------------------
-// Branded layout for the job-lifecycle emails: the 3U3 logo on its dark band
-// (the logo is designed for dark backgrounds), then the message on white.
+// Branded layout for the job-lifecycle emails: the sending company's header
+// band (lib/emailBrand.ts fills it in at send time), then the message on white.
 // ---------------------------------------------------------------------------
 function branded(body: string, preheader = '', locale?: Locale) {
   return `
   <div style="background:#F7F8FA;padding:24px 12px;">
     <span style="display:none;max-height:0;overflow:hidden;">${esc(preheader)}</span>
     <div style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0B1F3B;">
-      <div style="background:#0B1F3B;padding:20px;text-align:center;">
-        <img src="${appUrl('/brand/logo-640.png')}" alt="3U3 Cleaning" width="180" style="width:180px;max-width:60%;height:auto;" />
-      </div>
+      ${BRAND_HEADER_TOKEN}
       <div style="padding:28px 28px 8px;font-size:16px;line-height:1.6;">${body}</div>
       <div style="padding:16px 28px 28px;color:#6B727E;font-size:13px;">${tFor(locale)('brandedFooter')}</div>
     </div>

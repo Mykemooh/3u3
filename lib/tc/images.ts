@@ -48,10 +48,10 @@ export const TC_IMAGES: Record<ImageSlotKey, { title: string; brief: string; alt
     file: null,
   },
   founders: {
-    title: 'The family behind 3U3',
+    title: 'The family behind TRASHCAN',
     brief:
-      'Betty and Mike (3U3 Cleaning) at home or by their work vehicle — the people who built TrashCan for their own crews. Natural, warm daylight, not a studio portrait. Landscape, 3:2.',
-    alt: 'The founders of 3U3 Cleaning, who built TrashCan',
+      'The founding couple at home or by their work vehicle — the people who built TrashCan for their own crews. Natural, warm daylight, not a studio portrait. Landscape, 3:2.',
+    alt: 'The founders, who built TrashCan for their own cleaning company',
     file: null,
   },
 };

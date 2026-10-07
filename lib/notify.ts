@@ -4,6 +4,7 @@ import { tenantSmsNumber, recordOutbound } from '@/lib/messaging';
 import { logNotification } from '@/lib/bookings';
 import { withUsage } from '@/lib/billing/wallet';
 import { smsSegments } from '@/lib/billing/plans';
+import { companyForTenant, fillCompanyText } from '@/lib/emailBrand';
 
 export type NotificationChannel = 'EMAIL' | 'SMS' | 'WHATSAPP';
 
@@ -24,6 +25,8 @@ export async function notifyClient(input: {
   text: string;
 }): Promise<boolean> {
   const { client } = input;
+  // Texts carry the company's own name (lib/emailBrand.ts); emails are filled in by sendEmail.
+  input = { ...input, text: fillCompanyText(input.text, await companyForTenant(input.tenantId)) };
 
   // A client who replied STOP gets email instead (lib/messaging.ts).
   const textable = client.smsConsent !== false;
@@ -50,7 +53,7 @@ export async function notifyClient(input: {
   }
 
   if (input.email && client.email) {
-    const ok = await sendEmail({ to: client.email, subject: input.email.subject, html: input.email.html });
+    const ok = await sendEmail({ to: client.email, subject: input.email.subject, html: input.email.html, tenantId: input.tenantId });
     await logNotification({ tenantId: input.tenantId, channel: 'EMAIL', recipient: client.email, triggerEvent: input.triggerEvent, relatedBookingId: input.relatedBookingId });
     return ok;
   }

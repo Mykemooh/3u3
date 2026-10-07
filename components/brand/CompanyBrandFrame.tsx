@@ -25,7 +25,7 @@ export function BrandVars({ brand }: { brand: CompanyBrand }) {
  */
 export default async function CompanyBrandFrame({ children }: { children: React.ReactNode }) {
   const tenant = await getTenant();
-  const brand = companyBrand(tenant ?? { name: '3U3 Cleaning' });
+  const brand = companyBrand(tenant ?? { name: 'Your cleaning company' });
   return (
     <CompanyBrandProvider brand={brand}>
       <BrandVars brand={brand} />

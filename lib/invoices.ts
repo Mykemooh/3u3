@@ -19,7 +19,7 @@ import type Stripe from 'stripe';
 export async function brandFor(tenantId: string): Promise<EmailBrand> {
   const tenant = (await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1))[0];
   return {
-    name: tenant?.name ?? '3U3 Cleaning',
+    name: tenant?.name ?? 'Your cleaning company',
     tagline: tenant?.tagline ?? null,
     primaryColor: tenant?.primaryColor ?? '#2563EB',
     bronzeColor: tenant?.bronzeColor ?? '#1D4ED8',

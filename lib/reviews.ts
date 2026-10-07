@@ -5,6 +5,7 @@ import { and, desc, eq } from 'drizzle-orm';
 import { getOwnerEmail } from '@/lib/data';
 import { sendEmail, esc } from '@/lib/email';
 import { appUrl } from '@/lib/url';
+import { COMPANY_TOKEN } from '@/lib/emailTokens';
 
 export class ReviewError extends Error {}
 
@@ -45,7 +46,7 @@ export async function submitReview(input: { tenantId: string; bookingId: string;
         to: ownerEmail,
         subject: `New review: ${stars} from ${client?.name ?? 'a client'}`,
         html: `<div style="font-family:sans-serif;color:#0B1F3B;max-width:480px;margin:0 auto;">
-          <h2 style="color:#1D4ED8;">3U3 Cleaning</h2>
+          <h2 style="color:#1D4ED8;">${COMPANY_TOKEN}</h2>
           <p><strong>${esc(client?.name ?? 'A client')}</strong> left a review: <strong>${stars}</strong></p>
           ${input.comment ? `<p style="color:#334155;">"${esc(input.comment)}"</p>` : ''}
           <p><a href="${appUrl('/admin/reviews')}" style="color:#1D4ED8;">Review it in the admin portal →</a></p>

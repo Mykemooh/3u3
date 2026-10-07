@@ -54,7 +54,10 @@ function CompanyMark({ brand, wide }: { brand: Brand; wide: boolean }) {
   }
   return (
     <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-[11px] bg-tc-black-3 font-tc-display text-[13px] font-extrabold text-white ring-1 ring-white/10">
-      {brand.useBrandLogo ? '3U3' : brand.logoUrl ? (
+      {brand.useBrandLogo ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src="/brand/logo-light-mark.png" alt="" className="w-8 object-contain" />
+      ) : brand.logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={brand.logoUrl} alt="" className="h-7 w-7 object-contain" />
       ) : (
@@ -268,13 +271,14 @@ export default function AdminShell({
 
       {/* ---- Top bar ---------------------------------------------------- */}
       <div className={`transition-[padding] duration-200 ease-tc-out ${mainOffset}`}>
-        <header className="sticky top-0 z-30 border-b border-tc-200 bg-white/90 backdrop-blur-md">
+        {/* Black, like the TRASHCAN site's title bar — one bar across every page. */}
+        <header className="tc-dark sticky top-0 z-30 border-b border-white/[0.08] bg-tc-black">
           <div className="flex h-16 items-center justify-between gap-4 px-4 md:px-8">
             <div className="flex min-w-0 items-center gap-3">
               <Link href="/admin" className="md:hidden" aria-label={`${brand.name} — Home`}>
                 <CompanyMark brand={brand} wide={false} />
               </Link>
-              <h1 className="truncate font-tc-display text-[19px] font-bold tracking-[-0.02em]">{active?.label ?? 'Workspace'}</h1>
+              <h1 className="truncate font-tc-display text-[19px] font-bold tracking-[-0.02em] text-white">{active?.label ?? 'Workspace'}</h1>
             </div>
 
             <div className="flex items-center gap-2">
@@ -287,7 +291,7 @@ export default function AdminShell({
                   if (q) router.push(`/admin/clients?q=${encodeURIComponent(q)}`);
                 }}
               >
-                <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-tc-500" />
+                <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/45" />
                 <input
                   ref={searchRef}
                   type="search"
@@ -295,19 +299,19 @@ export default function AdminShell({
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search clients by name, phone or email"
                   aria-label="Search clients"
-                  className="h-10 w-[300px] rounded-[10px] border border-tc-200 bg-tc-50 pl-9 pr-9 text-[14px] text-tc-900 placeholder:text-tc-500 focus:border-tc-black focus:bg-white focus:outline-none focus:shadow-[0_0_0_4px_rgba(184,255,0,0.45)]"
+                  className="h-10 w-[300px] rounded-[10px] border border-white/10 bg-white/[0.06] pl-9 pr-9 text-[14px] text-white placeholder:text-white/45 focus:border-tc-lime focus:bg-white/[0.1] focus:outline-none focus:shadow-[0_0_0_4px_rgba(184,255,0,0.45)]"
                 />
-                <span className="tc-kbd pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2">/</span>
+                <span className="pointer-events-none absolute right-2.5 top-1/2 inline-flex h-5 min-w-[20px] -translate-y-1/2 items-center justify-center rounded border border-white/15 px-1 text-[11px] font-semibold text-white/50">/</span>
               </form>
 
               <Link
                 href="/admin/notifications"
-                className="relative flex h-10 w-10 items-center justify-center rounded-[10px] text-tc-700 hover:bg-tc-100 hover:text-tc-black"
+                className="relative flex h-10 w-10 items-center justify-center rounded-[10px] text-white/70 hover:bg-white/[0.08] hover:text-white"
                 aria-label={unreadCount ? `Alerts, ${unreadCount} unread` : 'Alerts'}
               >
                 <Icon name="bell" size={20} />
                 {unreadCount > 0 && (
-                  <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-tc-black px-1 text-[10px] font-bold text-tc-lime ring-2 ring-white">
+                  <span className="absolute right-1.5 top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-tc-lime px-1 text-[10px] font-bold text-tc-black ring-2 ring-tc-black">
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
@@ -319,16 +323,16 @@ export default function AdminShell({
                   onClick={() => setUserOpen((o) => !o)}
                   aria-expanded={userOpen}
                   aria-haspopup="menu"
-                  className="flex h-10 items-center gap-2 rounded-[10px] pl-1 pr-2 hover:bg-tc-100"
+                  className="flex h-10 items-center gap-2 rounded-[10px] pl-1 pr-2 text-white hover:bg-white/[0.08]"
                 >
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-tc-black font-tc-display text-[12px] font-extrabold text-tc-lime">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-tc-lime font-tc-display text-[12px] font-extrabold text-tc-black">
                     {initialsOf(userName || brand.name)}
                   </span>
                   <span className="hidden max-w-[140px] truncate text-[14px] font-semibold sm:inline">{userName.split(' ')[0]}</span>
-                  <Icon name="chevron" size={14} className="hidden rotate-90 text-tc-500 sm:block" />
+                  <Icon name="chevron" size={14} className="hidden rotate-90 text-white/50 sm:block" />
                 </button>
                 {userOpen && (
-                  <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-64 animate-tc-rise rounded-tc-lg border border-tc-200 bg-white p-1.5 shadow-tc-lg">
+                  <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-64 animate-tc-rise rounded-tc-lg border border-tc-200 bg-white p-1.5 text-tc-900 shadow-tc-lg">
                     <div className="px-3 pb-2 pt-2">
                       <p className="truncate text-[14px] font-semibold">{userName}</p>
                       <p className="truncate text-[12px] text-tc-500">{brand.name}{planLabel ? ` · ${planLabel}` : ''}</p>
@@ -364,7 +368,7 @@ export default function AdminShell({
                     href={p.href}
                     aria-current={on ? 'page' : undefined}
                     className={`whitespace-nowrap border-b-2 pb-2.5 pt-1 text-[14px] font-semibold transition-colors ${
-                      on ? 'border-tc-black text-tc-black' : 'border-transparent text-tc-500 hover:border-tc-300 hover:text-tc-900'
+                      on ? 'border-tc-lime text-white' : 'border-transparent text-white/55 hover:border-white/25 hover:text-white'
                     }`}
                   >
                     {p.label}
@@ -457,7 +461,7 @@ export default function AdminShell({
                     if (q) router.push(`/admin/clients?q=${encodeURIComponent(q)}`);
                   }}
                 >
-                  <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-tc-500" />
+                  <Icon name="search" size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/45" />
                   <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search clients" aria-label="Search clients" className="tc-input pl-9" />
                 </form>
                 <div className="grid grid-cols-3 gap-2">

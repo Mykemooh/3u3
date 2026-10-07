@@ -15,7 +15,7 @@ export function getTcNav(): TcNav {
  */
 export default function TcSite({
   children,
-  headerTone = 'light',
+  headerTone = 'dark',
   minimal = false,
   footer = true,
   className = 'bg-white',

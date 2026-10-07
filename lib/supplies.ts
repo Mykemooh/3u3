@@ -4,6 +4,7 @@ import { and, desc, eq } from 'drizzle-orm';
 import { getOwnerEmail } from '@/lib/data';
 import { sendEmail, esc } from '@/lib/email';
 import { appUrl } from '@/lib/url';
+import { COMPANY_TOKEN } from '@/lib/emailTokens';
 
 export class SupplyReportError extends Error {}
 
@@ -49,7 +50,7 @@ export async function createSupplyReport(input: {
         to: ownerEmail,
         subject: `Supply alert: ${SUPPLY_STATUS_LABELS[input.status]} — ${input.productName}`,
         html: `<div style="font-family:sans-serif;color:#0B1F3B;max-width:480px;margin:0 auto;">
-          <h2 style="color:#1D4ED8;">3U3 Cleaning</h2>
+          <h2 style="color:#1D4ED8;">${COMPANY_TOKEN}</h2>
           <p><strong>${esc(reporter?.name ?? 'A crew member')}</strong> (${esc(crew?.name ?? 'a team')}) flagged:</p>
           <p style="font-size:16px;"><strong>${esc(input.productName)}</strong> — ${SUPPLY_STATUS_LABELS[input.status]}</p>
           ${input.notes ? `<p style="color:#334155;">"${esc(input.notes)}"</p>` : ''}
