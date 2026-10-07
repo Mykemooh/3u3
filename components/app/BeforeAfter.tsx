@@ -1,6 +1,8 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
+import { useT } from '@/components/i18n/LocaleProvider';
+import { accountMessages } from '@/lib/i18n/messages/account';
 
 /**
  * Drag (or use arrow keys) to wipe between the before and after photo of a
@@ -8,6 +10,7 @@ import { useCallback, useRef, useState } from 'react';
  * to the handle's position.
  */
 export default function BeforeAfter({ before, after, room }: { before: string; after: string; room: string }) {
+  const t = useT(accountMessages);
   const [pos, setPos] = useState(50);
   const box = useRef<HTMLDivElement>(null);
 
@@ -29,19 +32,19 @@ export default function BeforeAfter({ before, after, room }: { before: string; a
         if (e.buttons === 1 || e.pointerType === 'touch') moveTo(e.clientX);
       }}
     >
-      <img src={after} alt={`${room} after cleaning`} className="absolute inset-0 h-full w-full object-cover" draggable={false} />
+      <img src={after} alt={t('baAltAfter', { room })} className="absolute inset-0 h-full w-full object-cover" draggable={false} />
       <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
-        <img src={before} alt={`${room} before cleaning`} className="h-full w-full object-cover" draggable={false} />
+        <img src={before} alt={t('baAltBefore', { room })} className="h-full w-full object-cover" draggable={false} />
       </div>
-      <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-ink/75 px-2.5 py-1 text-[11px] font-bold text-white">Before</span>
-      <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-gold px-2.5 py-1 text-[11px] font-bold text-white">After</span>
+      <span className="pointer-events-none absolute left-3 top-3 rounded-full bg-ink/75 px-2.5 py-1 text-[11px] font-bold text-white">{t('before')}</span>
+      <span className="pointer-events-none absolute right-3 top-3 rounded-full bg-gold px-2.5 py-1 text-[11px] font-bold text-white">{t('after')}</span>
       <div className="pointer-events-none absolute inset-y-0" style={{ left: `${pos}%` }}>
         <div className="absolute inset-y-0 -ml-px w-0.5 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.15)]" />
       </div>
       <button
         type="button"
         role="slider"
-        aria-label={`Compare ${room} before and after`}
+        aria-label={t('baCompare', { room })}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(pos)}

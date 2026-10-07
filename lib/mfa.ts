@@ -5,6 +5,8 @@ import { users, tenants } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { generateSecret, otpauthUrl, verifyTotp } from '@/lib/totp';
 import { sendEmail, simpleEmail } from '@/lib/email';
+import { translator } from '@/lib/i18n';
+import { notifyMessages } from '@/lib/i18n/messages/notify';
 
 /**
  * Multi-factor sign-in for every portal.
@@ -135,13 +137,14 @@ export async function sendEmailCode(userId: string): Promise<{ sentTo: string }>
     .update(users)
     .set({ mfaEmailCodeHash: hash(code), mfaEmailCodeExpiresAt: new Date(Date.now() + EMAIL_CODE_MINUTES * 60000) })
     .where(eq(users.id, userId));
+  const t = translator(notifyMessages, user.locale === 'es' ? 'es' : 'en');
   await sendEmail({
     to: user.email,
-    subject: `Your sign-in code: ${code}`,
+    subject: t('mfaSubject', { code }),
     html: simpleEmail({
       brandName: ISSUER,
-      heading: 'Your sign-in code',
-      body: `Use ${code} to finish signing in. It works for ${EMAIL_CODE_MINUTES} minutes.\n\nIf you didn't just try to sign in, change your password — someone else may know it.`,
+      heading: t('mfaHeading'),
+      body: t('mfaBody', { code, minutes: EMAIL_CODE_MINUTES }),
     }),
   });
   const [name, domain] = user.email.split('@');

@@ -3,6 +3,7 @@ import { crews, crewMembers, users, jobs, jobStaff } from '@/db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import { issuePasswordSetupToken } from '@/lib/passwordSetup';
 import { sendEmail, passwordSetupEmail } from '@/lib/email';
+import type { Locale } from '@/lib/i18n';
 import { appUrl } from '@/lib/url';
 
 /**
@@ -148,6 +149,8 @@ export async function addEmployee(
     payRateCentsPerHour?: number | null;
     payRateCentsPerClean?: number | null;
     payRateCentsPerDay?: number | null;
+    /** Their language for the invite and later account emails; default English. */
+    locale?: Locale;
   },
 ) {
   const email = input.email.trim().toLowerCase();
@@ -172,12 +175,13 @@ export async function addEmployee(
     payRateCentsPerHour: input.payRateCentsPerHour ?? null,
     payRateCentsPerClean: input.payRateCentsPerClean ?? null,
     payRateCentsPerDay: input.payRateCentsPerDay ?? null,
+    ...(input.locale ? { locale: input.locale } : {}),
   });
   if (input.crewId) await db.insert(crewMembers).values({ id: crypto.randomUUID(), crewId: input.crewId, userId: id });
 
   try {
     const token = await issuePasswordSetupToken(id);
-    const { subject, html } = passwordSetupEmail({ name: input.name, url: appUrl(`/set-password?token=${token}`) });
+    const { subject, html } = passwordSetupEmail({ name: input.name, url: appUrl(`/set-password?token=${token}`), locale: input.locale });
     await sendEmail({ to: email, subject, html });
   } catch (err) {
     console.error('[team] invite email failed for', id, err);

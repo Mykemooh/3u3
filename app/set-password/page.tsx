@@ -6,6 +6,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import LogoBadge from '@/components/LogoBadge';
 import { homeForRole } from '@/lib/nav';
+import { useT } from '@/components/i18n/LocaleProvider';
+import { rich } from '@/lib/i18n/rich';
+import { authMessages } from '@/lib/i18n/messages/auth';
 
 /**
  * Where every "create your password" email link lands — lead capture and
@@ -15,6 +18,7 @@ import { homeForRole } from '@/lib/nav';
  * right after, rather than sending them back to a bare sign-in form.
  */
 function SetPasswordInner() {
+  const t = useT(authMessages);
   const router = useRouter();
   const params = useSearchParams();
   const token = params.get('token') ?? '';
@@ -31,8 +35,8 @@ function SetPasswordInner() {
     e.preventDefault();
     setError('');
 
-    if (password.length < 8) return setError('Password must be at least 8 characters.');
-    if (password !== confirm) return setError("Those passwords don't match.");
+    if (password.length < 8) return setError(t('setPwTooShort'));
+    if (password !== confirm) return setError(t('setPwMismatch'));
 
     setLoading(true);
     const res = await fetch('/api/account/set-password', {
@@ -44,7 +48,7 @@ function SetPasswordInner() {
     setLoading(false);
 
     if (!res.ok) {
-      setError(data.error || 'Something went wrong. Please try again.');
+      setError(data.error || t('errorRetry'));
       setLinkDead(res.status === 400 && /link/i.test(data.error ?? ''));
       return;
     }
@@ -67,13 +71,15 @@ function SetPasswordInner() {
         <Link href="/" className="mb-10">
           <LogoBadge />
         </Link>
-        <h1 className="text-2xl font-bold text-ink">Link missing</h1>
+        <h1 className="text-2xl font-bold text-ink">{t('setPwLinkMissing')}</h1>
         <p className="mt-2 max-w-sm text-slate">
-          This page needs the link from your email or text — please open it from there, or{' '}
-          <Link href="/forgot" className="font-semibold text-bronze underline">
-            get a new link
-          </Link>
-          .
+          {rich(t('setPwLinkMissingBody'), {
+            link: (
+              <Link href="/forgot" className="font-semibold text-bronze underline">
+                {t('setPwGetNewLink')}
+              </Link>
+            ),
+          })}
         </p>
       </main>
     );
@@ -86,17 +92,15 @@ function SetPasswordInner() {
       </Link>
 
       <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-ink">{isReset ? 'Choose a new password' : 'Create your password'}</h1>
+        <h1 className="text-2xl font-bold text-ink">{isReset ? t('setPwResetTitle') : t('setPwCreateTitle')}</h1>
         <p className="mb-6 mt-1 text-sm text-slate">
-          {isReset
-            ? "Pick a new password and we'll sign you straight in."
-            : 'Set a password so you can sign in anytime to see your booking, photos, and invoices.'}
+          {isReset ? t('setPwResetIntro') : t('setPwCreateIntro')}
         </p>
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="label" htmlFor="password">
-              Password
+              {t('password')}
             </label>
             <input
               id="password"
@@ -108,12 +112,12 @@ function SetPasswordInner() {
               required
               minLength={8}
             />
-            <p className="mt-1.5 text-xs text-muted">At least 8 characters.</p>
+            <p className="mt-1.5 text-xs text-muted">{t('setPwHelp')}</p>
           </div>
 
           <div>
             <label className="label" htmlFor="confirm">
-              Confirm password
+              {t('setPwConfirm')}
             </label>
             <input
               id="confirm"
@@ -134,7 +138,7 @@ function SetPasswordInner() {
                 <>
                   {' '}
                   <Link href="/forgot" className="font-semibold underline">
-                    Send me a new link
+                    {t('setPwSendNewLink')}
                   </Link>
                 </>
               )}
@@ -142,7 +146,7 @@ function SetPasswordInner() {
           )}
 
           <button type="submit" disabled={loading || signingIn} className="btn-primary w-full">
-            {signingIn ? 'Signing you in…' : loading ? 'Saving…' : isReset ? 'Save and sign in' : 'Create password and sign in'}
+            {signingIn ? t('setPwSigningIn') : loading ? t('setPwSaving') : isReset ? t('setPwSaveAndSignIn') : t('setPwCreateAndSignIn')}
           </button>
         </form>
       </div>

@@ -18,3 +18,26 @@ export const SERVICE_LABELS: Record<string, string> = {
   POST_CONSTRUCTION: 'Post-Construction Cleaning',
   COMMERCIAL: 'Commercial Cleaning',
 };
+
+/** SERVICE_LABELS in Spanish (lib/i18n). */
+export const SERVICE_LABELS_ES: Record<string, string> = {
+  STANDARD: 'Limpieza estándar',
+  DEEP: 'Limpieza profunda',
+  MOVE_IN_OUT: 'Limpieza de mudanza (entrada / salida)',
+  AIRBNB: 'Limpieza de Airbnb / alquiler',
+  POST_CONSTRUCTION: 'Limpieza post-construcción',
+  COMMERCIAL: 'Limpieza comercial',
+};
+
+/** A built-in service's name in the reader's language; unknown keys come back as given. */
+export function serviceLabel(key: string, locale: 'en' | 'es' = 'en'): string {
+  return (locale === 'es' ? SERVICE_LABELS_ES[key] : SERVICE_LABELS[key]) ?? SERVICE_LABELS[key] ?? key;
+}
+
+/**
+ * A service's display name: the built-in label in the reader's language for
+ * the standard keys, or the owner's own name for a service they created.
+ */
+export function serviceName(key: string, customName: string | null | undefined, locale: 'en' | 'es' = 'en'): string {
+  return SERVICE_LABELS[key] ? serviceLabel(key, locale) : customName || key;
+}

@@ -4,6 +4,8 @@ import { and, eq, inArray, isNull } from 'drizzle-orm';
 import type { JourneyStep } from '@/components/app/JourneyRail';
 import { formatClock } from '@/lib/time';
 import { invoiceLabel } from '@/lib/invoices';
+import { intlLocale, translator, type Locale } from '@/lib/i18n';
+import { accountMessages } from '@/lib/i18n/messages/account';
 
 export type AccountBooking = Awaited<ReturnType<typeof getAccountBookings>>[number];
 
@@ -57,37 +59,38 @@ export async function getAccountBookings(clientId: string) {
 }
 
 /** Booked → Cleaning → Done → Invoiced → Paid, from real records only. */
-export function cleaningJourney(row: Pick<AccountBooking, 'job' | 'invoice'>): JourneyStep[] {
+export function cleaningJourney(row: Pick<AccountBooking, 'job' | 'invoice'>, locale: Locale = 'en'): JourneyStep[] {
   const { job, invoice } = row;
+  const t = translator(accountMessages, locale);
   const started = job?.status === 'EN_ROUTE' || job?.status === 'IN_PROGRESS' || job?.status === 'COMPLETE';
   const complete = job?.status === 'COMPLETE';
   const sent = invoice?.status === 'SENT' || invoice?.status === 'PAID';
   const paid = invoice?.status === 'PAID';
   const state = (isDone: boolean, isCurrent: boolean) => (isDone ? 'done' : isCurrent ? 'current' : 'todo') as JourneyStep['state'];
   return [
-    { label: 'Booked', state: 'done' },
+    { label: t('journeyBooked'), state: 'done' },
     {
-      label: 'Cleaning',
+      label: t('journeyCleaning'),
       state: state(complete, started),
-      detail: job?.status === 'EN_ROUTE' ? 'On the way' : job?.startedAt ? formatClock(job.startedAt) : undefined,
+      detail: job?.status === 'EN_ROUTE' ? t('journeyOnTheWay') : job?.startedAt ? formatClock(job.startedAt, locale) : undefined,
     },
-    { label: 'Done', state: state(complete, false), detail: job?.completedAt ? formatClock(job.completedAt) : undefined },
-    { label: 'Invoice', state: state(sent, complete && !sent) },
-    { label: 'Paid', state: state(paid, sent && !paid) },
+    { label: t('journeyDone'), state: state(complete, false), detail: job?.completedAt ? formatClock(job.completedAt, locale) : undefined },
+    { label: t('journeyInvoice'), state: state(sent, complete && !sent) },
+    { label: t('journeyPaid'), state: state(paid, sent && !paid) },
   ];
 }
 
 export type PendingInvoiceRow = { id: string; label: string; amountCents: number; dateLabel: string };
 
 /** Invoices sent but not yet paid — My Account → Payment. */
-export function pendingInvoicesFor(rows: AccountBooking[]): PendingInvoiceRow[] {
+export function pendingInvoicesFor(rows: AccountBooking[], locale: Locale = 'en'): PendingInvoiceRow[] {
   return rows
     .filter((r) => r.invoice?.status === 'SENT')
     .map((r) => ({
       id: r.invoice!.id,
       label: invoiceLabel(r.invoice!),
       amountCents: r.invoice!.totalCents + r.invoice!.tipCents,
-      dateLabel: (r.invoice!.sentAt ?? r.invoice!.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+      dateLabel: (r.invoice!.sentAt ?? r.invoice!.createdAt).toLocaleDateString(intlLocale(locale), { month: 'long', day: 'numeric', year: 'numeric' }),
     }))
     .sort((a, b) => a.dateLabel.localeCompare(b.dateLabel));
 }
@@ -96,14 +99,14 @@ export type PaidInvoiceRow = { id: string; label: string; amountCents: number; d
 export type PaymentMonthGroup = { monthKey: string; monthLabel: string; totalCents: number; invoices: PaidInvoiceRow[] };
 
 /** Paid invoices grouped by the month they were paid, newest month first — My Account → Payment history. */
-export function paymentHistoryByMonth(rows: AccountBooking[]): PaymentMonthGroup[] {
+export function paymentHistoryByMonth(rows: AccountBooking[], locale: Locale = 'en'): PaymentMonthGroup[] {
   const paid = rows.filter((r) => r.invoice?.status === 'PAID' && r.invoice.paidAt);
   const groups = new Map<string, PaymentMonthGroup>();
   for (const r of paid) {
     const invoice = r.invoice!;
     const paidAt = invoice.paidAt!;
     const monthKey = `${paidAt.getFullYear()}-${String(paidAt.getMonth() + 1).padStart(2, '0')}`;
-    const monthLabel = paidAt.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const monthLabel = paidAt.toLocaleDateString(intlLocale(locale), { month: 'long', year: 'numeric' });
     const group = groups.get(monthKey) ?? { monthKey, monthLabel, totalCents: 0, invoices: [] };
     const amountCents = invoice.totalCents + invoice.tipCents;
     group.totalCents += amountCents;
@@ -111,7 +114,7 @@ export function paymentHistoryByMonth(rows: AccountBooking[]): PaymentMonthGroup
       id: invoice.id,
       label: invoiceLabel(invoice),
       amountCents,
-      dateLabel: paidAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      dateLabel: paidAt.toLocaleDateString(intlLocale(locale), { month: 'short', day: 'numeric' }),
       receiptUrl: invoice.receiptUrl,
     });
     groups.set(monthKey, group);

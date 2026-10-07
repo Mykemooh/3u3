@@ -14,6 +14,8 @@ const schema = z.object({
   payRatePerHour: z.number().nonnegative().nullable().optional(),
   payRatePerClean: z.number().nonnegative().nullable().optional(),
   payRatePerDay: z.number().nonnegative().nullable().optional(),
+  // Their language for the invite email (and later account emails).
+  locale: z.enum(['en', 'es']).optional(),
 });
 
 // New employee: a cleaner login, emailed a link to create their password.

@@ -1,10 +1,24 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useLocale, useT } from '@/components/i18n/LocaleProvider';
+import { intlLocale, type Locale } from '@/lib/i18n';
+import { formsMessages } from '@/lib/i18n/messages/forms';
 
 export type CalendarDay = { date: string; hasAvailability: boolean };
 
-const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+/** One-letter weekday headings, Sunday first (S M T W T F S / D L M M J V S). */
+function weekdayLabels(locale: Locale): string[] {
+  const fmt = new Intl.DateTimeFormat(intlLocale(locale), { weekday: 'narrow' });
+  // 2026-01-04 was a Sunday.
+  return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(2026, 0, 4 + i)));
+}
+/** "October 2026" / "Octubre de 2026" (Spanish month names are lowercase mid-sentence; this is a heading). */
+function monthHeading(d: Date, locale: Locale): string {
+  const s = d.toLocaleDateString(intlLocale(locale), { month: 'long', year: 'numeric' });
+  return locale === 'es' ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
+
 const MONTHS_AHEAD_MAX = 11; // this month plus 11 more = a year out
 
 function monthKey(y: number, m: number) {
@@ -27,6 +41,9 @@ export default function BookingCalendar({
   selectedDate: string | null;
   onSelectDate: (date: string) => void;
 }) {
+  const t = useT(formsMessages);
+  const locale = useLocale();
+  const weekdays = useMemo(() => weekdayLabels(locale), [locale]);
   const today = useMemo(() => new Date(), []);
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
@@ -66,25 +83,25 @@ export default function BookingCalendar({
           onClick={() => shiftMonth(-1)}
           disabled={atMin}
           className="rounded-lg border border-line px-2.5 py-1.5 text-sm font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-30"
-          aria-label="Previous month"
+          aria-label={t('prevMonth')}
         >
           ←
         </button>
         <p className="font-semibold text-ink">
-          {new Date(viewYear, viewMonth, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+          {monthHeading(new Date(viewYear, viewMonth, 1), locale)}
         </p>
         <button
           type="button"
           onClick={() => shiftMonth(1)}
           disabled={atMax}
           className="rounded-lg border border-line px-2.5 py-1.5 text-sm font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-30"
-          aria-label="Next month"
+          aria-label={t('nextMonth')}
         >
           →
         </button>
       </div>
       <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-muted">
-        {WEEKDAY_LABELS.map((d, i) => (
+        {weekdays.map((d, i) => (
           <div key={i} className="py-1">
             {d}
           </div>

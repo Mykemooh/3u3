@@ -340,6 +340,7 @@ export async function sendInvoice(invoiceId: string): Promise<{ url: string }> {
       totalCents: invoice.totalCents,
       items,
       payUrl: hostedUrl,
+      locale: client.locale,
     });
     await sendEmail({ to: client.email, subject, html });
   }
@@ -396,6 +397,7 @@ export async function confirmInvoicePaid(stripeInvoice: Stripe.Invoice) {
       name: client.name,
       totalCents: invoice.totalCents,
       receiptUrl,
+      locale: client.locale,
     });
     await sendEmail({ to: client.email, subject, html });
   }

@@ -2,12 +2,22 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CADENCE_LABEL, CLIENT_CADENCES, type Cadence } from '@/lib/cadence';
+import { CLIENT_CADENCES, type Cadence } from '@/lib/cadence';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
+import { useLocale, useT } from '@/components/i18n/LocaleProvider';
+import { commonMessages } from '@/lib/i18n/messages/common';
 
 type Slot = { start: string; end: string; available: boolean };
 type Day = { date: string; slots: Slot[] };
 
+const CADENCE_KEY = {
+  ONE_TIME: 'cadenceOneTime',
+  WEEKLY: 'cadenceWeekly',
+  BIWEEKLY: 'cadenceBiweekly',
+  EVERY_4_WEEKS: 'cadenceEvery4Weeks',
+  MONTHLY: 'cadenceMonthly',
+  CUSTOM: 'cadenceCustom',
+} as const satisfies Record<Cadence, keyof typeof commonMessages.en>;
 
 export default function MyBookingCard({
   booking,
@@ -24,6 +34,8 @@ export default function MyBookingCard({
     priceLabel: string;
   };
 }) {
+  const t = useT(commonMessages);
+  const locale = useLocale();
   const router = useRouter();
   const [mode, setMode] = useState<'view' | 'cadence' | 'reschedule'>('view');
   const [cadence, setCadence] = useState<Cadence>(booking.cadence);
@@ -56,7 +68,7 @@ export default function MyBookingCard({
       setMode('view');
       router.refresh();
     } else {
-      setError(data.error || "Couldn't save — please try again.");
+      setError(data.error || t('saveError'));
     }
   }
 
@@ -75,12 +87,12 @@ export default function MyBookingCard({
       setMode('view');
       router.refresh();
     } else {
-      setError(data.error || "Couldn't save — please try again.");
+      setError(data.error || t('saveError'));
     }
   }
 
   async function cancelBooking() {
-    if (!confirm("Cancel this cleaning? This can't be undone.")) return;
+    if (!confirm(t('bookCancelConfirm'))) return;
     setSaving(true);
     setError('');
     const res = await fetch(`/api/account/bookings/${booking.id}`, {
@@ -93,7 +105,7 @@ export default function MyBookingCard({
     if (res.ok) {
       router.refresh();
     } else {
-      setError(data.error || "Couldn't cancel — please try again.");
+      setError(data.error || t('bookCancelError'));
     }
   }
 
@@ -103,10 +115,10 @@ export default function MyBookingCard({
         <div>
           <p className="font-semibold text-ink">{booking.serviceName}</p>
           <p className="text-sm text-slate">
-            {formatDateLabel(booking.slotStart.split('T')[0])} · {formatSlotLabel(booking.slotStart, booking.slotEnd)}
+            {formatDateLabel(booking.slotStart.split('T')[0], locale)} · {formatSlotLabel(booking.slotStart, booking.slotEnd, locale)}
           </p>
           <p className="text-sm text-slate">
-            {CADENCE_LABEL[booking.cadence]} · {booking.priceLabel}
+            {t(CADENCE_KEY[booking.cadence])} · {booking.priceLabel}
           </p>
         </div>
         {booking.canModify ? (
@@ -114,25 +126,25 @@ export default function MyBookingCard({
             <div className="flex flex-wrap gap-2">
               {booking.recurringEligible && (
                 <button onClick={() => setMode('cadence')} className="btn-secondary !px-3 !py-1.5 text-xs">
-                  Change frequency
+                  {t('bookChangeFrequency')}
                 </button>
               )}
               <button onClick={() => setMode('reschedule')} className="btn-secondary !px-3 !py-1.5 text-xs">
-                Reschedule
+                {t('bookReschedule')}
               </button>
               <button onClick={cancelBooking} disabled={saving} className="btn-secondary !px-3 !py-1.5 text-xs !border-red-200 !text-red-600">
-                Cancel
+                {t('cancel')}
               </button>
             </div>
           )
         ) : (
-          <span className="pill bg-surface text-muted">Locked — within 24 hrs</span>
+          <span className="pill bg-surface text-muted">{t('bookLocked')}</span>
         )}
       </div>
 
       {!booking.canModify && (
         <p className="mt-2 text-xs text-muted">
-          This cleaning starts in less than 24 hours, so changes need a phone call — please contact us directly.
+          {t('bookLockedHelp')}
         </p>
       )}
 
@@ -147,17 +159,17 @@ export default function MyBookingCard({
                   cadence === c ? 'border-gold bg-gold/10' : 'border-line hover:border-gold'
                 }`}
               >
-                {CADENCE_LABEL[c]}
+                {t(CADENCE_KEY[c])}
               </button>
             ))}
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex gap-2">
             <button onClick={saveCadence} disabled={saving} className="btn-primary !px-4 !py-2 text-sm">
-              {saving ? 'Saving…' : 'Save frequency'}
+              {saving ? t('saving') : t('bookSaveFrequency')}
             </button>
             <button onClick={() => setMode('view')} className="btn-secondary !px-4 !py-2 text-sm">
-              Cancel
+              {t('cancel')}
             </button>
           </div>
         </div>
@@ -165,11 +177,11 @@ export default function MyBookingCard({
 
       {mode === 'reschedule' && (
         <div className="mt-4 space-y-3 border-t border-line pt-4">
-          {loadingSlots && <p className="text-sm text-muted">Loading real availability…</p>}
+          {loadingSlots && <p className="text-sm text-muted">{t('bookLoadingSlots')}</p>}
           <div className="max-h-64 space-y-4 overflow-y-auto pr-1">
             {days.filter((d) => d.slots.some((s) => s.available)).map((day) => (
               <div key={day.date}>
-                <p className="mb-2 text-sm font-semibold text-bronze">{formatDateLabel(day.date)}</p>
+                <p className="mb-2 text-sm font-semibold text-bronze">{formatDateLabel(day.date, locale)}</p>
                 <div className="grid grid-cols-2 gap-2">
                   {day.slots.map((slot) => (
                     <button
@@ -184,23 +196,23 @@ export default function MyBookingCard({
                           : 'border-line hover:border-gold'
                       }`}
                     >
-                      {formatSlotLabel(slot.start, slot.end)}
+                      {formatSlotLabel(slot.start, slot.end, locale)}
                     </button>
                   ))}
                 </div>
               </div>
             ))}
             {!loadingSlots && days.every((d) => !d.slots.some((s) => s.available)) && (
-              <p className="text-sm text-muted">No open slots in the next 10 days — please check back soon.</p>
+              <p className="text-sm text-muted">{t('bookNoSlots')}</p>
             )}
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex gap-2">
             <button onClick={saveReschedule} disabled={saving || !selected} className="btn-primary !px-4 !py-2 text-sm">
-              {saving ? 'Saving…' : 'Confirm new time'}
+              {saving ? t('saving') : t('bookConfirmTime')}
             </button>
             <button onClick={() => setMode('view')} className="btn-secondary !px-4 !py-2 text-sm">
-              Cancel
+              {t('cancel')}
             </button>
           </div>
         </div>

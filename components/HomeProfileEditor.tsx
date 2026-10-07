@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useT } from '@/components/i18n/LocaleProvider';
+import { commonMessages } from '@/lib/i18n/messages/common';
 
 export type HomeProfileData = {
   pets: string | null;
@@ -22,6 +24,7 @@ export type HomeProfileData = {
  * same shape, different endpoint, exactly like AddressForm.
  */
 export default function HomeProfileEditor({ endpoint, initial, entryCodeConfigured }: { endpoint: string; initial: HomeProfileData; entryCodeConfigured: boolean }) {
+  const t = useT(commonMessages);
   const router = useRouter();
   const [pets, setPets] = useState(initial.pets ?? '');
   const [parkingNotes, setParkingNotes] = useState(initial.parkingNotes ?? '');
@@ -49,7 +52,7 @@ export default function HomeProfileEditor({ endpoint, initial, entryCodeConfigur
       router.refresh();
     } else {
       setStatus('error');
-      setError(data.error || "Couldn't save — please try again.");
+      setError(data.error || t('saveError'));
     }
   }
 
@@ -79,47 +82,47 @@ export default function HomeProfileEditor({ endpoint, initial, entryCodeConfigur
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="label">Pets</label>
-          <textarea className="input" rows={2} placeholder="A friendly golden retriever, stays in the backyard" value={pets} onChange={(e) => setPets(e.target.value)} />
+          <label className="label">{t('homePets')}</label>
+          <textarea className="input" rows={2} placeholder={t('homePetsPlaceholder')} value={pets} onChange={(e) => setPets(e.target.value)} />
         </div>
         <div>
-          <label className="label">Parking</label>
-          <textarea className="input" rows={2} placeholder="Park in the driveway, not the street" value={parkingNotes} onChange={(e) => setParkingNotes(e.target.value)} />
+          <label className="label">{t('homeParking')}</label>
+          <textarea className="input" rows={2} placeholder={t('homeParkingPlaceholder')} value={parkingNotes} onChange={(e) => setParkingNotes(e.target.value)} />
         </div>
         <div>
-          <label className="label">Product allergies</label>
-          <textarea className="input" rows={2} placeholder="No fragranced products — sensitive to strong scents" value={allergyNotes} onChange={(e) => setAllergyNotes(e.target.value)} />
+          <label className="label">{t('homeAllergies')}</label>
+          <textarea className="input" rows={2} placeholder={t('homeAllergiesPlaceholder')} value={allergyNotes} onChange={(e) => setAllergyNotes(e.target.value)} />
         </div>
         <div>
-          <label className="label">Do not touch</label>
-          <textarea className="input" rows={2} placeholder="The antique vase on the mantel, home office desk" value={doNotTouch} onChange={(e) => setDoNotTouch(e.target.value)} />
+          <label className="label">{t('homeDoNotTouch')}</label>
+          <textarea className="input" rows={2} placeholder={t('homeDoNotTouchPlaceholder')} value={doNotTouch} onChange={(e) => setDoNotTouch(e.target.value)} />
         </div>
       </div>
 
       <div>
-        <label className="label">Entry / alarm code</label>
+        <label className="label">{t('homeEntryCode')}</label>
         {!entryCodeConfigured && (
-          <p className="mb-1.5 text-xs text-amber-700">Encryption isn't configured for this deployment yet — entry codes can't be saved until it is.</p>
+          <p className="mb-1.5 text-xs text-amber-700">{t('homeEntryNotConfigured')}</p>
         )}
         <div className="flex items-center gap-2">
           <input
             className="input"
             type={showEntryCode ? 'text' : 'password'}
-            placeholder={initial.entryCodeSet ? '••••••' : 'e.g. gate code, lockbox code'}
+            placeholder={initial.entryCodeSet ? '••••••' : t('homeEntryPlaceholder')}
             value={entryCode}
             onChange={(e) => setEntryCode(e.target.value)}
             disabled={!entryCodeConfigured}
             autoComplete="off"
           />
           <button type="button" onClick={() => setShowEntryCode((v) => !v)} className="shrink-0 text-xs font-semibold text-bronze hover:underline">
-            {showEntryCode ? 'Hide' : 'Show'}
+            {showEntryCode ? t('homeHide') : t('homeShow')}
           </button>
         </div>
-        <p className="mt-1 text-xs text-muted">Stored encrypted — only visible to the crew assigned to a job here, and to you.</p>
+        <p className="mt-1 text-xs text-muted">{t('homeEntryHelp')}</p>
       </div>
 
       <div>
-        <p className="label mb-2">Room-specific notes</p>
+        <p className="label mb-2">{t('homeRoomNotes')}</p>
         <div className="space-y-2">
           {roomNotes.map((n) => (
             <div key={n.id} className="flex items-start justify-between gap-3 rounded-lg border border-line px-3 py-2 text-sm">
@@ -128,30 +131,30 @@ export default function HomeProfileEditor({ endpoint, initial, entryCodeConfigur
                 <span className="text-slate">{n.notes}</span>
               </div>
               <button type="button" onClick={() => removeRoomNote(n.id)} className="shrink-0 text-xs text-muted hover:text-ink">
-                Remove
+                {t('remove')}
               </button>
             </div>
           ))}
-          {roomNotes.length === 0 && <p className="text-sm text-muted">No room-specific notes yet.</p>}
+          {roomNotes.length === 0 && <p className="text-sm text-muted">{t('homeNoRoomNotes')}</p>}
         </div>
         <div className="mt-2 flex flex-wrap items-end gap-2">
           <div className="min-w-[120px] flex-1">
-            <label className="label">Room</label>
-            <input className="input" placeholder="Primary bedroom" value={newRoom} onChange={(e) => setNewRoom(e.target.value)} />
+            <label className="label">{t('homeRoom')}</label>
+            <input className="input" placeholder={t('homeRoomPlaceholder')} value={newRoom} onChange={(e) => setNewRoom(e.target.value)} />
           </div>
           <div className="min-w-[200px] flex-[2]">
-            <label className="label">Note</label>
-            <input className="input" placeholder="Rug is an heirloom — vacuum only, don't shampoo" value={newNote} onChange={(e) => setNewNote(e.target.value)} />
+            <label className="label">{t('homeNote')}</label>
+            <input className="input" placeholder={t('homeNotePlaceholder')} value={newNote} onChange={(e) => setNewNote(e.target.value)} />
           </div>
           <button type="button" onClick={addRoomNote} disabled={!newRoom.trim() || !newNote.trim()} className="btn-secondary !px-4 !py-2.5 text-sm">
-            Add
+            {t('homeAdd')}
           </button>
         </div>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
       <button type="button" onClick={save} disabled={status === 'saving'} className="btn-primary !px-5 !py-2.5 text-sm">
-        {status === 'saving' ? 'Saving…' : status === 'saved' ? 'Saved ✓' : 'Save home profile'}
+        {status === 'saving' ? t('saving') : status === 'saved' ? t('homeSaved') : t('homeSave')}
       </button>
     </div>
   );

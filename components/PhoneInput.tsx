@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useT } from '@/components/i18n/LocaleProvider';
+import { formsMessages } from '@/lib/i18n/messages/forms';
 
 type Country = { code: string; dial: string; label: string };
 
@@ -43,6 +45,7 @@ export default function PhoneInput({
   id?: string;
   placeholder?: string;
 }) {
+  const t = useT(formsMessages);
   const [{ countryCode, national }, setParts] = useState(() => splitPhone(value));
 
   function emit(nextCountryCode: string, nextNational: string) {
@@ -60,8 +63,8 @@ export default function PhoneInput({
           setParts({ countryCode: e.target.value, national });
           emit(e.target.value, national);
         }}
-        aria-label="Country"
-        title="Country"
+        aria-label={t('country')}
+        title={t('country')}
       >
         {COUNTRIES.map((c) => (
           <option key={c.code} value={c.code}>

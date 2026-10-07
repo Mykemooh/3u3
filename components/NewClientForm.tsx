@@ -11,6 +11,7 @@ export default function NewClientForm() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
+  const [locale, setLocale] = useState<'en' | 'es'>('en');
   const [addressLine1, setAddressLine1] = useState('');
   const [address, setAddress] = useState<PickedAddress | null>(null);
   const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
@@ -23,7 +24,7 @@ export default function NewClientForm() {
     const res = await fetch('/api/admin/clients', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, phone, email: email || undefined, addressLine1: addressLine1 || undefined, address: address ?? undefined }),
+      body: JSON.stringify({ name, phone, email: email || undefined, addressLine1: addressLine1 || undefined, address: address ?? undefined, locale }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -60,6 +61,14 @@ export default function NewClientForm() {
       <div>
         <label className="label">Home address (optional)</label>
         <AddressInput value={addressLine1} onChange={setAddressLine1} picked={address} onPick={setAddress} />
+      </div>
+      <div>
+        <label className="label" htmlFor="new-client-locale">Language</label>
+        <select id="new-client-locale" className="input" value={locale} onChange={(e) => setLocale(e.target.value === 'es' ? 'es' : 'en')}>
+          <option value="en">English</option>
+          <option value="es">Español</option>
+        </select>
+        <p className="mt-1 text-xs text-muted">For their emails and texts.</p>
       </div>
       {error && <p className="sm:col-span-2 text-sm text-red-600">{error}</p>}
       <div className="flex gap-3 sm:col-span-2">

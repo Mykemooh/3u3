@@ -1,6 +1,8 @@
 'use client';
 
 import { useId, useState } from 'react';
+import { useT } from '@/components/i18n/LocaleProvider';
+import { accountMessages } from '@/lib/i18n/messages/account';
 import { googleCalendarUrl, outlookCalendarUrl, type CalendarEvent } from '@/lib/calendar';
 
 /**
@@ -10,6 +12,7 @@ import { googleCalendarUrl, outlookCalendarUrl, type CalendarEvent } from '@/lib
  * an .ics from our own API — see app/api/account/bookings/[id]/calendar.
  */
 export default function AddToCalendar({ bookingId, event }: { bookingId: string; event: CalendarEvent }) {
+  const t = useT(accountMessages);
   const [open, setOpen] = useState(false);
   const menuId = useId();
   const icsHref = `/api/account/bookings/${bookingId}/calendar`;
@@ -24,7 +27,7 @@ export default function AddToCalendar({ bookingId, event }: { bookingId: string;
         aria-controls={menuId}
         className="btn-secondary btn-sm"
       >
-        + Add to calendar
+        {t('calAdd')}
       </button>
       {open && (
         <ul id={menuId} role="menu" className="absolute right-0 z-30 mt-1 w-56 overflow-hidden rounded-xl border border-line bg-white shadow-card-lg">
@@ -40,7 +43,7 @@ export default function AddToCalendar({ bookingId, event }: { bookingId: string;
           </li>
           <li>
             <a href={icsHref} className="block px-4 py-2.5 text-sm text-ink hover:bg-surface">
-              Apple, Skylight, or other (.ics)
+              {t('calOther')}
             </a>
           </li>
         </ul>

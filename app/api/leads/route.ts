@@ -6,7 +6,8 @@ import { users, addresses, serviceTypes, bookings } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { getTenant, getOwnerEmail } from '@/lib/data';
 import { createQuoteVisitBooking, logNotification, DoubleBookingError } from '@/lib/bookings';
-import { sendEmail, quoteVisitCustomerEmail, newLeadOwnerEmail, passwordSetupEmail } from '@/lib/email';
+import { sendEmail, quoteVisitCustomerEmail, newLeadOwnerEmail, passwordSetupEmail, localizedServiceName } from '@/lib/email';
+import { getLocale } from '@/lib/i18n/server';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 import { issuePasswordSetupToken } from '@/lib/passwordSetup';
 import { appUrl } from '@/lib/url';
@@ -61,7 +62,9 @@ export async function POST(req: Request) {
   const isNewClient = !user;
   if (!user) {
     const id = crypto.randomUUID();
-    await db.insert(users).values({ id, tenantId: tenant.id, role: 'CUSTOMER', name, phone, email });
+    // A new client's language is whatever they filled the form in (toggle
+    // cookie, else their browser), so their emails match from the start.
+    await db.insert(users).values({ id, tenantId: tenant.id, role: 'CUSTOMER', name, phone, email, locale: await getLocale() });
     // Came in through a client's referral link (app/r/[code])?
     await recordReferral(id, cookies().get('ref')?.value, tenant.id).catch(() => false);
     user = (await db.select().from(users).where(eq(users.id, id)).limit(1))[0]!;
@@ -104,6 +107,8 @@ export async function POST(req: Request) {
     const dateLabel = formatDateLabel(slotStart.split('T')[0]);
     const timeLabel = formatSlotLabel(slotStart, slotEnd);
     const customerEmail = email ?? user.email ?? undefined;
+    // The client's own emails go in their language; the owner's alert below stays English.
+    const locale = user.locale;
 
     // Customer confirmation (PRD 6.2/6.6) — best-effort: email is optional
     // at capture time to keep the form fast, so we only actually send when
@@ -118,7 +123,13 @@ export async function POST(req: Request) {
     });
     let customerEmailSent = false;
     if (customerEmail) {
-      const { subject, html } = quoteVisitCustomerEmail({ name, serviceName: service.name, dateLabel, timeLabel });
+      const { subject, html } = quoteVisitCustomerEmail({
+        name,
+        serviceName: localizedServiceName(locale, service.name, service.key),
+        dateLabel: locale === 'es' ? formatDateLabel(slotStart.split('T')[0], locale) : dateLabel,
+        timeLabel,
+        locale,
+      });
       customerEmailSent = await sendEmail({ to: customerEmail, subject, html });
     }
 
@@ -129,7 +140,7 @@ export async function POST(req: Request) {
     if (isNewClient && customerEmail) {
       try {
         const token = await issuePasswordSetupToken(user.id);
-        const { subject, html } = passwordSetupEmail({ name, url: appUrl(`/set-password?token=${token}`) });
+        const { subject, html } = passwordSetupEmail({ name, url: appUrl(`/set-password?token=${token}`), locale });
         await sendEmail({ to: customerEmail, subject, html });
       } catch (err) {
         console.error('[leads] password setup email failed for', user.id, err);

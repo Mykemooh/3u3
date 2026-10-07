@@ -2,11 +2,14 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useT } from '@/components/i18n/LocaleProvider';
+import { formsMessages } from '@/lib/i18n/messages/forms';
 
 type Item = { slug: string; title: string; kind: 'FAQ' | 'SOP'; section: string; tags: string[]; body: string; source: 'PRODUCT' | 'COMPANY' };
 
 /** Search box + sections. Search runs in the page; nothing is sent anywhere. */
 export default function HelpCenter({ sections, base, askTex }: { sections: [string, Item[]][]; base: string; askTex?: boolean }) {
+  const t = useT(formsMessages);
   const [q, setQ] = useState('');
   const all = useMemo(() => sections.flatMap(([, items]) => items), [sections]);
   const results = useMemo(() => {
@@ -29,8 +32,8 @@ export default function HelpCenter({ sections, base, askTex }: { sections: [stri
   const card = (a: Item) => (
     <Link key={a.slug} href={`${base}/${a.slug}`} className="card-interactive block !p-4">
       <span className="flex items-center gap-2">
-        <span className={`pill !px-2 !py-0.5 ${a.kind === 'SOP' ? 'bg-green/10 text-green' : 'bg-gold/10 text-gold'}`}>{a.kind === 'SOP' ? 'How-to' : 'FAQ'}</span>
-        {a.source === 'COMPANY' && <span className="pill !px-2 !py-0.5 bg-surface text-slate">Ours</span>}
+        <span className={`pill !px-2 !py-0.5 ${a.kind === 'SOP' ? 'bg-green/10 text-green' : 'bg-gold/10 text-gold'}`}>{a.kind === 'SOP' ? t('helpKindSop') : t('helpKindFaq')}</span>
+        {a.source === 'COMPANY' && <span className="pill !px-2 !py-0.5 bg-surface text-slate">{t('helpOurs')}</span>}
       </span>
       <span className="mt-2 block font-semibold text-ink">{a.title}</span>
     </Link>
@@ -41,10 +44,10 @@ export default function HelpCenter({ sections, base, askTex }: { sections: [stri
       <div className="relative">
         <input
           className="input !py-3.5 pl-11"
-          placeholder="Search help — try “reschedule”, “photos” or “payroll”"
+          placeholder={t('helpSearchPlaceholder')}
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          aria-label="Search help"
+          aria-label={t('helpSearchAria')}
         />
         <svg className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
           <circle cx="11" cy="11" r="7" />
@@ -54,10 +57,10 @@ export default function HelpCenter({ sections, base, askTex }: { sections: [stri
       {results ? (
         <section>
           <p className="mb-3 text-sm text-muted">
-            {results.length} result{results.length === 1 ? '' : 's'}
+            {t(results.length === 1 ? 'helpResultOne' : 'helpResultMany', { count: results.length })}
           </p>
           <div className="grid gap-3 sm:grid-cols-2">{results.map(card)}</div>
-          {results.length === 0 && askTex && <p className="text-slate">Nothing matched — ask Tex in the bubble at the bottom of the screen.</p>}
+          {results.length === 0 && askTex && <p className="text-slate">{t('helpNothingMatched')}</p>}
         </section>
       ) : (
         sections.map(([title, items]) => (

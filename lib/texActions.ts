@@ -1,4 +1,6 @@
 import { createHmac, randomInt, timingSafeEqual } from 'node:crypto';
+import { translator } from '@/lib/i18n';
+import { notifyMessages } from '@/lib/i18n/messages/notify';
 import { z } from 'zod';
 import { db } from '@/db/client';
 import { addresses, bookings, serviceTypes, texActions, texMessages, users } from '@/db/schema';
@@ -77,7 +79,7 @@ async function sendCode(ctx: TexContext, id: string, purpose: string) {
     await sendText({
       tenantId: ctx.tenant.id,
       clientId: user.id,
-      body: `${ctx.tenant.name}: your code is ${code}. It confirms: ${purpose}. Give it only to Tex in this conversation; it expires in ${CODE_MINUTES} minutes.`,
+      body: translator(notifyMessages, user.locale === 'es' ? 'es' : 'en')('texCode', { company: ctx.tenant.name, code, purpose, minutes: CODE_MINUTES }),
       byTex: true,
     });
   } catch (err) {

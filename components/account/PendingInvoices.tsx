@@ -1,10 +1,13 @@
 import Link from 'next/link';
 import { formatMoney } from '@/lib/data';
 import type { PendingInvoiceRow } from '@/lib/account';
+import { getT } from '@/lib/i18n/server';
+import { accountMessages } from '@/lib/i18n/messages/account';
 
-export default function PendingInvoices({ invoices }: { invoices: PendingInvoiceRow[] }) {
+export default async function PendingInvoices({ invoices }: { invoices: PendingInvoiceRow[] }) {
+  const t = await getT(accountMessages);
   if (invoices.length === 0) {
-    return <p className="text-sm text-muted">Nothing pending — you're all caught up.</p>;
+    return <p className="text-sm text-muted">{t('pendingNone')}</p>;
   }
   return (
     <div className="space-y-2">
@@ -16,11 +19,11 @@ export default function PendingInvoices({ invoices }: { invoices: PendingInvoice
         >
           <div>
             <p className="font-semibold text-ink">{inv.label}</p>
-            <p className="text-muted">Sent {inv.dateLabel}</p>
+            <p className="text-muted">{t('pendingSent', { date: inv.dateLabel })}</p>
           </div>
           <div className="text-right">
             <p className="font-bold text-bronze">{formatMoney(inv.amountCents)}</p>
-            <p className="text-xs font-semibold text-bronze">View and pay →</p>
+            <p className="text-xs font-semibold text-bronze">{t('pendingViewPay')}</p>
           </div>
         </Link>
       ))}

@@ -95,6 +95,7 @@ export async function POST(req: Request) {
         bookingId,
         clientId,
         serviceName: service.name,
+        serviceKey: service.key,
         slotStart,
         slotEnd,
         priceCents: rate?.rateCents ?? null,

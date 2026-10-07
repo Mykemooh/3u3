@@ -1,3 +1,4 @@
+import { intlLocale, type Locale } from '@/lib/i18n';
 /**
  * Business-local time for 3U3 (Katy, TX).
  *
@@ -51,25 +52,25 @@ export function businessTodayDate(date = new Date()): Date {
 }
 
 /** "Thu, Sep 24 · 8:00 AM" from a naive slot string. */
-export function formatSlot(slotStart: string): string {
+export function formatSlot(slotStart: string, locale: Locale = 'en'): string {
   const [date, time] = slotStart.split('T');
   const [y, m, d] = date.split('-').map(Number);
   const [hh, mm] = time.split(':').map(Number);
-  const day = new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const day = new Date(y, m - 1, d).toLocaleDateString(intlLocale(locale), { weekday: 'short', month: 'short', day: 'numeric' });
   const h12 = hh % 12 === 0 ? 12 : hh % 12;
   return `${day} · ${h12}:${String(mm).padStart(2, '0')} ${hh >= 12 ? 'PM' : 'AM'}`;
 }
 
 /** "September 24, 2026" from a naive slot string. */
-export function formatSlotDateLong(slotStart: string): string {
+export function formatSlotDateLong(slotStart: string, locale: Locale = 'en'): string {
   const [y, m, d] = slotStart.slice(0, 10).split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  return new Date(y, m - 1, d).toLocaleDateString(intlLocale(locale), { month: 'long', day: 'numeric', year: 'numeric' });
 }
 
 /** A timestamp shown in business time, e.g. "8:04 AM". */
-export function formatClock(date: Date | null | undefined): string {
+export function formatClock(date: Date | null | undefined, locale: Locale = 'en'): string {
   if (!date) return '';
-  return date.toLocaleTimeString('en-US', { timeZone: BUSINESS_TIMEZONE, hour: 'numeric', minute: '2-digit' });
+  return date.toLocaleTimeString(intlLocale(locale), { timeZone: BUSINESS_TIMEZONE, hour: 'numeric', minute: '2-digit' });
 }
 
 /**

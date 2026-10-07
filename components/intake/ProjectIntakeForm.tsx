@@ -11,6 +11,8 @@ import {
   intakeSchema,
   type Intake,
 } from '@/lib/intake';
+import { useT } from '@/components/i18n/LocaleProvider';
+import { formsMessages, type FormsKey } from '@/lib/i18n/messages/forms';
 
 type Kind = 'POST_CONSTRUCTION' | 'COMMERCIAL';
 
@@ -65,6 +67,10 @@ export default function ProjectIntakeForm({ kind, initial, onDone, onBack }: { k
   const [siteContact, setSiteContact] = useState((pc ?? cm)?.siteContact ?? '');
   const [notes, setNotes] = useState((pc ?? cm)?.notes ?? '');
   const [error, setError] = useState('');
+  const t = useT(formsMessages);
+  /** lib/intake's options with their words from formsMessages (ids unchanged). */
+  const opts = <K extends string>(prefix: string, list: readonly (readonly [K, string])[]) =>
+    list.map(([k]) => [k, t(`${prefix}_${k}` as FormsKey)] as const);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -98,14 +104,14 @@ export default function ProjectIntakeForm({ kind, initial, onDone, onBack }: { k
     if (!parsed.success) {
       const field = parsed.error.issues[0]?.path[0];
       const msg: Record<string, string> = {
-        projectType: 'Pick the kind of project.',
-        squareFeet: 'Add the square footage — a rough number is fine (200 or more).',
-        phases: 'Pick at least one phase.',
-        businessName: 'Add the business name.',
-        facilityType: 'Pick the kind of space.',
-        visitsPerWeek: 'Pick how often you need cleaning.',
+        projectType: t('errProjectType'),
+        squareFeet: t('errSquareFeet'),
+        phases: t('errPhases'),
+        businessName: t('errBusinessName'),
+        facilityType: t('errFacilityType'),
+        visitsPerWeek: t('errVisitsPerWeek'),
       };
-      setError(msg[String(field)] ?? 'Please check the highlighted answers.');
+      setError(msg[String(field)] ?? t('errGeneric'));
       return;
     }
     setError('');
@@ -117,30 +123,30 @@ export default function ProjectIntakeForm({ kind, initial, onDone, onBack }: { k
   return (
     <form onSubmit={submit} className="space-y-5">
       <button type="button" onClick={onBack} className="text-sm text-muted hover:text-ink">
-        ← Back
+        {t('back')}
       </button>
       {kind === 'POST_CONSTRUCTION' ? (
         <>
           <div>
-            <h1 className="mb-1 text-xl font-bold">About the project</h1>
-            <p className="text-sm text-slate">A few details so the walkthrough is about confirming, not starting from scratch.</p>
+            <h1 className="mb-1 text-xl font-bold">{t('pcTitle')}</h1>
+            <p className="text-sm text-slate">{t('pcIntro')}</p>
           </div>
           <fieldset>
-            <legend className="label">What kind of project?</legend>
-            <Chips options={PROJECT_TYPES} value={projectType} onChange={setProjectType} />
+            <legend className="label">{t('pcProjectType')}</legend>
+            <Chips options={opts('projectType', PROJECT_TYPES)} value={projectType} onChange={setProjectType} />
           </fieldset>
           <div className="grid grid-cols-2 gap-3">
             <label>
-              <span className="label">Square feet</span>
-              <input className="input" inputMode="numeric" placeholder="e.g. 2,400" value={squareFeet} onChange={(e) => setSquareFeet(e.target.value)} required />
+              <span className="label">{t('squareFeet')}</span>
+              <input className="input" inputMode="numeric" placeholder={t('pcSquareFeetPlaceholder')} value={squareFeet} onChange={(e) => setSquareFeet(e.target.value)} required />
             </label>
             <label>
-              <span className="label">Stories</span>
+              <span className="label">{t('pcStories')}</span>
               <input className="input" inputMode="numeric" placeholder="1" value={stories} onChange={(e) => setStories(e.target.value)} />
             </label>
           </div>
           <fieldset>
-            <legend className="label">Which cleans do you need?</legend>
+            <legend className="label">{t('pcPhases')}</legend>
             <div className="space-y-2">
               {POST_CON_PHASES.map((p) => {
                 const on = phases.includes(p.key);
@@ -148,105 +154,105 @@ export default function ProjectIntakeForm({ kind, initial, onDone, onBack }: { k
                   <label key={p.key} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 ${on ? 'border-gold bg-gold/5' : 'border-line'}`}>
                     <input type="checkbox" className="mt-1" checked={on} onChange={() => setPhases(on ? phases.filter((x) => x !== p.key) : [...phases, p.key])} />
                     <span>
-                      <span className="block font-semibold">{p.label}</span>
-                      <span className="text-sm text-slate">{p.detail}</span>
+                      <span className="block font-semibold">{t(`phase_${p.key}`)}</span>
+                      <span className="text-sm text-slate">{t(`phase_${p.key}_detail`)}</span>
                     </span>
                   </label>
                 );
               })}
             </div>
-            <p className="mt-1 text-xs text-muted">Not sure? Pick Final — we’ll tell you at the walkthrough if a rough clean would help.</p>
+            <p className="mt-1 text-xs text-muted">{t('pcPhasesHint')}</p>
           </fieldset>
           <label className="block">
-            <span className="label">When will the site be ready for cleaning?</span>
+            <span className="label">{t('pcReadyDate')}</span>
             <input type="date" className="input" min={today} value={readyDate} onChange={(e) => setReadyDate(e.target.value)} />
           </label>
           <div className="grid gap-4 sm:grid-cols-2">
             <fieldset>
-              <legend className="label">Trades still working then?</legend>
-              <Chips options={[['YES', 'Yes'], ['NO', 'No']] as const} value={tradesOnSite} onChange={setTradesOnSite} />
+              <legend className="label">{t('pcTrades')}</legend>
+              <Chips options={[['YES', t('yes')], ['NO', t('no')]] as const} value={tradesOnSite} onChange={setTradesOnSite} />
             </fieldset>
             <fieldset>
-              <legend className="label">Power and water on?</legend>
-              <Chips options={[['YES', 'Yes'], ['NO', 'No'], ['NOT_SURE', 'Not sure']] as const} value={utilitiesOn} onChange={setUtilitiesOn} />
+              <legend className="label">{t('pcUtilities')}</legend>
+              <Chips options={[['YES', t('yes')], ['NO', t('no')], ['NOT_SURE', t('notSure')]] as const} value={utilitiesOn} onChange={setUtilitiesOn} />
             </fieldset>
           </div>
           <fieldset>
-            <legend className="label">Floors (pick any)</legend>
-            <Chips options={FLOOR_TYPES} value={floors} onChange={setFloors} multi />
+            <legend className="label">{t('floorsLabel')}</legend>
+            <Chips options={opts('floor', FLOOR_TYPES)} value={floors} onChange={setFloors} multi />
           </fieldset>
           <label className="block">
-            <span className="label">Builder or contractor (optional)</span>
+            <span className="label">{t('pcBuilder')}</span>
             <input className="input" value={builder} onChange={(e) => setBuilder(e.target.value)} />
           </label>
         </>
       ) : (
         <>
           <div>
-            <h1 className="mb-1 text-xl font-bold">About your space</h1>
-            <p className="text-sm text-slate">So we come to the walkthrough with the right plan — and the right crew size.</p>
+            <h1 className="mb-1 text-xl font-bold">{t('cmTitle')}</h1>
+            <p className="text-sm text-slate">{t('cmIntro')}</p>
           </div>
           <label className="block">
-            <span className="label">Business name</span>
+            <span className="label">{t('cmBusinessName')}</span>
             <input className="input" value={businessName} onChange={(e) => setBusinessName(e.target.value)} required />
           </label>
           <fieldset>
-            <legend className="label">What kind of space?</legend>
-            <Chips options={FACILITY_TYPES} value={facilityType} onChange={setFacilityType} />
+            <legend className="label">{t('cmFacilityType')}</legend>
+            <Chips options={opts('facility', FACILITY_TYPES)} value={facilityType} onChange={setFacilityType} />
           </fieldset>
           <div className="grid grid-cols-2 gap-3">
             <label>
-              <span className="label">Square feet</span>
-              <input className="input" inputMode="numeric" placeholder="e.g. 6,000" value={squareFeet} onChange={(e) => setSquareFeet(e.target.value)} required />
+              <span className="label">{t('squareFeet')}</span>
+              <input className="input" inputMode="numeric" placeholder={t('cmSquareFeetPlaceholder')} value={squareFeet} onChange={(e) => setSquareFeet(e.target.value)} required />
             </label>
             <label>
-              <span className="label">Restrooms</span>
+              <span className="label">{t('cmRestrooms')}</span>
               <input className="input" inputMode="numeric" placeholder="2" value={restrooms} onChange={(e) => setRestrooms(e.target.value)} />
             </label>
           </div>
           <fieldset>
-            <legend className="label">How often?</legend>
+            <legend className="label">{t('cmHowOften')}</legend>
             <Chips
-              options={[['0', 'One time'], ['1', 'Once a week'], ['2', '2× a week'], ['3', '3× a week'], ['5', 'Every weekday'], ['7', 'Every day']] as const}
+              options={[['0', t('cmVisits0')], ['1', t('cmVisits1')], ['2', t('cmVisits2')], ['3', t('cmVisits3')], ['5', t('cmVisits5')], ['7', t('cmVisits7')]] as const}
               value={visits}
               onChange={setVisits}
             />
           </fieldset>
           <fieldset>
-            <legend className="label">When should we clean?</legend>
-            <Chips options={TIMES_OF_DAY} value={timeOfDay} onChange={setTimeOfDay} />
+            <legend className="label">{t('cmWhen')}</legend>
+            <Chips options={opts('time', TIMES_OF_DAY)} value={timeOfDay} onChange={setTimeOfDay} />
           </fieldset>
           <fieldset>
-            <legend className="label">Floors (pick any)</legend>
-            <Chips options={FLOOR_TYPES} value={floors} onChange={setFloors} multi />
+            <legend className="label">{t('floorsLabel')}</legend>
+            <Chips options={opts('floor', FLOOR_TYPES)} value={floors} onChange={setFloors} multi />
           </fieldset>
           <fieldset>
-            <legend className="label">Also needs (pick any)</legend>
-            <Chips options={COMMERCIAL_EXTRAS} value={extras} onChange={setExtras} multi />
+            <legend className="label">{t('cmExtras')}</legend>
+            <Chips options={opts('extra', COMMERCIAL_EXTRAS)} value={extras} onChange={setExtras} multi />
           </fieldset>
           <div className="grid gap-4 sm:grid-cols-2">
             <fieldset>
-              <legend className="label">Restroom paper and soap</legend>
-              <Chips options={[['US', 'You supply'], ['CLIENT', 'We supply'], ['NOT_SURE', 'Not sure']] as const} value={suppliesBy} onChange={setSuppliesBy} />
+              <legend className="label">{t('cmSupplies')}</legend>
+              <Chips options={[['US', t('cmSuppliesUs')], ['CLIENT', t('cmSuppliesClient')], ['NOT_SURE', t('notSure')]] as const} value={suppliesBy} onChange={setSuppliesBy} />
             </fieldset>
             <label>
-              <span className="label">Ideal start date</span>
+              <span className="label">{t('cmStartDate')}</span>
               <input type="date" className="input" min={today} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             </label>
           </div>
         </>
       )}
       <label className="block">
-        <span className="label">Who should we meet on site? (optional)</span>
-        <input className="input" placeholder="Name and phone" value={siteContact} onChange={(e) => setSiteContact(e.target.value)} />
+        <span className="label">{t('siteContactLabel')}</span>
+        <input className="input" placeholder={t('siteContactPlaceholder')} value={siteContact} onChange={(e) => setSiteContact(e.target.value)} />
       </label>
       <label className="block">
-        <span className="label">Anything else we should know? (optional)</span>
+        <span className="label">{t('notesLabel')}</span>
         <textarea className="input min-h-[80px]" value={notes} onChange={(e) => setNotes(e.target.value)} />
       </label>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <button type="submit" className="btn-primary w-full">
-        Continue to pick a walkthrough time
+        {t('continueToWalkthrough')}
       </button>
     </form>
   );

@@ -8,6 +8,9 @@ import {
   type NavStep, type Coord, parseSteps, distanceMeters, bearingBetween, distanceToRoute,
   maneuverArrowRotation, formatDistance, ANNOUNCE_THRESHOLDS_METERS,
 } from '@/lib/turnByTurn';
+import { useLocale, useT } from '@/components/i18n/LocaleProvider';
+import { intlLocale } from '@/lib/i18n';
+import { crewMessages } from '@/lib/i18n/messages/crew';
 
 type LngLat = { lat: number; lng: number };
 const ROUTE_COLOR = '#016AEE'; // brand vivid blue — matches gold.DEFAULT in tailwind.config.ts
@@ -37,6 +40,10 @@ type LoadState =
  * realistic case (phone propped up, screen on, tab in front).
  */
 export default function CrewDirectionsMap({ jobId, addressLabel: fallbackAddressLabel }: { jobId: string; addressLabel: string | null }) {
+  const t = useT(crewMessages);
+  const locale = useLocale();
+  // Mapbox writes the turn-by-turn instructions in this language.
+  const navLang = locale === 'es' ? 'es' : 'en';
   const [state, setState] = useState<LoadState>({ status: 'loading' });
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<MapboxMap | null>(null);
@@ -78,13 +85,13 @@ export default function CrewDirectionsMap({ jobId, addressLabel: fallbackAddress
         if (cancelled) return;
         const dir = await dirRes.json();
         if (!dirRes.ok) {
-          setState({ status: 'error', message: dir.error || 'Could not load directions.' });
+          setState({ status: 'error', message: dir.error || t('mapLoadError') });
           return;
         }
         const destination: LngLat | null = dir.destination;
         const token: string = dir.mapboxToken;
         if (!token) {
-          setState({ status: 'error', message: 'Maps are not set up yet.' });
+          setState({ status: 'error', message: t('mapNotSetUp') });
           return;
         }
         tokenRef.current = token;
@@ -96,7 +103,7 @@ export default function CrewDirectionsMap({ jobId, addressLabel: fallbackAddress
         let hasSteps = false;
         if (crew && destination) {
           const res = await fetch(
-            `https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${crew.lng},${crew.lat};${destination.lng},${destination.lat}?geometries=geojson&overview=full&steps=true&access_token=${token}`,
+            `https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${crew.lng},${crew.lat};${destination.lng},${destination.lat}?geometries=geojson&overview=full&steps=true&language=${navLang}&access_token=${token}`,
           );
           if (res.ok) {
             const data = await res.json();
@@ -144,7 +151,7 @@ export default function CrewDirectionsMap({ jobId, addressLabel: fallbackAddress
         });
         map.current = m;
       } catch {
-        if (!cancelled) setState({ status: 'error', message: 'Could not load directions.' });
+        if (!cancelled) setState({ status: 'error', message: t('mapLoadError') });
       }
     })();
     return () => {
@@ -190,7 +197,7 @@ export default function CrewDirectionsMap({ jobId, addressLabel: fallbackAddress
     if (!crew) return;
     try {
       const res = await fetch(
-        `https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${crew.lng},${crew.lat};${destination.lng},${destination.lat}?geometries=geojson&overview=full&steps=true&access_token=${token}`,
+        `https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${crew.lng},${crew.lat};${destination.lng},${destination.lat}?geometries=geojson&overview=full&steps=true&language=${navLang}&access_token=${token}`,
       );
       if (!res.ok) return;
       const data = await res.json();
@@ -213,7 +220,9 @@ export default function CrewDirectionsMap({ jobId, addressLabel: fallbackAddress
     if (!voiceOnRef.current || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
     try {
       window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = intlLocale(locale);
+      window.speechSynthesis.speak(utterance);
     } catch {
       // Speech synthesis can be unavailable or blocked — the on-screen banner still carries the instruction.
     }
@@ -226,7 +235,7 @@ export default function CrewDirectionsMap({ jobId, addressLabel: fallbackAddress
     setRerouting(true);
     try {
       const res = await fetch(
-        `https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${from[0]},${from[1]};${dest.lng},${dest.lat}?geometries=geojson&overview=full&steps=true&access_token=${token}`,
+        `https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${from[0]},${from[1]};${dest.lng},${dest.lat}?geometries=geojson&overview=full&steps=true&language=${navLang}&access_token=${token}`,
       );
       if (res.ok) {
         const data = await res.json();
@@ -237,7 +246,7 @@ export default function CrewDirectionsMap({ jobId, addressLabel: fallbackAddress
           stepIndexRef.current = 0;
           setStepIndexDisplay(0);
           announcedRef.current = new Set();
-          speak('Rerouting.');
+          speak(t('mapSpeakRerouting'));
           const src = map.current?.getSource('route') as GeoJSONSource | undefined;
           src?.setData({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: routeRef.current } });
         }
@@ -274,7 +283,7 @@ export default function CrewDirectionsMap({ jobId, addressLabel: fallbackAddress
     if (dest) {
       const distToDest = distanceMeters(point, [dest.lng, dest.lat]);
       if (distToDest < ARRIVAL_RADIUS_M) {
-        speak('You have arrived.');
+        speak(t('mapSpeakArrived'));
         setArrived(true);
         stopNavigation();
         return;
@@ -292,7 +301,7 @@ export default function CrewDirectionsMap({ jobId, addressLabel: fallbackAddress
         const key = `${idx}:${threshold}`;
         if (d <= threshold && !announcedRef.current.has(key)) {
           announcedRef.current.add(key);
-          speak(threshold <= 30 ? steps[idx].instruction : `In ${formatDistance(d)}, ${steps[idx].instruction}`);
+          speak(threshold <= 30 ? steps[idx].instruction : t('mapSpeakIn', { distance: formatDistance(d), instruction: steps[idx].instruction }));
         }
       }
 
@@ -351,7 +360,7 @@ export default function CrewDirectionsMap({ jobId, addressLabel: fallbackAddress
   }
 
   if (state.status === 'loading') {
-    return <div className="flex h-72 items-center justify-center rounded-xl bg-surface text-sm text-muted">Loading directions…</div>;
+    return <div className="flex h-72 items-center justify-center rounded-xl bg-surface text-sm text-muted">{t('mapLoading')}</div>;
   }
   if (state.status === 'error') {
     return <p className="rounded-xl bg-surface px-4 py-6 text-center text-sm text-slate">{state.message}</p>;
@@ -372,35 +381,35 @@ export default function CrewDirectionsMap({ jobId, addressLabel: fallbackAddress
           </span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-base font-bold leading-tight">{currentStep.instruction}</p>
-            {distanceToStep != null && <p className="text-xs text-white/70">{formatDistance(distanceToStep)}{rerouting ? ' · rerouting…' : ''}</p>}
+            {distanceToStep != null && <p className="text-xs text-white/70">{formatDistance(distanceToStep)}{rerouting ? ` · ${t('mapRerouting')}` : ''}</p>}
           </div>
-          <button type="button" onClick={() => setVoiceOn((v) => !v)} aria-label={voiceOn ? 'Mute voice guidance' : 'Unmute voice guidance'} className="shrink-0 text-lg">
+          <button type="button" onClick={() => setVoiceOn((v) => !v)} aria-label={voiceOn ? t('mapMute') : t('mapUnmute')} className="shrink-0 text-lg">
             {voiceOn ? '🔊' : '🔇'}
           </button>
         </div>
       )}
 
       {arrived && (
-        <div className="bg-emerald-600 px-4 py-3 text-center font-bold text-white">🏁 You've arrived</div>
+        <div className="bg-emerald-600 px-4 py-3 text-center font-bold text-white">🏁 {t('mapArrived')}</div>
       )}
 
       {!navActive && !arrived && (state.distanceMiles != null || state.durationMinutes != null) && (
         <div className="flex items-center justify-between gap-4 bg-cream px-4 py-2.5 text-sm">
           <span className="font-semibold text-ink">{state.addressLabel}</span>
           <span className="shrink-0 font-semibold text-bronze">
-            {state.durationMinutes != null && `${state.durationMinutes} min`}
-            {state.distanceMiles != null && ` · ${state.distanceMiles} mi`}
+            {state.durationMinutes != null && t('mapMinutes', { count: state.durationMinutes })}
+            {state.distanceMiles != null && ` · ${t('mapMiles', { count: state.distanceMiles })}`}
           </span>
         </div>
       )}
 
-      <div ref={container} className="h-64 w-full sm:h-72" role="region" aria-label="Map to the job address" />
+      <div ref={container} className="h-64 w-full sm:h-72" role="region" aria-label={t('mapAria')} />
 
       {!state.crew && !navActive && (
         <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-2">
-          <p className="text-xs text-slate">Couldn't get your location — showing the destination only.</p>
+          <p className="text-xs text-slate">{t('mapNoLocation')}</p>
           <button type="button" onClick={retryLocation} className="shrink-0 text-xs font-semibold text-bronze hover:underline">
-            Try again
+            {t('mapTryAgain')}
           </button>
         </div>
       )}
@@ -408,15 +417,15 @@ export default function CrewDirectionsMap({ jobId, addressLabel: fallbackAddress
       <div className="flex items-center gap-2 border-t border-line p-3">
         {navActive ? (
           <button type="button" onClick={stopNavigation} className="btn-secondary w-full !py-2 text-sm">
-            End navigation
+            {t('mapEndNav')}
           </button>
         ) : arrived ? (
           <button type="button" onClick={() => setArrived(false)} className="btn-secondary w-full !py-2 text-sm">
-            Done
+            {t('mapDone')}
           </button>
         ) : (
           <button type="button" onClick={startNavigation} disabled={!state.hasSteps} className="btn-primary w-full !py-2 text-sm disabled:opacity-50">
-            {state.hasSteps ? 'Start in-app navigation' : "Couldn't load turn-by-turn"}
+            {state.hasSteps ? t('mapStartNav') : t('mapNoTurnByTurn')}
           </button>
         )}
       </div>

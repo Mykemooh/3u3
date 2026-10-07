@@ -184,6 +184,9 @@ export const users = pgTable('users', {
   // into one invoice/charge at month end — set per client (Admin →
   // client profile), never automatic just from their cadence.
   billingMode: text('billing_mode', { enum: ['PER_CLEAN', 'MONTHLY_BATCH'] }).notNull().default('PER_CLEAN'),
+  // English or Spanish (lib/i18n): the app's words for this person, and
+  // the language of every text and email sent to them.
+  locale: text('locale', { enum: ['en', 'es'] }).notNull().default('en'),
   // Where reminders and alerts go for this person — a customer picks this
   // in My Account; defaults to email until they choose otherwise.
   notificationChannel: text('notification_channel', { enum: ['EMAIL', 'SMS', 'WHATSAPP'] })

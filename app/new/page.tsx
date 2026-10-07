@@ -8,20 +8,26 @@ import PhoneInput from '@/components/PhoneInput';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 import ProjectIntakeForm from '@/components/intake/ProjectIntakeForm';
 import { needsIntake, type Intake } from '@/lib/intake';
+import { serviceName } from '@/lib/format';
+import { useLocale, useT } from '@/components/i18n/LocaleProvider';
+import { authMessages } from '@/lib/i18n/messages/auth';
 
 type Slot = { start: string; end: string; available: boolean };
 type Day = { date: string; slots: Slot[] };
 type Service = { id: string; key: string; name: string };
 
-const SERVICE_BLURBS: Record<string, string> = {
-  STANDARD: 'Regular upkeep — kitchens, bathrooms, floors, dusting.',
-  DEEP: 'A deeper one-time or quarterly clean, top to bottom.',
-  MOVE_IN_OUT: 'Empty-home clean for moving in or out.',
-  POST_CONSTRUCTION: 'New builds and renovations — rough, final and touch-up cleans.',
-  COMMERCIAL: 'Offices, clinics and other workplaces, on a schedule that suits you.',
-};
+const SERVICE_BLURBS = {
+  STANDARD: 'newBlurbStandard',
+  DEEP: 'newBlurbDeep',
+  MOVE_IN_OUT: 'newBlurbMoveInOut',
+  POST_CONSTRUCTION: 'newBlurbPostConstruction',
+  COMMERCIAL: 'newBlurbCommercial',
+} as const;
+const blurbKey = (key: string) => SERVICE_BLURBS[key as keyof typeof SERVICE_BLURBS];
 
 export default function NewCustomerPage() {
+  const t = useT(authMessages);
+  const locale = useLocale();
   const [step, setStep] = useState<'service' | 'form' | 'project' | 'schedule' | 'confirmed'>('service');
   const [intake, setIntake] = useState<Intake | null>(null);
   const [services, setServices] = useState<Service[]>([]);
@@ -69,7 +75,8 @@ export default function NewCustomerPage() {
 
   const selectedService = services.find((s) => s.id === serviceTypeId);
   const project = needsIntake(selectedService?.key);
-  const placeLabel = selectedService?.key === 'COMMERCIAL' ? 'Business address' : selectedService?.key === 'POST_CONSTRUCTION' ? 'Site address' : 'Home address';
+  const placeLabel = selectedService?.key === 'COMMERCIAL' ? t('newBusinessAddress') : selectedService?.key === 'POST_CONSTRUCTION' ? t('newSiteAddress') : t('newHomeAddress');
+  const nameOf = (s: Service) => serviceName(s.key, s.name, locale);
 
   async function confirmBooking() {
     if (!selected) return;
@@ -94,21 +101,26 @@ export default function NewCustomerPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'Something went wrong.');
+        setError(data.error || t('errorGeneric'));
         setSubmitting(false);
         return;
       }
       setCustomerEmailSent(!!data.customerEmailSent);
       setStep('confirmed');
     } catch {
-      setError('Something went wrong. Please try again.');
+      setError(t('errorRetry'));
     } finally {
       setSubmitting(false);
     }
   }
 
   const steps = project ? ['service', 'form', 'project', 'schedule'] : ['service', 'form', 'schedule'];
-  const stepLabels: Record<string, string> = { service: 'Service', form: 'Your details', project: 'The project', schedule: 'Pick a time' };
+  const stepLabels: Record<string, string> = {
+    service: t('newStepService'),
+    form: t('newStepForm'),
+    project: t('newStepProject'),
+    schedule: t('newStepSchedule'),
+  };
   const stepNumber = steps.includes(step) ? steps.indexOf(step) + 1 : null;
 
   return (
@@ -132,12 +144,12 @@ export default function NewCustomerPage() {
 
       {step === 'service' && (
         <div className="card w-full max-w-md">
-          <h1 className="text-xl font-bold mb-1">What do you need cleaned?</h1>
+          <h1 className="text-xl font-bold mb-1">{t('newServiceTitle')}</h1>
           <p className="text-sm text-slate mb-6">
-            Pick a service — we'll confirm your exact price at the quote visit.
+            {t('newServiceIntro')}
           </p>
           <div className="space-y-3">
-            {services.length === 0 && <p className="text-sm text-muted">Loading services…</p>}
+            {services.length === 0 && <p className="text-sm text-muted">{t('newLoadingServices')}</p>}
             {services.map((s) => (
               <button
                 key={s.id}
@@ -147,9 +159,9 @@ export default function NewCustomerPage() {
                 }}
                 className="card w-full flex flex-col items-start text-left transition hover:border-gold hover:shadow-gold"
               >
-                <span className="font-semibold text-ink">{s.name}</span>
-                {SERVICE_BLURBS[s.key] && (
-                  <span className="mt-1 text-sm text-slate">{SERVICE_BLURBS[s.key]}</span>
+                <span className="font-semibold text-ink">{nameOf(s)}</span>
+                {blurbKey(s.key) && (
+                  <span className="mt-1 text-sm text-slate">{t(blurbKey(s.key))}</span>
                 )}
               </button>
             ))}
@@ -160,12 +172,11 @@ export default function NewCustomerPage() {
       {step === 'form' && (
         <div className="card w-full max-w-md">
           <button onClick={() => setStep('service')} className="text-sm text-muted mb-4 hover:text-ink">
-            ← Back
+            {t('back')}
           </button>
-          <h1 className="text-xl font-bold mb-1">Get a free quote</h1>
+          <h1 className="text-xl font-bold mb-1">{t('newFormTitle')}</h1>
           <p className="text-sm text-slate mb-6">
-            {selectedService ? `${selectedService.name} — ` : ''}
-            Just a few details — we'll set up an in-person visit to give you an exact price, no obligation.
+            {selectedService ? t('newFormIntroService', { service: nameOf(selectedService) }) : t('newFormIntro')}
           </p>
           <form
             onSubmit={(e) => {
@@ -179,26 +190,26 @@ export default function NewCustomerPage() {
             className="space-y-4"
           >
             <div>
-              <label className="label">Full name</label>
+              <label className="label">{t('newFullName')}</label>
               <input className="input" value={name} onChange={(e) => setName(e.target.value)} required />
             </div>
             <div>
-              <label className="label">Phone number</label>
+              <label className="label">{t('newPhone')}</label>
               <PhoneInput value={phone} onChange={setPhone} required />
             </div>
             <div>
-              <label className="label">Email</label>
+              <label className="label">{t('newEmail')}</label>
               <input
                 className="input"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder={t('newEmailPlaceholder')}
                 autoComplete="email"
                 required
               />
               <p className="mt-1 text-xs text-muted">
-                We send your visit confirmation and your written estimate here — it's how you approve the price.
+                {t('newEmailHelp')}
               </p>
             </div>
             <div>
@@ -214,12 +225,12 @@ export default function NewCustomerPage() {
                 }}
                 picked={address}
                 onPick={setAddress}
-                placeholder="Start typing your street address"
+                placeholder={t('newAddressPlaceholder')}
                 required
               />
               {addressError && (
                 <p className="mt-1 text-sm text-red-600">
-                  Please pick your address from the suggestions.{' '}
+                  {t('newAddressPick')}{' '}
                   <button
                     type="button"
                     className="font-semibold underline"
@@ -228,7 +239,7 @@ export default function NewCustomerPage() {
                       setAddressError(false);
                     }}
                   >
-                    It's not listed — use what I typed
+                    {t('newAddressUseTyped')}
                   </button>
                 </p>
               )}
@@ -236,21 +247,21 @@ export default function NewCustomerPage() {
             {!project && (
             <div>
               <label className="label" htmlFor="bedrooms">
-                Bedrooms
+                {t('newBedrooms')}
               </label>
               <select id="bedrooms" className="input" value={bedrooms} onChange={(e) => setBedrooms(e.target.value)}>
-                <option value="">Not sure yet</option>
+                <option value="">{t('newBedroomsUnsure')}</option>
                 {[1, 2, 3, 4, 5, 6].map((n) => (
                   <option key={n} value={n}>
                     {n} {n === 6 ? '+' : ''}
                   </option>
                 ))}
               </select>
-              <p className="mt-1 text-xs text-muted">So we can set up your checklist room-by-room.</p>
+              <p className="mt-1 text-xs text-muted">{t('newBedroomsHelp')}</p>
             </div>
             )}
             <button type="submit" className="btn-primary w-full">
-              {project ? 'Continue' : 'Continue to pick a visit time'}
+              {project ? t('continue') : t('newContinueToTime')}
             </button>
           </form>
         </div>
@@ -273,19 +284,17 @@ export default function NewCustomerPage() {
       {step === 'schedule' && (
         <div className="card w-full max-w-lg">
           <button onClick={() => setStep(project ? 'project' : 'form')} className="text-sm text-muted mb-4 hover:text-ink">
-            ← Back
+            {t('back')}
           </button>
-          <h1 className="text-xl font-bold mb-1">{project ? 'Pick a walkthrough time' : 'Pick a quote visit time'}</h1>
+          <h1 className="text-xl font-bold mb-1">{project ? t('newWalkthroughTitle') : t('newVisitTitle')}</h1>
           <p className="text-sm text-slate mb-6">
-            {project
-              ? "An in-person walkthrough of the site — we'll confirm the scope and send you a written quote."
-              : "A 30-minute in-person visit — we'll look at the home and give you an exact price on the spot."}
+            {project ? t('newWalkthroughIntro') : t('newVisitIntro')}
           </p>
-          {loadingSlots && <p className="text-sm text-muted">Loading real availability…</p>}
+          {loadingSlots && <p className="text-sm text-muted">{t('newLoadingAvailability')}</p>}
           <div className="space-y-5 max-h-[420px] overflow-y-auto pr-1">
             {days.filter((d) => d.slots.some((s) => s.available)).map((day) => (
               <div key={day.date}>
-                <p className="text-sm font-semibold text-bronze mb-2">{formatDateLabel(day.date)}</p>
+                <p className="text-sm font-semibold text-bronze mb-2">{formatDateLabel(day.date, locale)}</p>
                 <div className="grid grid-cols-2 gap-2">
                   {day.slots.map((slot) => (
                     <button
@@ -300,7 +309,7 @@ export default function NewCustomerPage() {
                           : 'border-line hover:border-gold'
                       }`}
                     >
-                      {formatSlotLabel(slot.start, slot.end)}
+                      {formatSlotLabel(slot.start, slot.end, locale)}
                     </button>
                   ))}
                 </div>
@@ -313,7 +322,7 @@ export default function NewCustomerPage() {
             onClick={confirmBooking}
             className="btn-primary w-full mt-6"
           >
-            {submitting ? 'Booking…' : 'Confirm quote visit'}
+            {submitting ? t('newBooking') : t('newConfirmVisit')}
           </button>
         </div>
       )}
@@ -323,24 +332,22 @@ export default function NewCustomerPage() {
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gold/15 text-2xl">
             ✓
           </div>
-          <h1 className="text-xl font-bold mb-2">You're booked!</h1>
+          <h1 className="text-xl font-bold mb-2">{t('newBookedTitle')}</h1>
           <p className="text-sm text-slate mb-1">
-            {selectedService?.name}
+            {selectedService && nameOf(selectedService)}
             {selectedService ? ' — ' : ''}
-            {selected && `${formatDateLabel(selected.start.split('T')[0])}, ${formatSlotLabel(selected.start, selected.end)}`}
+            {selected && `${formatDateLabel(selected.start.split('T')[0], locale)}, ${formatSlotLabel(selected.start, selected.end, locale)}`}
           </p>
           <p className="text-sm text-slate mb-6">
-            {customerEmailSent
-              ? "We've emailed you a confirmation. "
-              : ''}
+            {customerEmailSent ? t('newEmailed') : ''}
             {selectedService?.key === 'COMMERCIAL'
-              ? "We'll meet you at your business for the walkthrough and send your written quote after."
+              ? t('newNextCommercial')
               : selectedService?.key === 'POST_CONSTRUCTION'
-              ? "We'll meet you on site for the walkthrough and send a written quote for each phase."
-              : 'The owner has been notified and will meet you at your home for the visit.'}
+              ? t('newNextPostConstruction')
+              : t('newNextHome')}
           </p>
           <Link href="/" className="btn-secondary w-full">
-            Back to home
+            {t('newBackHome')}
           </Link>
         </div>
       )}

@@ -21,6 +21,7 @@ import { encryptionConfigured } from '@/lib/encryption';
 import { getAddOnCatalog, getClientAddOnRates } from '@/lib/addons';
 import { getMonthlyBatchesForClient } from '@/lib/monthlyBilling';
 import BillingModeForm from '@/components/admin/BillingModeForm';
+import { LOCALE_LABELS } from '@/lib/i18n';
 
 const ESTIMATE_STYLE: Record<string, string> = {
   DRAFT: 'bg-surface text-slate',
@@ -70,6 +71,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
           <p className="text-slate">
             {client.phone} {client.email ? `· ${client.email}` : ''}
           </p>
+          <p className="text-sm text-muted">Language: {LOCALE_LABELS[client.locale === 'es' ? 'es' : 'en'].name}</p>
           {(client.creditCents > 0 || client.referredByUserId || client.marketingOptOut || client.smsConsent === false) && (
             <div className="mt-2 flex flex-wrap gap-2">
               {client.creditCents > 0 && <span className="pill bg-green/10 text-green">${(client.creditCents / 100).toFixed(2)} credit — comes off the next invoice</span>}
@@ -91,7 +93,7 @@ export default async function ClientDetailPage({ params }: { params: { id: strin
 
       <div className="card max-w-xl">
         <h2 className="mb-4 font-semibold text-ink">Client info</h2>
-        <ClientInfoForm clientId={client.id} initial={{ name: client.name, phone: client.phone, email: client.email }} />
+        <ClientInfoForm clientId={client.id} initial={{ name: client.name, phone: client.phone, email: client.email, locale: client.locale === 'es' ? 'es' : 'en' }} />
       </div>
 
       <div className="card max-w-xl">

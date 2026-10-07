@@ -1,3 +1,4 @@
+import { intlLocale, type Locale } from '@/lib/i18n';
 // Admin-driven scheduling engine — PRD section 6.4.
 //
 // The app never fabricates or estimates a slot: every candidate window is
@@ -142,20 +143,21 @@ export function generateUpcomingQuoteVisitSlots(
   return out;
 }
 
-export function formatSlotLabel(startIso: string, endIso: string): string {
+export function formatSlotLabel(startIso: string, endIso: string, locale: Locale = 'en'): string {
   const fmt = (iso: string) => {
     const minutes = toMinutesSinceMidnight(iso);
     const h24 = Math.floor(minutes / 60);
     const m = minutes % 60;
-    const ampm = h24 >= 12 ? 'PM' : 'AM';
+    // Spanish writes "9:00 a. m." (RAE); English keeps "9:00 AM".
+    const ampm = locale === 'es' ? (h24 >= 12 ? 'p. m.' : 'a. m.') : h24 >= 12 ? 'PM' : 'AM';
     const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
     return `${h12}:${pad(m)} ${ampm}`;
   };
   return `${fmt(startIso)} – ${fmt(endIso)}`;
 }
 
-export function formatDateLabel(dateISO: string): string {
+export function formatDateLabel(dateISO: string, locale: Locale = 'en'): string {
   const [y, m, d] = dateISO.split('-').map(Number);
   const dt = new Date(y, m - 1, d);
-  return dt.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  return dt.toLocaleDateString(intlLocale(locale), { weekday: 'long', month: 'long', day: 'numeric' });
 }

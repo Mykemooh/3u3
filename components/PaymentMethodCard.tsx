@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { loadStripe, type Stripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
+import { useT } from '@/components/i18n/LocaleProvider';
+import { commonMessages } from '@/lib/i18n/messages/common';
 
 export type SavedCard = {
   brand: string | null;
@@ -29,6 +31,7 @@ export default function PaymentMethodCard({
   /** Skip the self-contained card/heading — for nesting inside a shared "Payment" section that supplies its own. */
   bare?: boolean;
 }) {
+  const t = useT(commonMessages);
   const [card, setCard] = useState(saved);
   const [adding, setAdding] = useState(false);
   const wrapClass = bare ? '' : 'card';
@@ -36,8 +39,8 @@ export default function PaymentMethodCard({
   if (!publishableKey) {
     return (
       <div className={wrapClass}>
-        {!bare && <h2 className="mb-1 font-semibold text-ink">Payment method</h2>}
-        <p className="text-sm text-muted">Online payment setup isn't turned on for this business yet.</p>
+        {!bare && <h2 className="mb-1 font-semibold text-ink">{t('payMethodTitle')}</h2>}
+        <p className="text-sm text-muted">{t('payMethodNotEnabled')}</p>
       </div>
     );
   }
@@ -46,9 +49,9 @@ export default function PaymentMethodCard({
     <div className={wrapClass}>
       {!bare && (
         <>
-          <h2 className="mb-1 font-semibold text-ink">Payment method</h2>
+          <h2 className="mb-1 font-semibold text-ink">{t('payMethodTitle')}</h2>
           <p className="mb-4 text-sm text-slate">
-            We never see or store your card number — Stripe handles it directly and securely.
+            {t('payMethodSecure')}
           </p>
         </>
       )}
@@ -56,7 +59,7 @@ export default function PaymentMethodCard({
         <SavedCardView card={card} onChanged={setCard} onReplace={() => setAdding(true)} />
       ) : adding ? null : (
         <button onClick={() => setAdding(true)} className="btn-secondary !px-4 !py-2 text-sm">
-          Add a payment method
+          {t('payMethodAdd')}
         </button>
       )}
       {(adding || !card) && (
@@ -75,6 +78,7 @@ export default function PaymentMethodCard({
 }
 
 function SavedCardView({ card, onChanged, onReplace }: { card: SavedCard; onChanged: (c: SavedCard | null) => void; onReplace: () => void }) {
+  const t = useT(commonMessages);
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -89,7 +93,7 @@ function SavedCardView({ card, onChanged, onReplace }: { card: SavedCard; onChan
     });
     const data = await res.json().catch(() => ({}));
     setBusy(false);
-    if (!res.ok) return setError(data.error || 'Could not update autopay.');
+    if (!res.ok) return setError(data.error || t('payMethodAutopayError'));
     onChanged({ ...card, autopayEnabled: enabled });
     router.refresh();
   }
@@ -99,7 +103,7 @@ function SavedCardView({ card, onChanged, onReplace }: { card: SavedCard; onChan
     setError('');
     const res = await fetch('/api/account/payment-method', { method: 'DELETE' });
     setBusy(false);
-    if (!res.ok) return setError('Could not remove that card.');
+    if (!res.ok) return setError(t('payMethodRemoveError'));
     onChanged(null);
     router.refresh();
   }
@@ -109,28 +113,27 @@ function SavedCardView({ card, onChanged, onReplace }: { card: SavedCard; onChan
       <div className="flex items-center justify-between rounded-xl border border-line px-4 py-3">
         <div className="text-sm">
           <p className="font-semibold capitalize text-ink">
-            {card.brand ?? 'Card'} •••• {card.last4}
+            {card.brand ?? t('payMethodCard')} •••• {card.last4}
           </p>
           {card.expMonth && card.expYear && (
             <p className="text-muted">
-              Expires {String(card.expMonth).padStart(2, '0')}/{card.expYear}
+              {t('payMethodExpires', { date: `${String(card.expMonth).padStart(2, '0')}/${card.expYear}` })}
             </p>
           )}
         </div>
         <div className="flex gap-3">
           <button onClick={onReplace} className="text-sm font-semibold text-bronze hover:underline">
-            Replace
+            {t('payMethodReplace')}
           </button>
           <button onClick={remove} disabled={busy} className="text-sm text-muted hover:text-ink">
-            Remove
+            {t('payMethodRemove')}
           </button>
         </div>
       </div>
       <label className="flex items-start gap-2 text-sm text-ink">
         <input type="checkbox" className="mt-0.5" checked={card.autopayEnabled} disabled={busy} onChange={(e) => toggleAutopay(e.target.checked)} />
         <span>
-          <span className="font-semibold">Turn on autopay</span> — automatically charge this card when an invoice is
-          ready, instead of emailing a pay link.
+          <span className="font-semibold">{t('payMethodAutopay')}</span> {t('payMethodAutopayHelp')}
         </span>
       </label>
       {error && <p className="text-sm text-red-600">{error}</p>}
@@ -149,6 +152,7 @@ function AddCardForm({
   onCancel: () => void;
   showCancel: boolean;
 }) {
+  const t = useT(commonMessages);
   const stripePromise = useMemo(() => loadStripe(publishableKey), [publishableKey]);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -160,17 +164,17 @@ function AddCardForm({
       .then((data) => {
         if (active) {
           if (data.clientSecret) setClientSecret(data.clientSecret);
-          else setError(data.error || 'Could not start payment setup.');
+          else setError(data.error || t('payMethodSetupError'));
         }
       })
-      .catch(() => active && setError('Could not start payment setup.'));
+      .catch(() => active && setError(t('payMethodSetupError')));
     return () => {
       active = false;
     };
   }, []);
 
   if (error) return <p className="mt-3 text-sm text-red-600">{error}</p>;
-  if (!clientSecret) return <p className="mt-3 text-sm text-muted">Loading…</p>;
+  if (!clientSecret) return <p className="mt-3 text-sm text-muted">{t('payMethodLoading')}</p>;
 
   return (
     <div className="mt-4">
@@ -182,6 +186,7 @@ function AddCardForm({
 }
 
 function CardFormInner({ onSaved, onCancel, showCancel }: { onSaved: (c: SavedCard) => void; onCancel: () => void; showCancel: boolean }) {
+  const t = useT(commonMessages);
   const stripe = useStripe();
   const elements = useElements();
   const [busy, setBusy] = useState(false);
@@ -198,7 +203,7 @@ function CardFormInner({ onSaved, onCancel, showCancel }: { onSaved: (c: SavedCa
     });
     if (confirmError || !setupIntent) {
       setBusy(false);
-      setError(confirmError?.message || 'Could not save that card.');
+      setError(confirmError?.message || t('payMethodSaveError'));
       return;
     }
     const res = await fetch('/api/account/payment-method', {
@@ -208,7 +213,7 @@ function CardFormInner({ onSaved, onCancel, showCancel }: { onSaved: (c: SavedCa
     });
     const data = await res.json().catch(() => ({}));
     setBusy(false);
-    if (!res.ok) return setError(data.error || 'Could not save that card.');
+    if (!res.ok) return setError(data.error || t('payMethodSaveError'));
     onSaved(data);
   }
 
@@ -218,11 +223,11 @@ function CardFormInner({ onSaved, onCancel, showCancel }: { onSaved: (c: SavedCa
       {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex gap-2">
         <button type="submit" disabled={busy || !stripe} className="btn-primary !px-4 !py-2 text-sm">
-          {busy ? 'Saving…' : 'Save card'}
+          {busy ? t('saving') : t('payMethodSave')}
         </button>
         {showCancel && (
           <button type="button" onClick={onCancel} className="btn-secondary !px-4 !py-2 text-sm" disabled={busy}>
-            Cancel
+            {t('cancel')}
           </button>
         )}
       </div>

@@ -17,6 +17,8 @@ const schema = z.object({
   email: z.string().email().optional(),
   addressLine1: z.string().min(1).optional(),
   address: pickedAddressSchema.optional(),
+  // The client's language for emails and texts (users.locale).
+  locale: z.enum(['en', 'es']).optional(),
 });
 
 // Direct client creation for the CRM (as opposed to a client arriving via
@@ -33,6 +35,7 @@ export async function POST(req: Request) {
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: 'Please fill in every required field.' }, { status: 400 });
   const { name, phone, email, addressLine1, address: picked } = parsed.data;
+  const locale = parsed.data.locale ?? 'en';
 
   const existing = (await db.select().from(users).where(eq(users.phone, phone)).limit(1))[0];
   if (existing) {
@@ -40,7 +43,7 @@ export async function POST(req: Request) {
   }
 
   const clientId = crypto.randomUUID();
-  await db.insert(users).values({ id: clientId, tenantId, role: 'CUSTOMER', name, phone, email });
+  await db.insert(users).values({ id: clientId, tenantId, role: 'CUSTOMER', name, phone, email, locale });
 
   if (addressLine1) {
     await db.insert(addresses).values({ id: crypto.randomUUID(), userId: clientId, ...addressFields(picked, addressLine1) });
@@ -51,7 +54,7 @@ export async function POST(req: Request) {
   if (email) {
     try {
       const token = await issuePasswordSetupToken(clientId);
-      const { subject, html } = passwordSetupEmail({ name, url: appUrl(`/set-password?token=${token}`) });
+      const { subject, html } = passwordSetupEmail({ name, url: appUrl(`/set-password?token=${token}`), locale });
       await sendEmail({ to: email, subject, html });
     } catch (err) {
       console.error('[admin/clients] password setup email failed for', clientId, err);

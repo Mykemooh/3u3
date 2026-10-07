@@ -2,13 +2,15 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useT } from '@/components/i18n/LocaleProvider';
+import { commonMessages } from '@/lib/i18n/messages/common';
 
 type Channel = 'EMAIL' | 'SMS' | 'WHATSAPP';
 
-const OPTIONS: { value: Channel; label: string; needsPhone: boolean }[] = [
-  { value: 'EMAIL', label: 'Email', needsPhone: false },
-  { value: 'SMS', label: 'Text message (SMS)', needsPhone: true },
-  { value: 'WHATSAPP', label: 'WhatsApp', needsPhone: true },
+const OPTIONS: { value: Channel; label: 'notifEmail' | 'notifSms' | 'notifWhatsapp'; needsPhone: boolean }[] = [
+  { value: 'EMAIL', label: 'notifEmail', needsPhone: false },
+  { value: 'SMS', label: 'notifSms', needsPhone: true },
+  { value: 'WHATSAPP', label: 'notifWhatsapp', needsPhone: true },
 ];
 
 export default function NotificationPreferences({
@@ -21,6 +23,7 @@ export default function NotificationPreferences({
   /** Skip the self-contained card/heading — for nesting inside a shared section that supplies its own. */
   bare?: boolean;
 }) {
+  const t = useT(commonMessages);
   const router = useRouter();
   const [channel, setChannel] = useState<Channel>(initial);
   const [busy, setBusy] = useState(false);
@@ -37,7 +40,7 @@ export default function NotificationPreferences({
     });
     const data = await res.json().catch(() => ({}));
     setBusy(false);
-    if (!res.ok) return setError(data.error || 'Could not update that.');
+    if (!res.ok) return setError(data.error || t('notifError'));
     setChannel(value);
     router.refresh();
   }
@@ -46,9 +49,9 @@ export default function NotificationPreferences({
     <>
       {!bare && (
         <>
-          <h2 className="mb-1 font-semibold text-ink">Notifications</h2>
+          <h2 className="mb-1 font-semibold text-ink">{t('notifTitle')}</h2>
           <p className="mb-4 text-sm text-slate">
-            Where we send booking reminders (3 days, then 36 hours before a cleaning) and other updates.
+            {t('notifIntro')}
           </p>
         </>
       )}
@@ -58,8 +61,8 @@ export default function NotificationPreferences({
           return (
             <label key={opt.value} className={`flex items-center gap-2 text-sm ${disabled ? 'opacity-50' : ''}`}>
               <input type="radio" name="notificationChannel" checked={channel === opt.value} disabled={disabled} onChange={() => choose(opt.value)} />
-              {opt.label}
-              {opt.needsPhone && !hasPhone && <span className="text-xs text-muted">(add a phone number first)</span>}
+              {t(opt.label)}
+              {opt.needsPhone && !hasPhone && <span className="text-xs text-muted">{t('notifNeedsPhone')}</span>}
             </label>
           );
         })}

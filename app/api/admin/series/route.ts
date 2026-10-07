@@ -63,6 +63,7 @@ export async function POST(req: Request) {
           bookingId,
           clientId: input.clientId,
           serviceName: svc?.name ?? 'Cleaning',
+          serviceKey: svc?.key,
           slotStart: slot(input.startDate, input.startMinutes),
           slotEnd: slot(input.startDate, input.startMinutes + input.durationMinutes),
           priceCents: input.priceCents ?? null,
