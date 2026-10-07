@@ -1,5 +1,5 @@
 import { eq, and, isNull, or } from 'drizzle-orm';
-import { automationStates, sendAutomationMessage, whenLabel, type AutomationState, type AutomationKey } from '@/lib/automations';
+import { automationStates, automationT, clientLocale, sendAutomationMessage, whenLabel, type AutomationState, type AutomationKey } from '@/lib/automations';
 import { db } from '@/db/client';
 import { bookings, users, serviceTypes, quotes, tenants } from '@/db/schema';
 import { businessLocalToUtc, formatSlot } from '@/lib/time';
@@ -7,7 +7,7 @@ import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 import { estimateUrl } from '@/lib/estimates';
 import { appUrl } from '@/lib/url';
 import { notifyClient } from '@/lib/notify';
-import { bookingReminderEmail, bookingReminderText, estimateReminderEmail, estimateReminderText } from '@/lib/email';
+import { bookingReminderEmail, bookingReminderText, estimateReminderEmail, estimateReminderText, localizedServiceName } from '@/lib/email';
 import { SERVICE_LABELS, formatMoney } from '@/lib/data';
 
 /**
@@ -76,11 +76,16 @@ export async function sendBookingReminders(): Promise<{ sent3d: number; sent36h:
     const service = booking.serviceTypeId
       ? (await db.select().from(serviceTypes).where(eq(serviceTypes.id, booking.serviceTypeId)).limit(1))[0]
       : undefined;
-    const serviceName = service ? SERVICE_LABELS[service.key as keyof typeof SERVICE_LABELS] ?? service.name : 'Cleaning';
-    const [dateLabel, timeLabel] = [formatDateLabel(booking.slotStart.slice(0, 10)), formatSlotLabel(booking.slotStart, booking.slotEnd)];
+    const locale = clientLocale(client);
+    const t = automationT(locale);
+    const serviceName = service
+      ? localizedServiceName(locale, SERVICE_LABELS[service.key as keyof typeof SERVICE_LABELS] ?? service.name, service.key)
+      : t('serviceFallbackTitle');
+    const [dateLabel, timeLabel] = [formatDateLabel(booking.slotStart.slice(0, 10), locale), formatSlotLabel(booking.slotStart, booking.slotEnd)];
 
     const send = async (key: 'visit_reminder_first' | 'visit_reminder_second', state: AutomationState, hours: number, event: string) => {
-      const horizon = whenLabel(Math.round(hours)).replace(/^in /, '');
+      // English reads "in {horizon}"; Spanish carries its own preposition ("en 3 días", "mañana").
+      const horizon = locale === 'es' ? whenLabel(Math.round(hours), 'es') : whenLabel(Math.round(hours)).replace(/^in /, '');
       if (state.customized) {
         const link = appUrl('/account');
         await sendAutomationMessage({
@@ -89,8 +94,8 @@ export async function sendBookingReminders(): Promise<{ sent3d: number; sent36h:
           key,
           state,
           client,
-          vars: { service: serviceName, date: dateLabel, time: timeLabel, when: whenLabel(Math.round(hours)), link },
-          cta: { label: 'Open my account', url: link },
+          vars: { service: serviceName, date: dateLabel, time: timeLabel, when: whenLabel(Math.round(hours), locale), link },
+          cta: { label: t('ctaOpenAccount'), url: link },
           relatedBookingId: booking.id,
         });
       } else {
@@ -99,8 +104,8 @@ export async function sendBookingReminders(): Promise<{ sent3d: number; sent36h:
           client,
           triggerEvent: event,
           relatedBookingId: booking.id,
-          email: bookingReminderEmail({ name: client.name, serviceName, dateLabel, timeLabel, horizon }),
-          text: bookingReminderText({ serviceName, dateLabel, timeLabel, horizon }),
+          email: bookingReminderEmail({ name: client.name, serviceName, dateLabel, timeLabel, horizon, locale }),
+          text: bookingReminderText({ serviceName, dateLabel, timeLabel, horizon, locale }),
         });
       }
     };
@@ -173,7 +178,9 @@ export async function sendQuoteReminders(): Promise<{ sent: number }> {
     const client = (await db.select().from(users).where(eq(users.id, quote.clientId)).limit(1))[0];
     if (!client) continue;
     const service = (await db.select().from(serviceTypes).where(eq(serviceTypes.id, quote.serviceTypeId)).limit(1))[0];
-    const serviceName = service?.name ?? 'Cleaning service';
+    const locale = clientLocale(client);
+    const t = automationT(locale);
+    const serviceName = service ? localizedServiceName(locale, service.name, service.key) : t('serviceFallbackLong');
     const url = estimateUrl(quote.approvalToken ?? '');
     const optOutUrl = appUrl(`/api/estimates/${quote.approvalToken}/opt-out-reminders`);
 
@@ -192,9 +199,9 @@ export async function sendQuoteReminders(): Promise<{ sent: number }> {
         state: followup,
         client,
         vars: { service: serviceName, amount: formatMoney(quote.totalCents), link: url },
-        cta: { label: 'View and approve', url },
+        cta: { label: t('ctaViewApprove'), url },
         relatedBookingId: quote.quoteVisitBookingId ?? undefined,
-        footerNote: `Not interested? Stop these reminders: ${optOutUrl}`,
+        footerNote: t('autoStopQuoteReminders', { url: optOutUrl }),
       });
     } else {
       await notifyClient({
@@ -202,8 +209,8 @@ export async function sendQuoteReminders(): Promise<{ sent: number }> {
         client,
         triggerEvent: 'ESTIMATE_REMINDER',
         relatedBookingId: quote.quoteVisitBookingId ?? undefined,
-        email: estimateReminderEmail({ name: client.name, serviceName, totalCents: quote.totalCents, url, optOutUrl }),
-        text: estimateReminderText({ serviceName, totalCents: quote.totalCents, url }),
+        email: estimateReminderEmail({ name: client.name, serviceName, totalCents: quote.totalCents, url, optOutUrl, locale }),
+        text: estimateReminderText({ serviceName, totalCents: quote.totalCents, url, locale }),
       });
     }
     sent += 1;

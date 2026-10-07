@@ -3,7 +3,7 @@ import { users } from '@/db/schema';
 import { eq, sql } from 'drizzle-orm';
 import { issuePasswordSetupToken } from '@/lib/passwordSetup';
 import { logNotification } from '@/lib/bookings';
-import { sendEmail, passwordResetEmail } from '@/lib/email';
+import { sendEmail, passwordResetEmail, passwordResetText } from '@/lib/email';
 import { sendSms, smsConfigured } from '@/lib/sms';
 import { appUrl } from '@/lib/url';
 
@@ -71,13 +71,13 @@ export async function requestPasswordReset(input: string): Promise<void> {
   if (channel === 'SMS') {
     const ok = await sendSms({
       to: user.phone!,
-      body: `3U3 Cleaning: you sign in with ${signInWith.join(' or ')}. Reset your password (link works for 1 hour): ${url}`,
+      body: passwordResetText({ url, signInWith, locale: user.locale }),
     });
     await log(user, 'SMS', user.phone!, ok);
     if (ok || !user.email) return;
     // The text didn't go through — try email rather than leave them stuck.
   }
-  const { subject, html } = passwordResetEmail({ name: user.name, url, signInWith });
+  const { subject, html } = passwordResetEmail({ name: user.name, url, signInWith, locale: user.locale });
   await log(user, 'EMAIL', user.email!, await sendEmail({ to: user.email!, subject, html }));
 }
 

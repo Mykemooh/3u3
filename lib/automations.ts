@@ -20,6 +20,9 @@ import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 import { logChange, diff } from '@/lib/audit';
 import { unsubscribeUrl } from '@/lib/unsubscribe';
 import { formatMoney, SERVICE_LABELS } from '@/lib/data';
+import { serviceName as builtInServiceName } from '@/lib/format';
+import { translator, type Locale } from '@/lib/i18n';
+import { notifyMessages } from '@/lib/i18n/messages/notify';
 
 /**
  * Reminders and follow-ups, as settings (Admin → Settings → Reminders &
@@ -290,16 +293,55 @@ export function renderTemplate(template: string, vars: Record<string, string | n
   return template.replace(/\{(\w+)\}/g, (whole, name: string) => (vars[name] != null ? String(vars[name]) : whole));
 }
 
-/** The words a rule will actually send: the company's own if they edited it, else the standard wording. */
-export function wordingFor(def: AutomationDef, state: AutomationState) {
-  return { subject: state.subject ?? def.text?.subject ?? '', body: state.body ?? def.text?.body ?? '' };
+/** The standard wording's Spanish, per rule (lib/i18n/messages/notify.ts). */
+const STANDARD_WORDING_KEYS: Partial<Record<AutomationKey, { subject: keyof typeof notifyMessages.en; body: keyof typeof notifyMessages.en }>> = {
+  walkthrough_reminder: { subject: 'walkthroughSubject', body: 'walkthroughBody' },
+  visit_reminder_first: { subject: 'visitFirstSubject', body: 'visitFirstBody' },
+  visit_reminder_second: { subject: 'visitSecondSubject', body: 'visitSecondBody' },
+  en_route: { subject: 'enRouteSubject', body: 'enRouteBody' },
+  job_complete: { subject: 'jobCompleteSubject', body: 'jobCompleteBody' },
+  review_request: { subject: 'reviewSubject', body: 'reviewBody' },
+  quote_followup: { subject: 'quoteFollowupSubject', body: 'quoteFollowupBody' },
+  invoice_followup: { subject: 'invoiceFollowupSubject', body: 'invoiceFollowupBody' },
+  winback: { subject: 'winbackSubject', body: 'winbackBody' },
+};
+
+/**
+ * The words a rule will actually send: the company's own if they edited it
+ * (sent as typed, whatever the client's language), else the standard
+ * wording in the client's language.
+ */
+export function wordingFor(def: AutomationDef, state: AutomationState, locale: Locale = 'en') {
+  const keys = locale === 'es' ? STANDARD_WORDING_KEYS[def.key] : undefined;
+  // Placeholders stay as {name} here; renderTemplate fills them later.
+  const es = keys ? { subject: notifyMessages.es[keys.subject], body: notifyMessages.es[keys.body] } : null;
+  return {
+    subject: state.subject ?? es?.subject ?? def.text?.subject ?? '',
+    body: state.body ?? es?.body ?? def.text?.body ?? '',
+  };
 }
 
 /** "in 3 days", "in 36 hours", "tomorrow" — for the visit reminders. */
-export function whenLabel(hours: number) {
+export function whenLabel(hours: number, locale: Locale = 'en') {
+  if (locale === 'es') {
+    const t = translator(notifyMessages, 'es');
+    if (hours <= 30 && hours >= 18) return t('whenTomorrow');
+    if (hours % 24 === 0) return t(hours === 24 ? 'whenDay' : 'whenDays', { count: hours / 24 });
+    return t('whenHours', { count: hours });
+  }
   if (hours <= 30 && hours >= 18) return 'tomorrow';
   if (hours % 24 === 0) return `in ${hours / 24} day${hours === 24 ? '' : 's'}`;
   return `in ${hours} hours`;
+}
+
+/** A client's saved language, from the user row the sweeps already load. */
+export function clientLocale(client: { locale?: string | null } | null | undefined): Locale {
+  return client?.locale === 'es' ? 'es' : 'en';
+}
+
+/** The system's own words around a rule (button labels, footers), in the client's language. */
+export function automationT(locale: Locale) {
+  return translator(notifyMessages, locale);
 }
 
 /**
@@ -330,12 +372,13 @@ export async function sendAutomationMessage(input: {
   footerNote?: string;
 }) {
   const def = automationDef(input.key);
-  const words = wordingFor(def, input.state);
+  const locale = clientLocale(input.client);
+  const words = wordingFor(def, input.state, locale);
   const vars = { company: input.tenantName, firstName: input.client.name.split(/[\s(]/)[0], ...input.vars };
   const subject = renderTemplate(words.subject, vars);
   const body = renderTemplate(words.body, vars);
   const footer = input.marketing
-    ? `— ${input.tenantName}\nDon't want these? Unsubscribe: ${unsubscribeUrl(input.client.id)}`
+    ? `— ${input.tenantName}\n${automationT(locale)('autoUnsubscribe', { url: unsubscribeUrl(input.client.id) })}`
     : input.footerNote
     ? `— ${input.tenantName}\n${input.footerNote}`
     : undefined;
@@ -359,10 +402,12 @@ async function activeTenants() {
   return db.select().from(tenants).where(eq(tenants.isPlatform, false));
 }
 
-async function serviceNameFor(serviceTypeId: string | null) {
-  if (!serviceTypeId) return 'cleaning';
+async function serviceNameFor(serviceTypeId: string | null, locale: Locale = 'en') {
+  const fallback = automationT(locale)('serviceFallback');
+  if (!serviceTypeId) return fallback;
   const s = (await db.select().from(serviceTypes).where(eq(serviceTypes.id, serviceTypeId)).limit(1))[0];
-  return s ? SERVICE_LABELS[s.key as keyof typeof SERVICE_LABELS] ?? s.name : 'cleaning';
+  if (s && locale === 'es') return builtInServiceName(s.key, s.name, 'es');
+  return s ? SERVICE_LABELS[s.key as keyof typeof SERVICE_LABELS] ?? s.name : fallback;
 }
 
 /** Free walkthrough reminders, for quote-visit bookings. */
@@ -387,7 +432,7 @@ export async function sendWalkthroughReminders(now = Date.now()) {
         key: 'walkthrough_reminder',
         state,
         client,
-        vars: { date: formatDateLabel(b.slotStart.slice(0, 10)), time: formatSlotLabel(b.slotStart, b.slotEnd) },
+        vars: { date: formatDateLabel(b.slotStart.slice(0, 10), clientLocale(client)), time: formatSlotLabel(b.slotStart, b.slotEnd) },
         relatedBookingId: b.id,
       });
       sent += 1;
@@ -426,7 +471,7 @@ export async function sendReviewRequests(now = Date.now()) {
         state,
         client,
         vars: { link },
-        cta: { label: 'Rate your clean', url: link },
+        cta: { label: automationT(clientLocale(client))('ctaRateClean'), url: link },
         relatedBookingId: booking.id,
       });
       sent += 1;
@@ -460,7 +505,7 @@ export async function sendInvoiceFollowups(now = Date.now()) {
         state,
         client,
         vars: { amount: formatMoney(inv.totalCents), link },
-        cta: { label: 'View and pay', url: link },
+        cta: { label: automationT(clientLocale(client))('ctaViewPay'), url: link },
         relatedBookingId: inv.bookingId,
       });
       sent += 1;
@@ -517,7 +562,7 @@ export async function sendWinbacks() {
         state,
         client,
         vars: { link },
-        cta: { label: 'Book a clean', url: link },
+        cta: { label: automationT(clientLocale(client))('ctaBookClean'), url: link },
         marketing: true,
       });
       sent += 1;

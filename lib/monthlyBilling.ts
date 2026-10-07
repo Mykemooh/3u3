@@ -198,10 +198,10 @@ async function closeBatch(batch: MonthlyBatchRow): Promise<void> {
   const totalCents = sumAmount(memberInvoices);
   if (client.email) {
     if (autopayCharged) {
-      const { subject, html } = paymentReceivedCustomerEmail({ brand, name: client.name, totalCents, receiptUrl });
+      const { subject, html } = paymentReceivedCustomerEmail({ brand, name: client.name, totalCents, receiptUrl, locale: client.locale });
       await sendEmail({ to: client.email, subject, html });
     } else {
-      const { subject, html } = invoiceEmail({ brand, name: client.name, totalCents, items: lineItems, payUrl: hostedUrl });
+      const { subject, html } = invoiceEmail({ brand, name: client.name, totalCents, items: lineItems, payUrl: hostedUrl, locale: client.locale });
       await sendEmail({ to: client.email, subject, html });
     }
   }

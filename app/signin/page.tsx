@@ -7,6 +7,16 @@ import Link from 'next/link';
 import LogoBadge from '@/components/LogoBadge';
 import TrashCanMark from '@/components/TrashCanMark';
 import { homeForRole, canAccess } from '@/lib/nav';
+import { useT } from '@/components/i18n/LocaleProvider';
+import { rich } from '@/lib/i18n/rich';
+import { authMessages } from '@/lib/i18n/messages/auth';
+
+const ROLE_KEYS = {
+  CUSTOMER: 'signinRoleCustomer',
+  CLEANER: 'signinRoleCleaner',
+  ADMIN: 'signinRoleAdmin',
+  SUPER_ADMIN: 'signinRoleSuperAdmin',
+} as const;
 
 /**
  * One sign-in screen for everyone — owner, cleaner, customer.
@@ -25,15 +35,18 @@ function SignInInner() {
   const next = params.get('next');
   const denied = params.get('denied');
   const authError = params.get('error');
+  const t = useT(authMessages);
   const ERRORS: Record<string, string> = {
-    NoAccount: "That Google account's email isn't on file here. Sign in with your phone or email and password, or ask the office to add your email.",
-    GoogleEmail: 'Google did not share a verified email for that account.',
-    Closed: 'This account has been closed. Please contact the office.',
-    MfaLocked: 'Too many wrong codes — sign in again to get a fresh start.',
-    OAuthSignin: 'Google sign-in could not start. Please try again.',
-    OAuthCallback: 'Google sign-in did not finish. Please try again.',
-    AccessDenied: "That account can't sign in here.",
+    NoAccount: t('signinErrNoAccount'),
+    GoogleEmail: t('signinErrGoogleEmail'),
+    Closed: t('signinErrClosed'),
+    MfaLocked: t('signinErrMfaLocked'),
+    OAuthSignin: t('signinErrOAuthSignin'),
+    OAuthCallback: t('signinErrOAuthCallback'),
+    AccessDenied: t('signinErrAccessDenied'),
   };
+  const roleLabel = (role: string) =>
+    role in ROLE_KEYS ? t(ROLE_KEYS[role as keyof typeof ROLE_KEYS]) : role.toLowerCase();
   const [google, setGoogle] = useState(false);
   useEffect(() => {
     getProviders().then((p) => setGoogle(!!p?.google)).catch(() => setGoogle(false));
@@ -72,7 +85,7 @@ function SignInInner() {
 
     if (res?.error) {
       setLoading(false);
-      setError("That email or phone and password don't match an account.");
+      setError(t('signinBadPassword'));
       return;
     }
 
@@ -82,7 +95,7 @@ function SignInInner() {
     setLoading(false);
 
     if (!role) {
-      setError('Signed in, but the session did not stick. Please try again.');
+      setError(t('signinNoSession'));
       return;
     }
 
@@ -115,9 +128,9 @@ function SignInInner() {
       )}
 
       <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-ink">Sign in</h1>
+        <h1 className="text-2xl font-bold text-ink">{t('signIn')}</h1>
         <p className="mb-6 mt-1 text-sm text-slate">
-          Customers, cleaners and office staff all sign in here — we'll take you to the right place.
+          {t('signinIntro')}
         </p>
 
         {authError && ERRORS[authError] && (
@@ -137,25 +150,26 @@ function SignInInner() {
                 <path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.8l7.8-6.1z"/>
                 <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.8 6.1C6.6 42.6 14.6 48 24 48z"/>
               </svg>
-              Continue with Google
+              {t('signinWithGoogle')}
             </button>
             <div className="mb-4 flex items-center gap-3 text-xs text-muted">
-              <span className="h-px flex-1 bg-line" /> or <span className="h-px flex-1 bg-line" />
+              <span className="h-px flex-1 bg-line" /> {t('signinOr')} <span className="h-px flex-1 bg-line" />
             </div>
           </>
         )}
 
         {denied && (
           <p className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            That page isn't available to your account. Sign in with one that has access.
+            {t('signinDenied')}
           </p>
         )}
 
         {current && (
           <div className="mb-4 rounded-xl border border-line bg-surface px-4 py-3 text-sm">
             <p className="text-slate">
-              Already signed in as <span className="font-semibold text-ink">{current.name}</span>
-              {current.role ? ` (${current.role.toLowerCase()})` : ''}.
+              {rich(current.role ? t('signinAlreadyAsRole', { role: roleLabel(current.role) }) : t('signinAlreadyAs'), {
+                name: <span className="font-semibold text-ink">{current.name}</span>,
+              })}
             </p>
             <div className="mt-2 flex gap-3">
               <button
@@ -163,14 +177,14 @@ function SignInInner() {
                 onClick={() => router.push(homeForRole(current.role))}
                 className="font-semibold text-bronze hover:underline"
               >
-                Continue →
+                {t('signinContinueArrow')}
               </button>
               <button
                 type="button"
                 onClick={() => signOut({ callbackUrl: '/signin' })}
                 className="text-muted hover:text-ink"
               >
-                Sign out
+                {t('signOut')}
               </button>
             </div>
           </div>
@@ -179,7 +193,7 @@ function SignInInner() {
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="label" htmlFor="identifier">
-              Email or phone number
+              {t('emailOrPhone')}
             </label>
             <input
               id="identifier"
@@ -189,19 +203,19 @@ function SignInInner() {
               autoComplete="username"
               autoCapitalize="none"
               spellCheck={false}
-              placeholder="you@example.com or +1 281 555 0199"
+              placeholder={t('identifierPlaceholder')}
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               required
             />
             <p className="mt-1.5 text-xs text-muted">
-              Staff use their work email. Customers use the phone number they booked with.
+              {t('signinIdentifierHelp')}
             </p>
           </div>
 
           <div>
             <label className="label" htmlFor="password">
-              Password
+              {t('password')}
             </label>
             <input
               id="password"
@@ -214,7 +228,7 @@ function SignInInner() {
             />
             <p className="mt-1.5 text-right text-xs">
               <Link href="/forgot" className="font-semibold text-bronze hover:underline">
-                Forgot your username or password?
+                {t('signinForgot')}
               </Link>
             </p>
           </div>
@@ -222,27 +236,33 @@ function SignInInner() {
           {error && <p className="text-sm text-red-600">{error}</p>}
 
           <button type="submit" disabled={loading} className="btn-primary w-full">
-            {loading ? 'Signing in…' : 'Sign in'}
+            {loading ? t('signinSigningIn') : t('signIn')}
           </button>
         </form>
 
         {params.get('platform') ? (
           <p className="mt-6 text-center text-sm text-slate">
-            New company?{' '}
-            <Link href="/start" className="font-semibold text-bronze underline">
-              Get started free
-            </Link>
+            {rich(t('signinNewCompany'), {
+              link: (
+                <Link href="/start" className="font-semibold text-bronze underline">
+                  {t('signinGetStartedFree')}
+                </Link>
+              ),
+            })}
           </p>
         ) : (
           <>
             <p className="mt-6 text-center text-sm text-slate">
-              New here?{' '}
-              <Link href="/new" className="font-semibold text-bronze underline">
-                Get a free quote
-              </Link>
+              {rich(t('signinNewHere'), {
+                link: (
+                  <Link href="/new" className="font-semibold text-bronze underline">
+                    {t('signinGetQuote')}
+                  </Link>
+                ),
+              })}
             </p>
             <p className="mt-2 text-center text-xs text-muted">
-              A new account will be created for you after your quote request.
+              {t('signinNewAccountNote')}
             </p>
           </>
         )}

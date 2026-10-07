@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { notFound, redirect } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
 import { loadJob, canViewJob, viewerFrom } from '@/lib/jobs';
-import { SERVICE_LABELS } from '@/lib/data';
+import { serviceName as serviceLabel } from '@/lib/format';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 import { formatClock, BUSINESS_TIMEZONE } from '@/lib/time';
 import { cleaningJourney } from '@/lib/account';
@@ -19,16 +19,21 @@ import ShareProofButton from '@/components/ShareProofButton';
 import { getTracking, publicMapboxToken } from '@/lib/tracking';
 import { getUserById } from '@/lib/data';
 import { getReviewForBooking } from '@/lib/reviews';
+import { getLocale } from '@/lib/i18n/server';
+import { translator, intlLocale, type Locale } from '@/lib/i18n';
+import { accountMessages } from '@/lib/i18n/messages/account';
 
 export const dynamic = 'force-dynamic';
 
-function timestampLabel(createdAt: Date): string {
-  return createdAt.toLocaleString('en-US', { timeZone: BUSINESS_TIMEZONE, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+function timestampLabel(createdAt: Date, locale: Locale): string {
+  return createdAt.toLocaleString(intlLocale(locale), { timeZone: BUSINESS_TIMEZONE, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
 export default async function JobGallery({ params }: { params: { id: string } }) {
   const viewer = viewerFrom(await getServerSession(authOptions));
   if (!viewer) redirect(`/signin?next=/account/jobs/${params.id}`);
+  const locale = await getLocale();
+  const t = translator(accountMessages, locale);
   const data = await loadJob(params.id);
   if (!data || !(await canViewJob(viewer, data.job, data.booking))) notFound();
 
@@ -37,29 +42,29 @@ export default async function JobGallery({ params }: { params: { id: string } })
   const invoice = invoiceRow && (viewer.role === 'ADMIN' || (invoiceRow.status !== 'DRAFT' && invoiceRow.status !== 'VOID')) ? invoiceRow : null;
   // Clients see the photos once the job is finished; staff see them live.
   const showMedia = job.status === 'COMPLETE' || viewer.role !== 'CUSTOMER';
-  const serviceName = service ? SERVICE_LABELS[service.key] ?? service.name : 'Cleaning';
+  const serviceName = service ? serviceLabel(service.key, service.name, locale) : t('serviceFallback');
   const tracking = job.status === 'EN_ROUTE' ? getTracking(job) : null;
 
   return (
     <div className="space-y-6">
       <Link href={viewer.role === 'CUSTOMER' ? '/account' : `/crew/jobs/${job.id}`} className="inline-flex items-center gap-1 text-sm font-semibold text-muted hover:text-ink">
-        <span aria-hidden="true">←</span> {viewer.role === 'CUSTOMER' ? 'Your account' : 'Back to the job'}
+        <span aria-hidden="true">←</span> {viewer.role === 'CUSTOMER' ? t('jobBackAccount') : t('jobBackJob')}
       </Link>
 
       <header className="card space-y-5">
         <div>
           <p className="eyebrow">{serviceName}</p>
-          <h1 className="mt-1 text-2xl font-bold">{formatDateLabel(booking.slotStart.slice(0, 10))}</h1>
+          <h1 className="mt-1 text-2xl font-bold">{formatDateLabel(booking.slotStart.slice(0, 10), locale)}</h1>
           <p className="mt-1 text-slate">
             {job.startedAt && job.completedAt
-              ? `Crew on site ${formatClock(job.startedAt)} – ${formatClock(job.completedAt)}`
+              ? t('jobOnSite', { start: formatClock(job.startedAt, locale), end: formatClock(job.completedAt, locale) })
               : formatSlotLabel(booking.slotStart, booking.slotEnd)}
           </p>
         </div>
-        <JourneyRail steps={cleaningJourney({ job, invoice: invoice ?? null })} />
+        <JourneyRail steps={cleaningJourney({ job, invoice: invoice ?? null }, locale)} />
         {invoice && (
           <Link href={`/account/invoices/${invoice.id}`} className="btn-secondary btn-sm">
-            {invoice.status === 'PAID' ? 'View receipt' : invoice.status === 'DRAFT' ? 'Preview invoice (draft)' : 'View invoice'}
+            {invoice.status === 'PAID' ? t('jobViewReceipt') : invoice.status === 'DRAFT' ? t('jobPreviewDraft') : t('jobViewInvoice')}
           </Link>
         )}
       </header>
@@ -69,10 +74,10 @@ export default async function JobGallery({ params }: { params: { id: string } })
       {!showMedia ? (
         <p className="card text-slate">
           {job.status === 'EN_ROUTE'
-            ? "Your crew is on the way. Photos of every room will appear here once they've finished."
+            ? t('jobWaitEnRoute')
             : job.status === 'IN_PROGRESS'
-            ? "The crew is working through your home now. Photos of every room will appear here the moment they finish."
-            : 'Photos of every room will appear here once your cleaning is done.'}
+            ? t('jobWaitInProgress')
+            : t('jobWaitPending')}
         </p>
       ) : (
         <>
@@ -92,20 +97,20 @@ export default async function JobGallery({ params }: { params: { id: string } })
                 <h2 id={`g-${item.id}`} className="text-lg font-bold">
                   {item.roomName}
                 </h2>
-                {item.status === 'SKIPPED' && <span className="pill bg-amber-100 text-amber-800">Not cleaned</span>}
+                {item.status === 'SKIPPED' && <span className="pill bg-amber-100 text-amber-800">{t('jobNotCleaned')}</span>}
               </div>
               {item.status === 'SKIPPED' ? (
-                <p className="text-sm text-slate">Reason: {item.skipReason}</p>
+                <p className="text-sm text-slate">{t('jobSkipReason', { reason: item.skipReason })}</p>
               ) : firstBefore && firstAfter ? (
                 <>
                   <BeforeAfter before={firstBefore.url} after={firstAfter.url} room={item.roomName} />
-                  <p className="text-center text-xs text-muted">Drag the handle to compare</p>
+                  <p className="text-center text-xs text-muted">{t('jobDragHint')}</p>
                   <p className="text-center text-xs text-muted">
-                    Before {timestampLabel(firstBefore.createdAt)} · After {timestampLabel(firstAfter.createdAt)}
+                    {t('jobTimestamps', { before: timestampLabel(firstBefore.createdAt, locale), after: timestampLabel(firstAfter.createdAt, locale) })}
                   </p>
                 </>
               ) : (
-                <p className="text-sm text-muted">No photos for this room yet.</p>
+                <p className="text-sm text-muted">{t('jobNoPhotos')}</p>
               )}
               {extras.length > 0 && (
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -115,7 +120,7 @@ export default async function JobGallery({ params }: { params: { id: string } })
                         <video src={m.url} controls playsInline preload="metadata" className="aspect-square w-full bg-ink object-cover" />
                       ) : (
                         <a href={m.url} target="_blank" rel="noreferrer">
-                          <img src={m.url} alt={`${item.roomName} ${m.phase.toLowerCase()}`} className="aspect-square w-full object-cover" loading="lazy" />
+                          <img src={m.url} alt={t(m.phase === 'AFTER' ? 'jobMediaAltAfter' : 'jobMediaAltBefore', { room: item.roomName })} className="aspect-square w-full object-cover" loading="lazy" />
                         </a>
                       )}
                       <figcaption
@@ -123,12 +128,12 @@ export default async function JobGallery({ params }: { params: { id: string } })
                           m.phase === 'AFTER' ? 'bg-gold text-white' : 'bg-ink/75 text-white'
                         }`}
                       >
-                        {m.phase === 'AFTER' ? 'After' : 'Before'}
-                        {m.kind === 'VIDEO' ? ' · video' : ''}
+                        {m.phase === 'AFTER' ? t('after') : t('before')}
+                        {m.kind === 'VIDEO' ? ` · ${t('jobVideo')}` : ''}
                       </figcaption>
                       {m.kind === 'VIDEO' && (
                         <span className="pointer-events-none absolute bottom-1 right-1 rounded bg-ink/70 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                          {timestampLabel(m.createdAt)}
+                          {timestampLabel(m.createdAt, locale)}
                         </span>
                       )}
                     </figure>
@@ -158,10 +163,10 @@ export default async function JobGallery({ params }: { params: { id: string } })
 
       {viewer.role === 'CUSTOMER' && showMedia && (
         <div className="card text-center">
-          <p className="font-semibold">Anything not quite right?</p>
-          <p className="mt-1 text-sm text-slate">Reply to your job-complete email and we'll make it right.</p>
+          <p className="font-semibold">{t('jobNotRight')}</p>
+          <p className="mt-1 text-sm text-slate">{t('jobNotRightHelp')}</p>
           <Link href="/book" className="btn-primary mt-4">
-            Book your next cleaning
+            {t('jobBookNext')}
           </Link>
         </div>
       )}

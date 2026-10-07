@@ -1,9 +1,12 @@
 import { formatMoney } from '@/lib/data';
 import type { PaymentMonthGroup } from '@/lib/account';
+import { getT } from '@/lib/i18n/server';
+import { accountMessages } from '@/lib/i18n/messages/account';
 
-export default function PaymentHistoryByMonth({ months }: { months: PaymentMonthGroup[] }) {
+export default async function PaymentHistoryByMonth({ months }: { months: PaymentMonthGroup[] }) {
+  const t = await getT(accountMessages);
   if (months.length === 0) {
-    return <p className="text-sm text-muted">No payments yet.</p>;
+    return <p className="text-sm text-muted">{t('historyNone')}</p>;
   }
   return (
     <div className="space-y-2">
@@ -26,7 +29,7 @@ export default function PaymentHistoryByMonth({ months }: { months: PaymentMonth
                   <span className="tabular-nums text-ink">{formatMoney(inv.amountCents)}</span>
                   {inv.receiptUrl && (
                     <a href={inv.receiptUrl} target="_blank" rel="noreferrer" className="text-xs font-semibold text-bronze hover:underline">
-                      Receipt
+                      {t('historyReceipt')}
                     </a>
                   )}
                 </span>

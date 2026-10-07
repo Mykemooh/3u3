@@ -5,9 +5,12 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { signOut, useSession } from 'next-auth/react';
 import LogoBadge from '@/components/LogoBadge';
 import { canAccess, homeForRole } from '@/lib/nav';
+import { useT } from '@/components/i18n/LocaleProvider';
+import { authMessages } from '@/lib/i18n/messages/auth';
 
 /** Second sign-in step: a code from the authenticator app, an emailed code, or a backup code. */
 function MfaInner() {
+  const t = useT(authMessages);
   const router = useRouter();
   const params = useSearchParams();
   const next = params.get('next');
@@ -32,7 +35,7 @@ function MfaInner() {
     }
     if (!user || user.mfaPending) {
       setBusy(false);
-      setError("That code didn't work. Codes from the app change every 30 seconds — use the newest one.");
+      setError(t('mfaBadCode'));
       return;
     }
     if (remember) await fetch('/api/mfa/trust', { method: 'POST' });
@@ -45,8 +48,8 @@ function MfaInner() {
     setInfo('');
     const res = await fetch('/api/mfa/email-code', { method: 'POST' });
     const body = await res.json().catch(() => ({}));
-    if (!res.ok) setError(body.error ?? 'Could not send a code.');
-    else setInfo(`We emailed a 6-digit code to ${body.sentTo}. It works for 10 minutes.`);
+    if (!res.ok) setError(body.error ?? t('mfaEmailFailed'));
+    else setInfo(t('mfaEmailed', { email: body.sentTo }));
   }
 
   if (status === 'unauthenticated') {
@@ -58,13 +61,13 @@ function MfaInner() {
     <main className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
       <LogoBadge />
       <div className="mt-10 w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-ink">Two-step sign-in</h1>
+        <h1 className="text-2xl font-bold text-ink">{t('mfaTitle')}</h1>
         <p className="mb-6 mt-1 text-sm text-slate">
-          Enter the 6-digit code from your authenticator app{role === 'CUSTOMER' ? '' : ', or one of your backup codes'}.
+          {role === 'CUSTOMER' ? t('mfaIntroCustomer') : t('mfaIntroStaff')}
         </p>
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <label className="label" htmlFor="code">Code</label>
+            <label className="label" htmlFor="code">{t('mfaCode')}</label>
             <input
               id="code"
               className="input text-center text-2xl tracking-[0.3em]"
@@ -79,19 +82,19 @@ function MfaInner() {
           </div>
           <label className="flex items-center gap-2 text-sm text-slate">
             <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
-            Remember this device for 30 days
+            {t('mfaRemember')}
           </label>
           {error && <p className="text-sm text-red-600">{error}</p>}
           {info && <p className="rounded-xl bg-green-light px-4 py-3 text-sm text-ink">{info}</p>}
-          <button className="btn-primary w-full" disabled={busy}>{busy ? 'Checking…' : 'Continue'}</button>
+          <button className="btn-primary w-full" disabled={busy}>{busy ? t('checking') : t('continue')}</button>
         </form>
         <div className="mt-6 space-y-2 text-center text-sm">
           <button type="button" onClick={emailMe} className="font-semibold text-bronze hover:underline">
-            Email me a code instead
+            {t('mfaEmailMe')}
           </button>
           <p>
             <button type="button" onClick={() => signOut({ callbackUrl: '/signin' })} className="text-muted hover:text-ink">
-              Sign out
+              {t('signOut')}
             </button>
           </p>
         </div>

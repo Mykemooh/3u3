@@ -8,7 +8,8 @@ import { eq } from 'drizzle-orm';
 import { businessNowISO } from '@/lib/time';
 import { formatSlotLabel, formatDateLabel } from '@/lib/scheduling';
 import { getAddressesFor, getUserById, getOwnerEmail, formatMoney } from '@/lib/data';
-import { sendEmail, bookingConfirmedCustomerEmail, newBookingOwnerEmail } from '@/lib/email';
+import { sendEmail, bookingConfirmedCustomerEmail, newBookingOwnerEmail, localizedServiceName } from '@/lib/email';
+import type { Locale } from '@/lib/i18n';
 import { appUrl } from '@/lib/url';
 import type { Cadence } from '@/lib/cadence';
 
@@ -239,12 +240,15 @@ export async function sendBookingConfirmationEmails(input: {
   bookingId: string;
   clientId: string;
   serviceName: string;
+  /** The service's built-in key, so a Spanish-speaking client sees its Spanish name. */
+  serviceKey?: string | null;
   slotStart: string;
   slotEnd: string;
   priceCents: number | null;
   address?: { line1: string; city: string; state: string; zip: string | null };
 }) {
   const client = await getUserById(input.clientId);
+  const locale: Locale = client?.locale === 'es' ? 'es' : 'en';
   const whenLabel = `${formatDateLabel(input.slotStart.slice(0, 10))}, ${formatSlotLabel(input.slotStart, input.slotEnd)}`;
   const addressLabel = input.address
     ? `${input.address.line1}, ${input.address.city}, ${input.address.state}${input.address.zip ? ` ${input.address.zip}` : ''}`
@@ -254,11 +258,12 @@ export async function sendBookingConfirmationEmails(input: {
   if (client?.email) {
     const { subject, html } = bookingConfirmedCustomerEmail({
       name: client.name,
-      serviceName: input.serviceName,
-      whenLabel,
+      serviceName: localizedServiceName(locale, input.serviceName, input.serviceKey),
+      whenLabel: locale === 'es' ? `${formatDateLabel(input.slotStart.slice(0, 10), locale)}, ${formatSlotLabel(input.slotStart, input.slotEnd)}` : whenLabel,
       addressLabel,
       priceLabel,
       accountUrl: appUrl('/account'),
+      locale,
     });
     const ok = await sendEmail({ to: client.email, subject, html });
     await logNotification({

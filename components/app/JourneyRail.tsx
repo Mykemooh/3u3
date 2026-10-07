@@ -1,3 +1,8 @@
+'use client';
+
+import { useT } from '@/components/i18n/LocaleProvider';
+import { accountMessages } from '@/lib/i18n/messages/account';
+
 export type JourneyStep = { label: string; state: 'done' | 'current' | 'todo'; detail?: string };
 
 /**
@@ -7,6 +12,7 @@ export type JourneyStep = { label: string; state: 'done' | 'current' | 'todo'; d
  * business read progress the same way.
  */
 export default function JourneyRail({ steps, compact = false }: { steps: JourneyStep[]; compact?: boolean }) {
+  const t = useT(accountMessages);
   const n = steps.length;
   const lastReached = steps.reduce((acc, s, i) => (s.state !== 'todo' ? i : acc), 0);
   const fraction = n > 1 ? lastReached / (n - 1) : 0;
@@ -15,7 +21,7 @@ export default function JourneyRail({ steps, compact = false }: { steps: Journey
   // gold fill ends exactly on the current node.
   const inset = `${50 / n}%`;
   return (
-    <ol className="relative grid" style={{ gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))` }} aria-label="Progress">
+    <ol className="relative grid" style={{ gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))` }} aria-label={t('railAria')}>
       <span className="absolute top-3 h-[3px] rounded-full bg-line" style={{ left: inset, right: inset }} aria-hidden="true" />
       <span
         className="journey-fill absolute top-3 h-[3px] rounded-full bg-gold"
@@ -49,7 +55,7 @@ export default function JourneyRail({ steps, compact = false }: { steps: Journey
             </>
           )}
           <span className="sr-only">
-            {s.label}: {s.state === 'done' ? 'done' : s.state === 'current' ? 'in progress' : 'not yet'}
+            {t('railStep', { label: s.label, state: t(s.state === 'done' ? 'railDone' : s.state === 'current' ? 'railCurrent' : 'railTodo') })}
           </span>
         </li>
       ))}

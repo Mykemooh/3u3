@@ -10,7 +10,10 @@ import {
   sendEmail,
   estimateEmail,
   estimateRespondedOwnerEmail,
+  localizedServiceName,
 } from '@/lib/email';
+import { translator } from '@/lib/i18n';
+import { notifyMessages } from '@/lib/i18n/messages/notify';
 
 export class EstimateError extends Error {}
 
@@ -192,14 +195,16 @@ export async function sendEstimate(quoteId: string): Promise<{ url: string; emai
   let emailed = false;
 
   if (client?.email) {
+    const locale = client.locale === 'es' ? 'es' : 'en';
     const { subject, html } = estimateEmail({
       name: client.name,
-      serviceName: service?.name ?? 'Cleaning service',
+      serviceName: service ? localizedServiceName(locale, service.name, service.key) : translator(notifyMessages, locale)('serviceFallbackLong'),
       totalCents: quote.totalCents,
       items,
       notes: quote.notes ?? undefined,
       url,
       expiresAt,
+      locale,
     });
     emailed = await sendEmail({ to: client.email, subject, html });
   }

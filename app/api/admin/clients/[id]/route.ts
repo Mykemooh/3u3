@@ -10,6 +10,8 @@ const schema = z.object({
   phone: z.string().trim().min(1).optional(),
   email: z.string().trim().email().optional().or(z.literal('')),
   isActive: z.boolean().optional(),
+  // Language for this client's emails and texts.
+  locale: z.enum(['en', 'es']).optional(),
 });
 
 // Admin edits a client's own info (name/phone/email) and closes/reopens
@@ -35,6 +37,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (parsed.data.phone !== undefined) updates.phone = parsed.data.phone;
   if (parsed.data.email !== undefined) updates.email = parsed.data.email || null;
   if (parsed.data.isActive !== undefined) updates.isActive = parsed.data.isActive;
+  if (parsed.data.locale !== undefined) updates.locale = parsed.data.locale;
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });

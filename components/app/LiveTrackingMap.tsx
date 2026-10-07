@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import type { Map as MapboxMap, Marker, GeoJSONSource, LngLatLike } from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import type { TrackingState } from '@/lib/tracking';
+import { intlLocale } from '@/lib/i18n';
+import { useLocale, useT } from '@/components/i18n/LocaleProvider';
+import { accountMessages } from '@/lib/i18n/messages/account';
 
 type EnRoute = Extract<TrackingState, { status: 'EN_ROUTE' }>;
 type Coord = [number, number];
@@ -23,6 +26,8 @@ const STALE_MS = 2 * 60_000;
  */
 export default function LiveTrackingMap({ jobId, token, initial }: { jobId: string; token: string; initial: EnRoute }) {
   const router = useRouter();
+  const t = useT(accountMessages);
+  const locale = useLocale();
   const [state, setState] = useState<EnRoute>(initial);
   const [now, setNow] = useState(() => Date.now());
   const [mapFailed, setMapFailed] = useState(false);
@@ -101,8 +106,8 @@ export default function LiveTrackingMap({ jobId, token, initial }: { jobId: stri
             layout: { 'line-join': 'round', 'line-cap': 'round' },
             paint: { 'line-color': ROUTE_COLOR, 'line-width': 5 },
           });
-          crewMarker.current = new mapboxgl.Marker({ element: crewDot() });
-          homeMarker.current = new mapboxgl.Marker({ element: homePin(), anchor: 'bottom' });
+          crewMarker.current = new mapboxgl.Marker({ element: crewDot(t('mapCrewMarker')) });
+          homeMarker.current = new mapboxgl.Marker({ element: homePin(t('mapHomeMarker')), anchor: 'bottom' });
           map.current = m;
           mapReady.current = true;
           setState((s) => ({ ...s })); // draw the first frame
@@ -170,29 +175,29 @@ export default function LiveTrackingMap({ jobId, token, initial }: { jobId: stri
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60" style={{ background: ROUTE_COLOR }} />
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full" style={{ background: ROUTE_COLOR }} />
             </span>
-            Your crew is on the way
+            {t('crewOnTheWay')}
           </p>
           <p className="mt-0.5 text-sm text-slate" aria-live="polite">
             {!state.crew
-              ? "Waiting for your crew's location…"
+              ? t('mapWaiting')
               : stale
-              ? `Location last updated ${Math.round(lastSeenMs! / 60_000)} min ago`
-              : 'Live location'}
+              ? t('mapStale', { minutes: Math.round(lastSeenMs! / 60_000) })
+              : t('mapLive')}
           </p>
         </div>
         {eta && (
           <div className="shrink-0 text-right">
-            <p className="text-2xl font-extrabold leading-none text-ink">{minutes} min</p>
+            <p className="text-2xl font-extrabold leading-none text-ink">{t('mapMinutes', { minutes })}</p>
             <p className="mt-1 text-xs font-semibold text-slate">
-              Arriving ~{eta.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+              {t('mapArriving', { time: eta.toLocaleTimeString(intlLocale(locale), { hour: 'numeric', minute: '2-digit' }) })}
             </p>
           </div>
         )}
       </div>
       {token && !mapFailed ? (
-        <div ref={container} className="h-72 w-full sm:h-80" role="region" aria-label="Map of your crew's route to your home" />
+        <div ref={container} className="h-72 w-full sm:h-80" role="region" aria-label={t('mapAria')} />
       ) : (
-        <p className="border-t border-line bg-surface px-5 py-4 text-sm text-slate">The live map isn't available right now — we'll email you if anything changes.</p>
+        <p className="border-t border-line bg-surface px-5 py-4 text-sm text-slate">{t('mapUnavailable')}</p>
       )}
     </div>
   );
@@ -235,16 +240,16 @@ function glide(marker: Marker, to: Coord) {
   requestAnimationFrame(step);
 }
 
-function crewDot() {
+function crewDot(label: string) {
   const el = document.createElement('div');
-  el.setAttribute('aria-label', 'Your crew');
+  el.setAttribute('aria-label', label);
   el.style.cssText = `width:22px;height:22px;border-radius:9999px;background:${ROUTE_COLOR};border:4px solid #fff;box-shadow:0 0 0 6px rgba(1,106,238,.25),0 2px 6px rgba(0,0,0,.3);`;
   return el;
 }
 
-function homePin() {
+function homePin(label: string) {
   const el = document.createElement('div');
-  el.setAttribute('aria-label', 'Your home');
+  el.setAttribute('aria-label', label);
   el.innerHTML = `<svg width="34" height="42" viewBox="0 0 34 42" aria-hidden="true"><path d="M17 41s15-13.2 15-24A15 15 0 0 0 2 17c0 10.8 15 24 15 24Z" fill="#041730" stroke="#fff" stroke-width="2"/><path d="M10 18.5 17 12l7 6.5V25h-4.5v-4h-5v4H10z" fill="#fff"/></svg>`;
   return el;
 }

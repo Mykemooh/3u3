@@ -7,7 +7,8 @@ import { getBookingsForCrewOnOrAfter, getUserById } from '@/lib/data';
 import { generateDaySlots, formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 import { createBooking, DoubleBookingError, sendBookingConfirmationEmails } from '@/lib/bookings';
 import { notifyClient } from '@/lib/notify';
-import { standbyOfferEmail, standbyOfferText } from '@/lib/email';
+import { standbyOfferEmail, standbyOfferText, localizedServiceName } from '@/lib/email';
+import { intlLocale, type Locale } from '@/lib/i18n';
 import { appUrl } from '@/lib/url';
 
 export class StandbyError extends Error {}
@@ -128,21 +129,27 @@ async function tryOfferDate(request: typeof standbyRequests.$inferSelect): Promi
 
     const client = await getUserById(request.clientId);
     if (client) {
-      const dateLabel = formatDateLabel(request.preferredDate);
+      const locale: Locale = client.locale === 'es' ? 'es' : 'en';
+      const serviceName = localizedServiceName(locale, service.name, service.key);
+      const dateLabel = formatDateLabel(request.preferredDate, locale);
       const timeLabel = formatSlotLabel(open.start, open.end);
       const url = offerUrl(token);
       await notifyClient({
         tenantId: request.tenantId,
         client,
         triggerEvent: 'STANDBY_OFFER',
-        text: standbyOfferText({ serviceName: service.name, dateLabel, timeLabel, url }),
+        text: standbyOfferText({ serviceName, dateLabel, timeLabel, url, locale }),
         email: standbyOfferEmail({
           name: client.name,
-          serviceName: service.name,
+          serviceName,
           dateLabel,
           timeLabel,
           url,
-          expiresLabel: expiresAt.toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' }),
+          expiresLabel:
+            locale === 'es'
+              ? expiresAt.toLocaleString(intlLocale('es'), { weekday: 'long', hour: 'numeric', minute: '2-digit' })
+              : expiresAt.toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' }),
+          locale,
         }),
       });
     }
@@ -222,6 +229,7 @@ export async function acceptStandbyOffer(token: string): Promise<{ bookingId: st
         bookingId,
         clientId: request.clientId,
         serviceName: service.name,
+        serviceKey: service.key,
         slotStart: request.offerSlotStart,
         slotEnd: request.offerSlotEnd,
         priceCents: null,

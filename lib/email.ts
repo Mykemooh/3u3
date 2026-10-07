@@ -1,4 +1,25 @@
 import { appUrl } from '@/lib/url';
+import { intlLocale, plural, translator, type Locale } from '@/lib/i18n';
+import { notifyMessages } from '@/lib/i18n/messages/notify';
+import { serviceName as builtInServiceName } from '@/lib/format';
+
+/**
+ * Templates sent to a client (or to a cleaner about their own account)
+ * take an optional `locale` — the recipient's users.locale — and default to
+ * English, which renders exactly as it always has. Words live in
+ * lib/i18n/messages/notify.ts. Owner-facing templates stay English.
+ */
+const tFor = (locale: Locale | undefined) => translator(notifyMessages, locale ?? 'en');
+
+/**
+ * A service's name for a message in `locale`: English keeps whatever name
+ * the caller already used; Spanish uses the built-in Spanish label for the
+ * standard services (a company's own service names stay as typed).
+ */
+export function localizedServiceName(locale: Locale | undefined, englishName: string, key?: string | null): string {
+  if (locale !== 'es' || !key) return englishName;
+  return builtInServiceName(key, englishName, 'es');
+}
 
 /**
  * A tenant's own name/colors/logo for the handful of templates that carry
@@ -69,21 +90,21 @@ export function quoteVisitCustomerEmail(input: {
   serviceName?: string;
   dateLabel: string;
   timeLabel: string;
+  locale?: Locale;
 }) {
+  const t = tFor(input.locale);
   return {
-    subject: `You're booked — ${input.dateLabel} at ${input.timeLabel}`,
+    subject: t('qvSubject', { date: input.dateLabel, time: input.timeLabel }),
     html: `
       <div style="font-family:sans-serif;color:#0B1F3B;max-width:480px;margin:0 auto;">
         <h2 style="color:#1D4ED8;">3U3 Cleaning</h2>
-        <p>Hi ${esc(input.name)},</p>
-        <p>Thanks for reaching out! Your free quote visit is confirmed${
-          input.serviceName ? ` for <strong>${esc(input.serviceName)}</strong>` : ''
-        }:</p>
+        <p>${t('hiComma', { name: esc(input.name) })}</p>
+        <p>${t('qvIntro', { forService: input.serviceName ? t('qvForService', { service: esc(input.serviceName) }) : '' })}</p>
         <p style="font-size:18px;font-weight:bold;margin:16px 0;">
           ${input.dateLabel} &middot; ${input.timeLabel}
         </p>
-        <p>A team member will meet you at your home to take a look and give you an exact price on the spot — no obligation.</p>
-        <p style="color:#6b6b6b;font-size:13px;margin-top:24px;">— 3U3 Cleaning, Katy, TX</p>
+        <p>${t('qvBody')}</p>
+        <p style="color:#6b6b6b;font-size:13px;margin-top:24px;">${t('footerKaty')}</p>
       </div>
     `,
   };
@@ -103,7 +124,7 @@ function money(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-function itemRows(items: { description: string; amountCents: number }[], totalCents: number) {
+function itemRows(items: { description: string; amountCents: number }[], totalCents: number, totalLabel = 'Total') {
   return `
     <table style="width:100%;border-collapse:collapse;margin:16px 0;">
       ${items
@@ -116,7 +137,7 @@ function itemRows(items: { description: string; amountCents: number }[], totalCe
         )
         .join('')}
       <tr>
-        <td style="padding:10px 0;font-weight:bold;">Total</td>
+        <td style="padding:10px 0;font-weight:bold;">${totalLabel}</td>
         <td style="padding:10px 0;font-weight:bold;text-align:right;">${money(totalCents)}</td>
       </tr>
     </table>`;
@@ -133,23 +154,26 @@ export function estimateEmail(input: {
   notes?: string;
   url: string;
   expiresAt: Date;
+  locale?: Locale;
 }) {
+  const t = tFor(input.locale);
+  const expires = input.locale === 'es' ? input.expiresAt.toLocaleDateString(intlLocale('es'), { month: 'long', day: 'numeric', year: 'numeric' }) : input.expiresAt.toLocaleDateString();
   return {
-    subject: `Your estimate from 3U3 Cleaning — ${money(input.totalCents)}`,
+    subject: t('estSubject', { amount: money(input.totalCents) }),
     html: `
       <div style="font-family:sans-serif;color:#0B1F3B;max-width:480px;margin:0 auto;">
-        <h2 style="color:#1D4ED8;">3U3 Cleaning — Your estimate</h2>
-        <p>Hi ${esc(input.name)}, thanks for having us out to take a look. Here's your price for <strong>${esc(input.serviceName)}</strong>:</p>
-        ${itemRows(input.items, input.totalCents)}
+        <h2 style="color:#1D4ED8;">${t('estHeading')}</h2>
+        <p>${t('estIntro', { name: esc(input.name), service: esc(input.serviceName) })}</p>
+        ${itemRows(input.items, input.totalCents, t('total'))}
         ${input.notes ? `<p style="background:#EFF6FF;padding:12px;border-radius:8px;">${esc(input.notes)}</p>` : ''}
         <p style="text-align:center;margin:28px 0;">
-          <a href="${input.url}?respond=approve" style="background:#2563EB;color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">Approve estimate</a>
+          <a href="${input.url}?respond=approve" style="background:#2563EB;color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">${t('estApprove')}</a>
         </p>
         <p style="text-align:center;margin:12px 0;">
-          <a href="${input.url}?respond=decline" style="color:#6b6b6b;font-size:13px;">No thanks</a>
+          <a href="${input.url}?respond=decline" style="color:#6b6b6b;font-size:13px;">${t('estDecline')}</a>
         </p>
-        <p style="color:#6b6b6b;font-size:13px;">Approve and you'll be able to pick your first cleaning time right away. This estimate is good through ${input.expiresAt.toLocaleDateString()}.</p>
-        <p style="color:#6b6b6b;font-size:13px;margin-top:24px;">— 3U3 Cleaning, Katy, TX</p>
+        <p style="color:#6b6b6b;font-size:13px;">${t('estFine', { date: expires })}</p>
+        <p style="color:#6b6b6b;font-size:13px;margin-top:24px;">${t('footerKaty')}</p>
       </div>
     `,
   };
@@ -190,13 +214,15 @@ export function invoiceEmail(input: {
   totalCents: number;
   items: { description: string; amountCents: number }[];
   payUrl: string;
+  locale?: Locale;
 }) {
+  const t = tFor(input.locale);
   return {
-    subject: `Your invoice from ${input.brand.name} — ${money(input.totalCents)}`,
+    subject: t('invSubject', { brand: input.brand.name, amount: money(input.totalCents) }),
     html: `
       <div style="font-family:sans-serif;color:#0B1F3B;max-width:480px;margin:0 auto;">
-        ${brandHeader(input.brand, `${input.brand.name} — Invoice`)}
-        <p>Hi ${esc(input.name)}, thanks for having us out! Here's your invoice:</p>
+        ${brandHeader(input.brand, t('invHeading', { brand: input.brand.name }))}
+        <p>${t('invIntro', { name: esc(input.name) })}</p>
         <table style="width:100%;border-collapse:collapse;margin:16px 0;">
           ${input.items
             .map(
@@ -208,12 +234,12 @@ export function invoiceEmail(input: {
             )
             .join('')}
           <tr>
-            <td style="padding:10px 0;font-weight:bold;">Total</td>
+            <td style="padding:10px 0;font-weight:bold;">${t('total')}</td>
             <td style="padding:10px 0;font-weight:bold;text-align:right;">${money(input.totalCents)}</td>
           </tr>
         </table>
         <p style="text-align:center;margin:24px 0;">
-          <a href="${input.payUrl}" style="background:${input.brand.primaryColor};color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">Pay now</a>
+          <a href="${input.payUrl}" style="background:${input.brand.primaryColor};color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">${t('invPay')}</a>
         </p>
         ${brandFooter(input.brand)}
       </div>
@@ -221,16 +247,17 @@ export function invoiceEmail(input: {
   };
 }
 
-export function paymentReceivedCustomerEmail(input: { brand: EmailBrand; name: string; totalCents: number; receiptUrl?: string }) {
+export function paymentReceivedCustomerEmail(input: { brand: EmailBrand; name: string; totalCents: number; receiptUrl?: string; locale?: Locale }) {
+  const t = tFor(input.locale);
   return {
-    subject: `Payment received — thank you!`,
+    subject: t('paidSubject'),
     html: `
       <div style="font-family:sans-serif;color:#0B1F3B;max-width:480px;margin:0 auto;">
-        ${brandHeader(input.brand, 'Payment received')}
-        <p>Hi ${esc(input.name)}, we've received your payment of <strong>${money(input.totalCents)}</strong>. Thank you!</p>
+        ${brandHeader(input.brand, t('paidHeading'))}
+        <p>${t('paidBody', { name: esc(input.name), amount: money(input.totalCents) })}</p>
         ${
           input.receiptUrl
-            ? `<p><a href="${input.receiptUrl}" style="color:${input.brand.bronzeColor};">View your receipt</a></p>`
+            ? `<p><a href="${input.receiptUrl}" style="color:${input.brand.bronzeColor};">${t('paidReceipt')}</a></p>`
             : ''
         }
         ${brandFooter(input.brand)}
@@ -300,7 +327,7 @@ export function newLeadOwnerEmail(input: {
 // Branded layout for the job-lifecycle emails: the 3U3 logo on its dark band
 // (the logo is designed for dark backgrounds), then the message on white.
 // ---------------------------------------------------------------------------
-function branded(body: string, preheader = '') {
+function branded(body: string, preheader = '', locale?: Locale) {
   return `
   <div style="background:#F7F8FA;padding:24px 12px;">
     <span style="display:none;max-height:0;overflow:hidden;">${esc(preheader)}</span>
@@ -309,7 +336,7 @@ function branded(body: string, preheader = '') {
         <img src="${appUrl('/brand/logo-640.png')}" alt="3U3 Cleaning" width="180" style="width:180px;max-width:60%;height:auto;" />
       </div>
       <div style="padding:28px 28px 8px;font-size:16px;line-height:1.6;">${body}</div>
-      <div style="padding:16px 28px 28px;color:#6B727E;font-size:13px;">3U3 Cleaning · Family owned · Katy, TX</div>
+      <div style="padding:16px 28px 28px;color:#6B727E;font-size:13px;">${tFor(locale)('brandedFooter')}</div>
     </div>
   </div>`;
 }
@@ -326,23 +353,29 @@ export function jobCompleteCustomerEmail(input: {
   photos: number;
   videos: number;
   galleryUrl: string;
+  locale?: Locale;
 }) {
+  const t = tFor(input.locale);
   const media = [
-    input.photos ? `${input.photos} photo${input.photos === 1 ? '' : 's'}` : '',
-    input.videos ? `${input.videos} video${input.videos === 1 ? '' : 's'}` : '',
+    input.photos ? t(plural(input.photos, 'jcPhotoOne', 'jcPhotoMany') as 'jcPhotoOne', { count: input.photos }) : '',
+    input.videos ? t(plural(input.videos, 'jcVideoOne', 'jcVideoMany') as 'jcVideoOne', { count: input.videos }) : '',
   ]
     .filter(Boolean)
-    .join(' and ');
+    .join(t('and'));
   return {
-    subject: 'Your home is clean — see the before and after',
+    subject: t('jcSubject'),
     html: branded(
-      `<h2 style="margin:0 0 12px;font-size:22px;">All done, ${esc(input.name.split(' ')[0])}!</h2>
-       <p>Your ${esc(input.serviceName.toLowerCase())} on ${esc(input.dateLabel)} is finished. The crew documented ${input.rooms} room${
-         input.rooms === 1 ? '' : 's'
-       }${media ? ` with ${media}` : ''}, so you can see exactly what was done.</p>
-       ${button(input.galleryUrl, 'See your before and after')}
-       <p style="color:#454C57;">Your invoice will follow shortly by email. Anything not quite right? Just reply to this email and we'll make it right.</p>`,
-      'Your before-and-after photos are ready.',
+      `<h2 style="margin:0 0 12px;font-size:22px;">${t('jcHeading', { name: esc(input.name.split(' ')[0]) })}</h2>
+       <p>${t('jcBody', {
+         service: esc(input.serviceName.toLowerCase()),
+         date: esc(input.dateLabel),
+         rooms: t(plural(input.rooms, 'jcRoomOne', 'jcRoomMany') as 'jcRoomOne', { count: input.rooms }),
+         media: media ? t('jcWithMedia', { media }) : '',
+       })}</p>
+       ${button(input.galleryUrl, t('jcButton'))}
+       <p style="color:#454C57;">${t('jcFoot')}</p>`,
+      t('jcPreheader'),
+      input.locale,
     ),
   };
 }
@@ -377,34 +410,43 @@ export function bookingRescheduledCustomerEmail(input: {
   timeLabel: string;
   previousLabel: string;
   accountUrl: string;
+  locale?: Locale;
 }) {
+  const t = tFor(input.locale);
   return {
-    subject: `Your cleaning has moved to ${input.dateLabel}`,
+    subject: t('rsSubject', { date: input.dateLabel }),
     html: branded(
-      `<h2 style="margin:0 0 12px;font-size:20px;">A change to your cleaning</h2>
-       <p>Hi ${esc(input.name.split(' ')[0])}, your ${esc(input.serviceName.toLowerCase())} has a new time:</p>
+      `<h2 style="margin:0 0 12px;font-size:20px;">${t('rsHeading')}</h2>
+       <p>${t('rsIntro', { name: esc(input.name.split(' ')[0]), service: esc(input.serviceName.toLowerCase()) })}</p>
        <p style="font-size:18px;font-weight:bold;margin:16px 0;">${esc(input.dateLabel)} &middot; ${esc(input.timeLabel)}</p>
-       <p style="color:#6B727E;">Previously: ${esc(input.previousLabel)}</p>
-       ${button(input.accountUrl, 'View your booking')}
-       <p style="color:#454C57;">If the new time doesn't work for you, just reply to this email and we'll sort it out.</p>`,
-      `Your cleaning is now ${input.dateLabel}, ${input.timeLabel}.`,
+       <p style="color:#6B727E;">${t('rsPrevious', { when: esc(input.previousLabel) })}</p>
+       ${button(input.accountUrl, t('viewBooking'))}
+       <p style="color:#454C57;">${t('rsFoot')}</p>`,
+      t('rsPreheader', { date: input.dateLabel, time: input.timeLabel }),
+      input.locale,
     ),
   };
 }
 
-export function crewEnRouteCustomerEmail(input: { name: string; etaLabel: string | null; trackUrl: string }) {
+export function crewEnRouteCustomerEmail(input: { name: string; etaLabel: string | null; trackUrl: string; locale?: Locale }) {
+  const t = tFor(input.locale);
   return {
-    subject: input.etaLabel ? `Your crew is on the way — arriving around ${input.etaLabel}` : 'Your crew is on the way',
+    subject: input.etaLabel ? t('erSubjectEta', { eta: input.etaLabel }) : t('erSubject'),
     html: branded(
-      `<h2 style="margin:0 0 12px;font-size:22px;">On our way, ${esc(input.name.split(' ')[0])}!</h2>
-       <p>Your 3U3 crew has just set off for your home${
-         input.etaLabel ? ` and should arrive around <strong>${esc(input.etaLabel)}</strong>` : ''
-       }. You can follow them on the map until they pull up.</p>
-       ${button(input.trackUrl, 'Track your crew')}
-       <p style="color:#454C57;">Need to tell them something before they arrive? Just reply to this email.</p>`,
-      'Your crew is on the way.',
+      `<h2 style="margin:0 0 12px;font-size:22px;">${t('erHeading', { name: esc(input.name.split(' ')[0]) })}</h2>
+       <p>${t('erBody', { eta: input.etaLabel ? t('erBodyEta', { eta: esc(input.etaLabel) }) : '' })}</p>
+       ${button(input.trackUrl, t('erButton'))}
+       <p style="color:#454C57;">${t('erFoot')}</p>`,
+      `${t('erSubject')}.`,
+      input.locale,
     ),
   };
+}
+
+/** The "crew on the way" text (lib/tracking.ts), when the company hasn't edited the wording. */
+export function crewEnRouteText(input: { etaLabel: string | null; trackUrl: string; locale?: Locale }) {
+  const t = tFor(input.locale);
+  return t('erText', { eta: input.etaLabel ? t('erTextEta', { eta: input.etaLabel }) : '', url: input.trackUrl });
 }
 
 export function jobCompleteOwnerEmail(input: {
@@ -433,17 +475,20 @@ export function bookingConfirmedCustomerEmail(input: {
   addressLabel?: string;
   priceLabel?: string;
   accountUrl: string;
+  locale?: Locale;
 }) {
+  const t = tFor(input.locale);
   return {
-    subject: `Booked: ${input.serviceName} — ${input.whenLabel}`,
+    subject: t('bcSubject', { service: input.serviceName, when: input.whenLabel }),
     html: branded(
-      `<h2 style="margin:0 0 12px;font-size:22px;">You're booked, ${esc(input.name.split(' ')[0])}</h2>
+      `<h2 style="margin:0 0 12px;font-size:22px;">${t('bcHeading', { name: esc(input.name.split(' ')[0]) })}</h2>
        <p style="font-size:18px;font-weight:bold;margin:16px 0 4px;">${esc(input.whenLabel)}</p>
        <p style="margin:0;color:#454C57;">${esc(input.serviceName)}${input.priceLabel ? ` · ${esc(input.priceLabel)}` : ''}</p>
        ${input.addressLabel ? `<p style="margin:4px 0 0;color:#454C57;">${esc(input.addressLabel)}</p>` : ''}
-       ${button(input.accountUrl, 'View your booking')}
-       <p style="color:#454C57;">Our crew of three will arrive at the start of your window. When they finish, you'll get before-and-after photos of every room.</p>`,
-      `See you ${input.whenLabel}.`,
+       ${button(input.accountUrl, t('viewBooking'))}
+       <p style="color:#454C57;">${t('bcFoot')}</p>`,
+      t('bcPreheader', { when: input.whenLabel }),
+      input.locale,
     ),
   };
 }
@@ -474,89 +519,107 @@ export function newBookingOwnerEmail(input: {
  * admin-added client — so they never have to ask the office for a
  * password. The link is good for 14 days (lib/passwordSetup.ts).
  */
-export function passwordResetEmail(input: { name: string; url: string; signInWith: string[] }) {
+export function passwordResetEmail(input: { name: string; url: string; signInWith: string[]; locale?: Locale }) {
+  const t = tFor(input.locale);
   return {
-    subject: 'Reset your 3U3 Cleaning password',
+    subject: t('prSubject'),
     html: branded(
-      `<h2 style="margin:0 0 12px;font-size:20px;">Hi ${esc(input.name.split(' ')[0])},</h2>
-       <p>We got a request to help you sign in. You can sign in with ${input.signInWith
-         .map((v) => `<strong>${esc(v)}</strong>`)
-         .join(' or ')}.</p>
-       <p>To choose a new password, use the button below.</p>
-       ${button(input.url, 'Choose a new password')}
-       <p style="color:#6B727E;font-size:13px;">This link works once, for 1 hour. If you didn't ask for this, ignore this email — your password hasn't changed.</p>`,
-      'Your sign-in details and a link to reset your password.',
+      `<h2 style="margin:0 0 12px;font-size:20px;">${t('hiComma', { name: esc(input.name.split(' ')[0]) })}</h2>
+       <p>${t('prIntro', { ids: input.signInWith.map((v) => `<strong>${esc(v)}</strong>`).join(t('or')) })}</p>
+       <p>${t('prChoose')}</p>
+       ${button(input.url, t('prButton'))}
+       <p style="color:#6B727E;font-size:13px;">${t('prFine')}</p>`,
+      t('prPreheader'),
+      input.locale,
     ),
   };
 }
 
-export function passwordSetupEmail(input: { name: string; url: string }) {
+/** The password-reset text (lib/passwordReset.ts). */
+export function passwordResetText(input: { url: string; signInWith: string[]; locale?: Locale }) {
+  const t = tFor(input.locale);
+  return t('prText', { ids: input.signInWith.join(t('or')), url: input.url });
+}
+
+export function passwordSetupEmail(input: { name: string; url: string; locale?: Locale }) {
+  const t = tFor(input.locale);
   return {
-    subject: 'Set up your 3U3 Cleaning account',
+    subject: t('psSubject'),
     html: branded(
-      `<h2 style="margin:0 0 12px;font-size:20px;">Welcome, ${esc(input.name.split(' ')[0])}</h2>
-       <p>Create a password so you can sign in anytime to see your booking, before-and-after photos, and invoices.</p>
-       ${button(input.url, 'Create your password')}
-       <p style="color:#6B727E;font-size:13px;">This link is good for 14 days. If you didn't expect this email, you can ignore it.</p>`,
-      'Set a password to access your account.',
+      `<h2 style="margin:0 0 12px;font-size:20px;">${t('psHeading', { name: esc(input.name.split(' ')[0]) })}</h2>
+       <p>${t('psBody')}</p>
+       ${button(input.url, t('psButton'))}
+       <p style="color:#6B727E;font-size:13px;">${t('psFine')}</p>`,
+      t('psPreheader'),
+      input.locale,
     ),
   };
 }
 
-/** 3-day / 36-hour heads-up before a booked cleaning (lib/reminders.ts). */
-export function bookingReminderEmail(input: { name: string; serviceName: string; dateLabel: string; timeLabel: string; horizon: string }) {
+/**
+ * 3-day / 36-hour heads-up before a booked cleaning (lib/reminders.ts).
+ * `horizon`: English "3 days" / "36 hours" (after "in"); Spanish the whole
+ * phrase, "en 3 días" / "mañana" (whenLabel(hours, 'es')).
+ */
+export function bookingReminderEmail(input: { name: string; serviceName: string; dateLabel: string; timeLabel: string; horizon: string; locale?: Locale }) {
+  const t = tFor(input.locale);
   return {
-    subject: `Reminder: your cleaning is in ${input.horizon}`,
+    subject: t('brSubject', { horizon: input.horizon }),
     html: branded(
-      `<h2 style="margin:0 0 12px;font-size:20px;">Hi ${esc(input.name.split(' ')[0])},</h2>
-       <p>Just a heads-up — your <strong>${esc(input.serviceName)}</strong> is coming up in ${input.horizon}:</p>
+      `<h2 style="margin:0 0 12px;font-size:20px;">${t('hiComma', { name: esc(input.name.split(' ')[0]) })}</h2>
+       <p>${t('brIntro', { service: esc(input.serviceName), horizon: input.horizon })}</p>
        <p style="font-size:18px;font-weight:bold;margin:16px 0;">${esc(input.dateLabel)} &middot; ${esc(input.timeLabel)}</p>
-       <p style="color:#6B727E;font-size:13px;">Need to reschedule or cancel? You can do that from My Account up to 24 hours before — after that, just give us a call.</p>`,
-      `Your cleaning is in ${input.horizon}.`,
+       <p style="color:#6B727E;font-size:13px;">${t('brFine')}</p>`,
+      t('brPreheader', { horizon: input.horizon }),
+      input.locale,
     ),
   };
 }
 
-export function bookingReminderText(input: { serviceName: string; dateLabel: string; timeLabel: string; horizon: string }) {
-  return `3U3 Cleaning: your ${input.serviceName} is in ${input.horizon} — ${input.dateLabel} at ${input.timeLabel}.`;
+export function bookingReminderText(input: { serviceName: string; dateLabel: string; timeLabel: string; horizon: string; locale?: Locale }) {
+  return tFor(input.locale)('brText', { service: input.serviceName, horizon: input.horizon, date: input.dateLabel, time: input.timeLabel });
 }
 
 /** Quote follow-up cadence: 24h, +3d, +2d, then weekly, until answered or opted out (lib/reminders.ts). */
-export function estimateReminderEmail(input: { name: string; serviceName: string; totalCents: number; url: string; optOutUrl: string }) {
+export function estimateReminderEmail(input: { name: string; serviceName: string; totalCents: number; url: string; optOutUrl: string; locale?: Locale }) {
+  const t = tFor(input.locale);
   return {
-    subject: `Still thinking it over? Your 3U3 Cleaning estimate — ${money(input.totalCents)}`,
+    subject: t('eqSubject', { amount: money(input.totalCents) }),
     html: branded(
-      `<h2 style="margin:0 0 12px;font-size:20px;">Hi ${esc(input.name.split(' ')[0])},</h2>
-       <p>Just checking in — your estimate for <strong>${esc(input.serviceName)}</strong> is still waiting on you:</p>
+      `<h2 style="margin:0 0 12px;font-size:20px;">${t('hiComma', { name: esc(input.name.split(' ')[0]) })}</h2>
+       <p>${t('eqIntro', { service: esc(input.serviceName) })}</p>
        <p style="font-size:20px;font-weight:bold;margin:16px 0;">${money(input.totalCents)}</p>
-       ${button(input.url, 'View and approve')}
-       <p style="color:#6B727E;font-size:13px;">Not interested? <a href="${input.optOutUrl}" style="color:#6B727E;">Stop these reminders</a>.</p>`,
-      'Your estimate is still waiting.',
+       ${button(input.url, t('eqButton'))}
+       <p style="color:#6B727E;font-size:13px;">${t('eqOptOut', { link: `<a href="${input.optOutUrl}" style="color:#6B727E;">${t('eqOptOutLink')}</a>` })}</p>`,
+      t('eqPreheader'),
+      input.locale,
     ),
   };
 }
 
-export function estimateReminderText(input: { serviceName: string; totalCents: number; url: string }) {
-  return `3U3 Cleaning: your ${input.serviceName} estimate (${money(input.totalCents)}) is still open — ${input.url}`;
+export function estimateReminderText(input: { serviceName: string; totalCents: number; url: string; locale?: Locale }) {
+  return tFor(input.locale)('eqText', { service: input.serviceName, amount: money(input.totalCents), url: input.url });
 }
 
 /** A standby slot opened up on the day a client asked to be held for (lib/standby.ts). */
-export function standbyOfferEmail(input: { name: string; serviceName: string; dateLabel: string; timeLabel: string; url: string; expiresLabel: string }) {
+export function standbyOfferEmail(input: { name: string; serviceName: string; dateLabel: string; timeLabel: string; url: string; expiresLabel: string; locale?: Locale }) {
+  const t = tFor(input.locale);
   return {
-    subject: `A spot opened up — ${input.dateLabel}`,
+    subject: t('sbSubject', { date: input.dateLabel }),
     html: branded(
-      `<h2 style="margin:0 0 12px;font-size:20px;">Good news, ${esc(input.name.split(' ')[0])}!</h2>
-       <p>A spot just opened up for <strong>${esc(input.serviceName)}</strong> on the day you asked to be held for:</p>
+      `<h2 style="margin:0 0 12px;font-size:20px;">${t('sbHeading', { name: esc(input.name.split(' ')[0]) })}</h2>
+       <p>${t('sbIntro', { service: esc(input.serviceName) })}</p>
        <p style="font-size:18px;font-weight:bold;margin:16px 0;">${esc(input.dateLabel)} &middot; ${esc(input.timeLabel)}</p>
-       ${button(input.url, 'Claim this spot')}
-       <p style="color:#6B727E;font-size:13px;">First come, first served — this hold expires ${esc(input.expiresLabel)}. If you don't claim it in time, we'll offer it to the next person waiting.</p>`,
-      'A spot opened up on the day you wanted.',
+       ${button(input.url, t('sbButton'))}
+       <p style="color:#6B727E;font-size:13px;">${t('sbFine', { expires: esc(input.expiresLabel) })}</p>`,
+      t('sbPreheader'),
+      input.locale,
     ),
   };
 }
 
-export function standbyOfferText(input: { serviceName: string; dateLabel: string; timeLabel: string; url: string }) {
-  return `3U3 Cleaning: a spot opened up for ${input.serviceName} on ${input.dateLabel} at ${input.timeLabel} — claim it: ${input.url}`;
+export function standbyOfferText(input: { serviceName: string; dateLabel: string; timeLabel: string; url: string; locale?: Locale }) {
+  return tFor(input.locale)('sbText', { service: input.serviceName, date: input.dateLabel, time: input.timeLabel, url: input.url });
 }
 
 /**

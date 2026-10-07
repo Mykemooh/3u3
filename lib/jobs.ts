@@ -1,7 +1,7 @@
 import { jobEvent } from '@/lib/events';
 import { db } from '@/db/client';
 import { jobs, jobChecklistItems, jobMedia, bookings, users, serviceTypes, addresses, invoices, tenants } from '@/db/schema';
-import { automationState, sendAutomationMessage } from '@/lib/automations';
+import { automationState, automationT, clientLocale, sendAutomationMessage } from '@/lib/automations';
 import { grantReferralReward } from '@/lib/referrals';
 import { and, eq, isNull } from 'drizzle-orm';
 import { getOwnerEmail } from '@/lib/data';
@@ -9,7 +9,7 @@ import { isOnJob, canLeadJob } from '@/lib/team';
 import { createDraftInvoiceForBooking, sendInvoice } from '@/lib/invoices';
 import { addInvoiceToMonthlyBatch } from '@/lib/monthlyBilling';
 import { logNotification } from '@/lib/bookings';
-import { sendEmail, jobCompleteCustomerEmail, jobCompleteOwnerEmail } from '@/lib/email';
+import { sendEmail, jobCompleteCustomerEmail, jobCompleteOwnerEmail, localizedServiceName } from '@/lib/email';
 import { appUrl } from '@/lib/url';
 import { formatSlotDateLong } from '@/lib/time';
 import { MEDIA_LIMITS, deleteStored, type MediaKind, type MediaPhase } from '@/lib/storage';
@@ -444,6 +444,9 @@ async function notifyJobComplete(jobId: string, invoiceId: string | null) {
   const galleryUrl = appUrl(`/account/jobs/${jobId}`);
   const serviceName = service?.name ?? 'Your cleaning';
   const dateLabel = formatSlotDateLong(booking.slotStart);
+  // The client's own message, in their language; the owner's alert below stays English.
+  const locale = clientLocale(client);
+  const clientServiceName = service ? localizedServiceName(locale, serviceName, service.key) : locale === 'es' ? automationT('es')('serviceFallbackTitle') : serviceName;
   const photos = media.filter((m) => m.kind === 'PHOTO').length;
   const videos = media.filter((m) => m.kind === 'VIDEO').length;
   const rooms = items.filter((i) => i.status === 'COMPLETE').length;
@@ -454,23 +457,24 @@ async function notifyJobComplete(jobId: string, invoiceId: string | null) {
     const tenant = (await db.select({ name: tenants.name }).from(tenants).where(eq(tenants.id, booking.tenantId)).limit(1))[0];
     await sendAutomationMessage({
       tenantId: booking.tenantId,
-      tenantName: tenant?.name ?? 'Your cleaning company',
+      tenantName: tenant?.name ?? automationT(locale)('companyFallback'),
       key: 'job_complete',
       state: doneState,
       client,
-      vars: { service: serviceName, link: galleryUrl },
-      cta: { label: 'See your before and after', url: galleryUrl },
+      vars: { service: clientServiceName, link: galleryUrl },
+      cta: { label: automationT(locale)('ctaBeforeAfter'), url: galleryUrl },
       relatedBookingId: booking.id,
     });
   } else if (client?.email && doneState.enabled) {
     const { subject, html } = jobCompleteCustomerEmail({
       name: client.name,
-      serviceName,
-      dateLabel,
+      serviceName: clientServiceName,
+      dateLabel: locale === 'es' ? formatSlotDateLong(booking.slotStart, locale) : dateLabel,
       rooms,
       photos,
       videos,
       galleryUrl,
+      locale,
     });
     const ok = await sendEmail({ to: client.email, subject, html });
     await logNotification({

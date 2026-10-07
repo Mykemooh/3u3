@@ -7,6 +7,8 @@ import {
 import { staffForJobs } from '@/lib/team';
 import { sendEmail } from '@/lib/email';
 import { esc } from '@/lib/email';
+import { translator, type Locale } from '@/lib/i18n';
+import { notifyMessages } from '@/lib/i18n/messages/notify';
 
 export class PayrollError extends Error {}
 
@@ -368,7 +370,14 @@ export async function getPayrollRun(tenantId: string, runId: string) {
 }
 
 /** "32.00 hours" / "14 cleans" / "5 days" / "18 cleans at 15.00%" — however this entry's pay type prices it. */
-function payEntrySummary(entry: { payType: string; hours: number; jobCount: number; daysWorked: number; ratePercentBps: number | null }): string {
+function payEntrySummary(entry: { payType: string; hours: number; jobCount: number; daysWorked: number; ratePercentBps: number | null }, locale: Locale = 'en'): string {
+  if (locale === 'es') {
+    const t = translator(notifyMessages, 'es');
+    if (entry.payType === 'HOURLY') return t('payHours', { count: entry.hours.toFixed(2) });
+    if (entry.payType === 'PER_CLEAN') return t('payCleans', { count: entry.jobCount });
+    if (entry.payType === 'PERCENTAGE') return t('payCleansAt', { count: entry.jobCount, percent: ((entry.ratePercentBps ?? 0) / 100).toFixed(2) });
+    return t('payDays', { count: entry.daysWorked });
+  }
   if (entry.payType === 'HOURLY') return `${entry.hours.toFixed(2)} hours`;
   if (entry.payType === 'PER_CLEAN') return `${entry.jobCount} cleans`;
   if (entry.payType === 'PERCENTAGE') return `${entry.jobCount} cleans at ${((entry.ratePercentBps ?? 0) / 100).toFixed(2)}%`;
@@ -383,18 +392,29 @@ export async function markPayrollRunPaid(tenantId: string, runId: string): Promi
 
   await db.update(payrollRuns).set({ status: 'PAID', paidAt: new Date() }).where(eq(payrollRuns.id, runId));
 
+  // Each employee's saved language (users.locale) for their own pay notice.
+  const ids = data.rows.map((r) => r.entry.userId);
+  const locales = new Map(
+    (ids.length ? await db.select({ id: users.id, locale: users.locale }).from(users).where(inArray(users.id, ids)) : []).map((u) => [u.id, u.locale] as const),
+  );
   for (const row of data.rows) {
     if (!row.email) continue;
     try {
+      const locale: Locale = locales.get(row.entry.userId) === 'es' ? 'es' : 'en';
+      const t = translator(notifyMessages, locale);
       await sendEmail({
         to: row.email,
-        subject: `You were paid for ${data.run.label}`,
+        subject: t('paySubject', { period: data.run.label }),
         html: `<div style="font-family:sans-serif;color:#0B1F3B;max-width:480px;margin:0 auto;">
           <h2 style="color:#1D4ED8;">3U3 Cleaning</h2>
-          <p>Hi ${esc(row.name.split(' ')[0])},</p>
-          <p>You were just paid <strong>$${((row.entry.payCents + row.entry.tipCents) / 100).toFixed(2)}</strong> for <strong>${esc(data.run.label)}</strong>
-          (${esc(payEntrySummary(row.entry))}${row.entry.tipCents > 0 ? `, including $${(row.entry.tipCents / 100).toFixed(2)} in tips` : ''}).</p>
-          <p style="color:#6b6b6b;font-size:13px;">— 3U3 Cleaning</p>
+          <p>${t('hiComma', { name: esc(row.name.split(' ')[0]) })}</p>
+          <p>${t('payBody', {
+            amount: `$${((row.entry.payCents + row.entry.tipCents) / 100).toFixed(2)}`,
+            period: esc(data.run.label),
+            summary: esc(payEntrySummary(row.entry, locale)),
+            tips: row.entry.tipCents > 0 ? t('payTips', { amount: `$${(row.entry.tipCents / 100).toFixed(2)}` }) : '',
+          })}</p>
+          <p style="color:#6b6b6b;font-size:13px;">${t('paySignoff')}</p>
         </div>`,
       });
     } catch (err) {

@@ -2,9 +2,9 @@ import { db } from '@/db/client';
 import { jobs, addresses, tenants } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { JobError, loadJob, requireLead, type Viewer } from '@/lib/jobs';
-import { crewEnRouteCustomerEmail } from '@/lib/email';
+import { crewEnRouteCustomerEmail, crewEnRouteText } from '@/lib/email';
 import { notifyClient } from '@/lib/notify';
-import { automationState, sendAutomationMessage } from '@/lib/automations';
+import { automationState, automationT, clientLocale, sendAutomationMessage } from '@/lib/automations';
 import { appUrl } from '@/lib/url';
 import { formatClock } from '@/lib/time';
 
@@ -232,7 +232,9 @@ async function notifyEnRoute(jobId: string, etaSeconds: number | null) {
   const { booking, client } = data;
   if (!client) return;
   const trackUrl = appUrl(`/account/jobs/${jobId}`);
-  const etaLabel = etaSeconds != null ? formatClock(new Date(Date.now() + etaSeconds * 1000)) : null;
+  const locale = clientLocale(client);
+  const t = automationT(locale);
+  const etaLabel = etaSeconds != null ? formatClock(new Date(Date.now() + etaSeconds * 1000), locale) : null;
 
   // A toggle with editable wording (Settings → Reminders & follow-ups).
   // Sent on the client's chosen channel — email, text or WhatsApp.
@@ -242,23 +244,23 @@ async function notifyEnRoute(jobId: string, etaSeconds: number | null) {
     const tenant = (await db.select({ name: tenants.name }).from(tenants).where(eq(tenants.id, booking.tenantId)).limit(1))[0];
     await sendAutomationMessage({
       tenantId: booking.tenantId,
-      tenantName: tenant?.name ?? 'Your cleaning company',
+      tenantName: tenant?.name ?? t('companyFallback'),
       key: 'en_route',
       state,
       client,
-      vars: { eta: etaLabel ? `, arriving around ${etaLabel}` : '', link: trackUrl },
-      cta: { label: 'Follow your crew', url: trackUrl },
+      vars: { eta: etaLabel ? t('erTextEta', { eta: etaLabel }) : '', link: trackUrl },
+      cta: { label: t('ctaFollowCrew'), url: trackUrl },
       relatedBookingId: booking.id,
     });
     return;
   }
-  const { subject, html } = crewEnRouteCustomerEmail({ name: client.name, etaLabel, trackUrl });
+  const { subject, html } = crewEnRouteCustomerEmail({ name: client.name, etaLabel, trackUrl, locale });
   await notifyClient({
     tenantId: booking.tenantId,
     client,
     triggerEvent: 'CREW_EN_ROUTE_CUSTOMER',
     relatedBookingId: booking.id,
     email: { subject, html },
-    text: `Your crew is on the way${etaLabel ? `, arriving around ${etaLabel}` : ''}. Follow them: ${trackUrl}`,
+    text: crewEnRouteText({ etaLabel, trackUrl, locale }),
   });
 }

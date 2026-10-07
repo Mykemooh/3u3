@@ -2,9 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useT } from '@/components/i18n/LocaleProvider';
+import { accountMessages } from '@/lib/i18n/messages/account';
 
 /** "Add a note for the team" on the next visit — the crew sees it on their visit card. */
 export default function TeamNoteButton({ bookingId, initial }: { bookingId: string; initial: string | null }) {
+  const t = useT(accountMessages);
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState(initial ?? '');
@@ -13,7 +16,7 @@ export default function TeamNoteButton({ bookingId, initial }: { bookingId: stri
   if (!open) {
     return (
       <button type="button" onClick={() => setOpen(true)} className="block text-left font-semibold text-bronze hover:underline">
-        {initial ? 'Edit your note for the team' : 'Add a note for the team'}
+        {initial ? t('noteEdit') : t('noteAdd')}
       </button>
     );
   }
@@ -35,12 +38,12 @@ export default function TeamNoteButton({ bookingId, initial }: { bookingId: stri
         }
       }}
     >
-      <textarea className="input min-h-[70px] !py-2 text-sm" maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} placeholder="The dog will be in the backyard. Please skip the office." />
+      <textarea className="input min-h-[70px] !py-2 text-sm" maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('notePlaceholder')} />
       <div className="flex gap-3">
-        <button className="btn-primary btn-sm" disabled={state === 'saving'}>Save note</button>
-        <button type="button" className="text-sm text-muted" onClick={() => setOpen(false)}>Cancel</button>
+        <button className="btn-primary btn-sm" disabled={state === 'saving'}>{t('noteSave')}</button>
+        <button type="button" className="text-sm text-muted" onClick={() => setOpen(false)}>{t('cancel')}</button>
       </div>
-      {state === 'error' && <p className="text-xs text-red-600">Could not save the note.</p>}
+      {state === 'error' && <p className="text-xs text-red-600">{t('noteError')}</p>}
     </form>
   );
 }

@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import LogoBadge from '@/components/LogoBadge';
+import { useT } from '@/components/i18n/LocaleProvider';
+import { rich } from '@/lib/i18n/rich';
+import { authMessages } from '@/lib/i18n/messages/auth';
 
 /**
  * "Forgot your username or password?" — type whatever you remember (email
@@ -11,6 +14,7 @@ import LogoBadge from '@/components/LogoBadge';
  * not anything matched, so this page can't reveal who has an account.
  */
 export default function ForgotPage() {
+  const t = useT(authMessages);
   const [identifier, setIdentifier] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,7 +31,7 @@ export default function ForgotPage() {
     });
     const data = await res.json().catch(() => ({}));
     setLoading(false);
-    if (!res.ok) return setError(data.error || 'Something went wrong. Please try again.');
+    if (!res.ok) return setError(data.error || t('errorRetry'));
     setSent(identifier.includes('@') ? 'email' : 'phone');
   }
 
@@ -40,38 +44,40 @@ export default function ForgotPage() {
       <div className="w-full max-w-sm">
         {sent ? (
           <>
-            <h1 className="text-2xl font-bold text-ink">Check your {sent === 'email' ? 'email' : 'messages'}</h1>
+            <h1 className="text-2xl font-bold text-ink">{sent === 'email' ? t('forgotCheckEmail') : t('forgotCheckMessages')}</h1>
             <p className="mt-2 text-slate">
-              If <span className="font-semibold text-ink">{identifier.trim()}</span> is on an account, we've just sent your sign-in details and a
-              link to choose a new password
-              {sent === 'phone' ? ' — by text, or to the email on your account' : ''}. The link works for 1 hour.
+              {rich(t(sent === 'phone' ? 'forgotSentPhone' : 'forgotSentEmail'), {
+                identifier: <span className="font-semibold text-ink">{identifier.trim()}</span>,
+              })}
             </p>
             <p className="mt-4 text-sm text-slate">
-              Nothing after a few minutes? Check your spam folder, or{' '}
-              <button
-                type="button"
-                onClick={() => setSent(null)}
-                className="font-semibold text-bronze underline"
-              >
-                try your {sent === 'email' ? 'phone number' : 'email'} instead
-              </button>
-              .
+              {rich(t('forgotNothing'), {
+                retry: (
+                  <button
+                    type="button"
+                    onClick={() => setSent(null)}
+                    className="font-semibold text-bronze underline"
+                  >
+                    {sent === 'email' ? t('forgotTryPhone') : t('forgotTryEmail')}
+                  </button>
+                ),
+              })}
             </p>
             <Link href="/signin" className="btn-primary mt-8 w-full">
-              Back to sign in
+              {t('forgotBackToSignIn')}
             </Link>
           </>
         ) : (
           <>
-            <h1 className="text-2xl font-bold text-ink">Forgot your username or password?</h1>
+            <h1 className="text-2xl font-bold text-ink">{t('forgotTitle')}</h1>
             <p className="mb-6 mt-1 text-sm text-slate">
-              Enter the email or phone number you gave us. We'll send you what you sign in with, and a link to set a new password.
+              {t('forgotIntro')}
             </p>
 
             <form onSubmit={onSubmit} className="space-y-4">
               <div>
                 <label className="label" htmlFor="identifier">
-                  Email or phone number
+                  {t('emailOrPhone')}
                 </label>
                 <input
                   id="identifier"
@@ -81,7 +87,7 @@ export default function ForgotPage() {
                   autoComplete="username"
                   autoCapitalize="none"
                   spellCheck={false}
-                  placeholder="you@example.com or +1 281 555 0199"
+                  placeholder={t('identifierPlaceholder')}
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   required
@@ -91,15 +97,18 @@ export default function ForgotPage() {
               {error && <p className="text-sm text-red-600">{error}</p>}
 
               <button type="submit" disabled={loading} className="btn-primary w-full">
-                {loading ? 'Sending…' : 'Send me a reset link'}
+                {loading ? t('forgotSending') : t('forgotSend')}
               </button>
             </form>
 
             <p className="mt-6 text-center text-sm text-slate">
-              Remembered it?{' '}
-              <Link href="/signin" className="font-semibold text-bronze underline">
-                Sign in
-              </Link>
+              {rich(t('forgotRemembered'), {
+                link: (
+                  <Link href="/signin" className="font-semibold text-bronze underline">
+                    {t('signIn')}
+                  </Link>
+                ),
+              })}
             </p>
           </>
         )}

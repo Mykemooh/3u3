@@ -6,7 +6,9 @@ import { eq } from 'drizzle-orm';
 import { rescheduleBooking } from '@/lib/dispatch';
 import { adminTenant, forbidden, teamApiError } from '@/lib/adminApi';
 import { logNotification } from '@/lib/bookings';
-import { sendEmail, bookingRescheduledCustomerEmail } from '@/lib/email';
+import { sendEmail, bookingRescheduledCustomerEmail, localizedServiceName } from '@/lib/email';
+import { translator } from '@/lib/i18n';
+import { notifyMessages } from '@/lib/i18n/messages/notify';
 import { formatDateLabel, formatSlotLabel } from '@/lib/scheduling';
 import { appUrl } from '@/lib/url';
 import { checkStandbyForFreedDate } from '@/lib/standby';
@@ -54,13 +56,15 @@ async function notifyClient(before: typeof bookings.$inferSelect, slotStart: str
     const service = before.serviceTypeId
       ? (await db.select().from(serviceTypes).where(eq(serviceTypes.id, before.serviceTypeId)).limit(1))[0]
       : undefined;
+    const locale = client.locale;
     const { subject, html } = bookingRescheduledCustomerEmail({
       name: client.name,
-      serviceName: service?.name ?? 'Cleaning',
-      dateLabel: formatDateLabel(slotStart.split('T')[0]),
+      serviceName: service ? localizedServiceName(locale, service.name, service.key) : translator(notifyMessages, locale)('serviceFallbackTitle'),
+      dateLabel: formatDateLabel(slotStart.split('T')[0], locale),
       timeLabel: formatSlotLabel(slotStart, slotEnd),
-      previousLabel: `${formatDateLabel(before.slotStart.split('T')[0])}, ${formatSlotLabel(before.slotStart, before.slotEnd)}`,
+      previousLabel: `${formatDateLabel(before.slotStart.split('T')[0], locale)}, ${formatSlotLabel(before.slotStart, before.slotEnd)}`,
       accountUrl: appUrl('/account'),
+      locale,
     });
     const ok = await sendEmail({ to: client.email, subject, html });
     await logNotification({
