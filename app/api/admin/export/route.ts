@@ -9,10 +9,11 @@ import { roomTimes } from '@/lib/reports';
 import { previewPayroll } from '@/lib/payroll';
 import { invoiceLabel } from '@/lib/invoices';
 import { businessTodayISO } from '@/lib/time';
+import { tripExportRows } from '@/lib/trips';
 
 export const dynamic = 'force-dynamic';
 
-const KINDS = ['clients', 'invoices', 'cleans', 'room-times', 'expenses', 'payroll'] as const;
+const KINDS = ['clients', 'invoices', 'cleans', 'room-times', 'expenses', 'payroll', 'trips'] as const;
 type Kind = (typeof KINDS)[number];
 
 /** Spreadsheet downloads. Every row is this company's own; nothing crosses tenants. */
@@ -86,6 +87,13 @@ export async function GET(req: Request) {
   } else if (kind === 'payroll') {
     const rows = await previewPayroll(t, from, to, { includePaid: true });
     csv = toCsv(['Name', 'Pay type', 'Cleans', 'Hours', 'Days', 'Pay', 'Tips waiting'], rows.map((r) => [r.name, r.payType, r.jobCount, r.hours, r.daysWorked, dollars(r.payCents), dollars(r.tipCents)]));
+  } else if (kind === 'trips') {
+    const rows = await tripExportRows(t, from, to);
+    const tolls: Record<string, string> = { NONE: 'None', PRICED: 'Paid', UNPRICED: 'Toll road, price unknown', UNKNOWN: '' };
+    csv = toCsv(
+      ['Date', 'Team', 'Driver', 'Client', 'Route', 'Planned miles', 'Planned minutes', 'Actual minutes', 'Tolls', 'Toll roads', 'Avoided tolls', 'Source'],
+      rows.map((r) => [r.date, r.team, r.driver, r.client, r.route, r.plannedMiles, r.plannedMinutes, r.actualMinutes, r.tollCents != null ? dollars(r.tollCents) : null, tolls[r.tollState] ?? r.tollState, r.avoidedTolls ? 'Yes' : 'No', r.provider]),
+    );
   }
 
   return new NextResponse(csv, {

@@ -5,8 +5,8 @@ import { authOptions } from '@/lib/auth';
 import { homeForRole } from '@/lib/nav';
 import { SERVICE_LABELS, serviceLabel } from '@/lib/data';
 import { loadJob, canWorkJob, canLead, viewerFrom } from '@/lib/jobs';
-import { formatSlot, formatClock } from '@/lib/time';
-import { formatSlotLabel } from '@/lib/scheduling';
+import { formatSlot, formatClock, businessTodayISO } from '@/lib/time';
+import { formatSlotLabel, formatDateLabel } from '@/lib/scheduling';
 import { MEDIA_LIMITS } from '@/lib/storage';
 import AppShell, { CREW_TABS } from '@/components/app/AppShell';
 import CrewJob from '@/components/CrewJob';
@@ -52,6 +52,7 @@ export default async function CrewJobPage({ params }: { params: { id: string } }
         client={{ name: client?.name ?? t('clientFallback'), phone: client?.phone ?? null }}
         serviceLabel={service ? (SERVICE_LABELS[service.key] ? serviceLabel(service.key, locale) : service.name) : t('serviceFallback')}
         whenLabel={whenLabel}
+        otherDayLabel={data.booking.slotStart.slice(0, 10) !== businessTodayISO() ? formatDateLabel(data.booking.slotStart.slice(0, 10), locale) : null}
         addressLabel={address ? `${address.line1}, ${address.city}, ${address.state}${address.zip ? ` ${address.zip}` : ''}` : null}
         cleanerNotes={address?.notes ?? null}
         visitNote={data.booking.clientNotes ?? null}

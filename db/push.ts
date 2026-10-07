@@ -1282,9 +1282,41 @@ async function main() {
     -- English / Spanish (lib/i18n): each person's language, for the app and
     -- for every text and email they receive.
     ALTER TABLE users ADD COLUMN IF NOT EXISTS locale TEXT NOT NULL DEFAULT 'en';
+
+    -- How a company prices a home clean (lib/quoting.ts).
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS quoting_json TEXT;
     DO $$ BEGIN
       ALTER TABLE users ADD CONSTRAINT users_locale_check CHECK (locale IN ('en','es'));
     EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+    -- The drive to each job: route, tolls, planned vs actual (lib/trips.ts,
+    -- Admin → Reports → Travel). No coordinates are kept.
+    CREATE TABLE IF NOT EXISTS job_trips (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id),
+      job_id TEXT NOT NULL REFERENCES jobs(id),
+      crew_id TEXT NOT NULL,
+      driver_user_id TEXT,
+      started_at TIMESTAMPTZ NOT NULL,
+      arrived_at TIMESTAMPTZ,
+      arrival_source TEXT,
+      planned_distance_meters INTEGER,
+      planned_duration_seconds INTEGER,
+      actual_duration_seconds INTEGER,
+      provider TEXT NOT NULL DEFAULT 'none',
+      route_label TEXT,
+      route_summary TEXT,
+      toll_state TEXT NOT NULL DEFAULT 'UNKNOWN' CHECK (toll_state IN ('NONE','PRICED','UNPRICED','UNKNOWN')),
+      toll_cents INTEGER,
+      toll_pass TEXT,
+      avoid_tolls_on BOOLEAN NOT NULL DEFAULT false,
+      avoided_tolls BOOLEAN NOT NULL DEFAULT false,
+      toll_expense_id TEXT,
+      updated_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS job_trips_job_unique ON job_trips(job_id);
+    CREATE INDEX IF NOT EXISTS job_trips_tenant_started_idx ON job_trips(tenant_id, started_at);
   `);
 
   console.log('Schema pushed to Postgres.');

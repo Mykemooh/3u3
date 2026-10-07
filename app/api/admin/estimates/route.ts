@@ -1,3 +1,4 @@
+import { belongsTo, notFound } from '@/lib/tenantGuard';
 import { adminSession } from '@/lib/adminApi';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
@@ -19,11 +20,17 @@ export async function POST(req: Request) {
   if (!(await adminSession())) {
     return NextResponse.json({ error: 'Admin only' }, { status: 403 });
   }
-  const parsed = schema.safeParse(await req.json());
+  const parsed = schema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
 
   const tenant = await getTenant();
   if (!tenant) return NextResponse.json({ error: 'No tenant configured' }, { status: 500 });
+
+  // Every id in the request has to be this company's own.
+  const owned =
+    (await belongsTo(tenant.id, 'user', parsed.data.clientId)) &&
+    (!parsed.data.quoteVisitBookingId || (await belongsTo(tenant.id, 'booking', parsed.data.quoteVisitBookingId)));
+  if (!owned) return notFound();
 
   try {
     const quoteId = await createDraftEstimate({ tenantId: tenant.id, ...parsed.data });

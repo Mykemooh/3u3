@@ -71,7 +71,7 @@ function SetPasswordInner() {
         <Link href="/" className="mb-10">
           <LogoBadge />
         </Link>
-        <h1 className="text-2xl font-bold text-ink">{t('setPwLinkMissing')}</h1>
+        <h1 className="ct-title">{t('setPwLinkMissing')}</h1>
         <p className="mt-2 max-w-sm text-slate">
           {rich(t('setPwLinkMissingBody'), {
             link: (
@@ -92,7 +92,7 @@ function SetPasswordInner() {
       </Link>
 
       <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-ink">{isReset ? t('setPwResetTitle') : t('setPwCreateTitle')}</h1>
+        <h1 className="ct-title">{isReset ? t('setPwResetTitle') : t('setPwCreateTitle')}</h1>
         <p className="mb-6 mt-1 text-sm text-slate">
           {isReset ? t('setPwResetIntro') : t('setPwCreateIntro')}
         </p>
@@ -112,7 +112,7 @@ function SetPasswordInner() {
               required
               minLength={8}
             />
-            <p className="mt-1.5 text-xs text-muted">{t('setPwHelp')}</p>
+            <p className="mt-1.5 text-sm text-muted">{t('setPwHelp')}</p>
           </div>
 
           <div>

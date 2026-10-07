@@ -4,7 +4,7 @@ import { eq, and } from 'drizzle-orm';
 import { adminTenant, forbidden } from '@/lib/adminApi';
 import { db } from '@/db/client';
 import { users, addresses } from '@/db/schema';
-import { getAddressesFor } from '@/lib/data';
+import { getAddressesFor, attachAddressToOpenVisits } from '@/lib/data';
 
 const schema = z.object({
   line1: z.string().trim().min(1),
@@ -22,7 +22,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const tenantId = await adminTenant();
   if (!tenantId) return forbidden();
 
-  const body = await req.json();
+  const body = await req.json().catch(() => ({}));
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: 'Please fill in a complete address.' }, { status: 400 });
   const { line1, city, state, zip, notes, bedrooms } = parsed.data;
@@ -40,6 +40,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   } else {
     await db.insert(addresses).values({ id: crypto.randomUUID(), userId: params.id, line1, city, state, zip, notes: notes ?? null, bedrooms: bedrooms ?? null, isPrimary: true });
   }
+  await attachAddressToOpenVisits(params.id);
 
   return NextResponse.json({ ok: true });
 }

@@ -19,7 +19,7 @@ const schema = z.object({ password: z.string().min(8).max(200) });
  * used to reset the password on an established account.
  */
 export async function POST(req: Request, { params }: { params: { token: string } }) {
-  const parsed = schema.safeParse(await req.json());
+  const parsed = schema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) {
     return NextResponse.json({ error: 'Password must be at least 8 characters.' }, { status: 400 });
   }
@@ -41,7 +41,11 @@ export async function POST(req: Request, { params }: { params: { token: string }
 
   await db
     .update(users)
-    .set({ passwordHash: bcrypt.hashSync(parsed.data.password, 10) })
+    // They're creating a password to book their first clean right now — the
+    // optional two-step sign-in offer waits a couple of weeks rather than
+    // standing between them and the booking (admins and required crew are
+    // never affected: this is a client).
+    .set({ passwordHash: bcrypt.hashSync(parsed.data.password, 10), mfaPromptSnoozedUntil: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000) })
     .where(eq(users.id, client.id));
 
   return NextResponse.json({ ok: true, phone: client.phone });

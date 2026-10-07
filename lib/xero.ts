@@ -128,11 +128,11 @@ export async function pushPaidInvoiceToXero(tenantId: string, invoiceId: string)
 
   const data = await getInvoiceWithItems(invoiceId);
   if (!data || !data.client) return;
-  const { invoice, items, client } = data;
+  const { invoice, lines: billable, client } = data;
   const contactId = await findOrCreateContact(tenantId, client);
   const account = process.env.XERO_SALES_ACCOUNT_CODE?.trim() || '200';
   // A tip can also be on the invoice as its own isTip line; it's added once, from tipCents.
-  const lines = items.filter((i) => !i.isTip).map((i) => ({ Description: i.description, Quantity: 1, UnitAmount: (i.amountCents / 100).toFixed(2), AccountCode: account }));
+  const lines = billable.map((i) => ({ Description: i.description, Quantity: 1, UnitAmount: (i.amountCents / 100).toFixed(2), AccountCode: account }));
   if (invoice.tipCents > 0) lines.push({ Description: 'Tip', Quantity: 1, UnitAmount: (invoice.tipCents / 100).toFixed(2), AccountCode: account });
 
   const created = await xero(

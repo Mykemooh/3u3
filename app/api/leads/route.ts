@@ -1,3 +1,4 @@
+import { normalizePhone, samePhone } from '@/lib/phone';
 import { walkthroughLeadEvent } from '@/lib/events';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -42,12 +43,13 @@ export async function POST(req: Request) {
   const tenant = await getTenant();
   if (!tenant) return NextResponse.json({ error: 'Not set up' }, { status: 500 });
 
-  const body = await req.json();
+  const body = await req.json().catch(() => ({}));
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: 'Please fill in every field.' }, { status: 400 });
   }
-  const { name, phone, email, addressLine1, address: picked, bedrooms, serviceTypeId, slotStart, slotEnd } = parsed.data;
+  const { name, email, addressLine1, address: picked, bedrooms, serviceTypeId, slotStart, slotEnd } = parsed.data;
+  const phone = normalizePhone(parsed.data.phone);
 
   const service = (await db.select().from(serviceTypes).where(eq(serviceTypes.id, serviceTypeId)).limit(1))[0];
   if (!service || service.tenantId !== tenant.id || !service.offered) {
@@ -58,7 +60,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Please tell us a little about the project first.' }, { status: 400 });
   }
 
-  let user = (await db.select().from(users).where(eq(users.phone, phone)).limit(1))[0];
+  const match = samePhone(phone);
+  let user = (await db.select().from(users).where(match ?? eq(users.phone, phone)).limit(1))[0];
+  // One phone number is one account. If it's someone at another company
+  // (or a staff login), never attach this company's booking to it.
+  if (user && (user.tenantId !== tenant.id || user.role !== 'CUSTOMER')) {
+    return NextResponse.json({ error: 'That phone number is already linked to another account. Please call or text us and we’ll set you up.' }, { status: 409 });
+  }
   const isNewClient = !user;
   if (!user) {
     const id = crypto.randomUUID();

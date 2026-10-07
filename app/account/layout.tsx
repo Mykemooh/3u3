@@ -1,6 +1,7 @@
 import { enforceMfa, type SessionUser } from '@/lib/sessionUser';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import { authOptions } from '@/lib/auth';
 import { homeForRole } from '@/lib/nav';
 import AppShell, { CUSTOMER_TABS } from '@/components/app/AppShell';
@@ -16,7 +17,9 @@ export default async function AccountLayout({ children }: { children: React.Reac
   const session = await getServerSession(authOptions);
   const role = (session?.user as { role?: string } | undefined)?.role;
   if (!session?.user) redirect('/signin?next=/account');
-  if (role !== 'CUSTOMER' && role !== 'ADMIN') redirect(`${homeForRole(role)}?denied=1`);
+  const path = headers().get('x-3u3-path') ?? '';
+  const crewViewingJob = role === 'CLEANER' && path.startsWith('/account/jobs/');
+  if (role !== 'CUSTOMER' && role !== 'ADMIN' && !crewViewingJob) redirect(`${homeForRole(role)}?denied=1`);
   enforceMfa(session.user as unknown as SessionUser, '/account');
   return (
     <AppShell name={session.user.name} tabs={role === 'CUSTOMER' ? CUSTOMER_TABS : []} homeHref={homeForRole(role)}>

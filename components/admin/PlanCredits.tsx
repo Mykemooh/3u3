@@ -338,6 +338,11 @@ export default function PlanCredits(props: {
                 <Icon name="phone" size={16} /> Set up texting — {dollars(props.rates.setup)}
               </button>
             )}
+            {props.exempt && !props.smsNumber && (
+              <a href="/admin/settings#texting" className="tc-btn-dark mt-4 inline-flex">
+                <Icon name="phone" size={16} /> Add your number in Settings
+              </a>
+            )}
           </div>
 
           <div className="tc-card p-5 md:p-6">

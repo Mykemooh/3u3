@@ -1,8 +1,32 @@
 import Link from 'next/link';
 import Logo from '@/components/Logo';
 import { SERVICES } from '@/lib/services';
+import { getTenant } from '@/lib/data';
+import { isHouseBrand } from '@/lib/brand';
 
-export default function Footer() {
+export default async function Footer() {
+  // 3U3's own footer carries its founders' story and services; any other
+  // company's pages (estimates, standby offers, help) get a plain footer in
+  // their own name rather than 3U3's.
+  const tenant = await getTenant().catch(() => undefined);
+  if (tenant && !isHouseBrand(tenant)) {
+    return (
+      <footer className="bg-ink text-white">
+        <div className="container-wide flex flex-wrap items-center justify-between gap-4 px-6 py-10 text-sm">
+          <div>
+            <Logo variant="light" size="sm" />
+            {tenant.tagline && <p className="mt-2 text-white/55">{tenant.tagline}</p>}
+          </div>
+          <span className="flex flex-wrap gap-4 text-xs text-white/50">
+            <span>© {new Date().getFullYear()} {tenant.name}</span>
+            <Link href="/signin" className="hover:text-white/80">Sign in</Link>
+            <Link href="/privacy" className="hover:text-white/80">Privacy</Link>
+            <Link href="/terms" className="hover:text-white/80">Terms</Link>
+          </span>
+        </div>
+      </footer>
+    );
+  }
   return (
     <footer className="bg-ink text-white">
       <div className="container-wide px-6 py-14">

@@ -1,5 +1,6 @@
 import AppShell, { CREW_TABS } from '@/components/app/AppShell';
 import HelpCenter from '@/components/help/HelpCenter';
+import { CrewPageHead } from '@/components/crew/CrewBand';
 import { getTenant } from '@/lib/data';
 import { articlesFor, fill, groupBySection } from '@/lib/help';
 import { HELP_ARTICLES_ES, SECTIONS_ES } from '@/lib/help/content';
@@ -30,12 +31,8 @@ export default async function CrewHelpPage() {
   }
   return (
     <AppShell name={user.name ?? ''} tabs={CREW_TABS} homeHref="/crew">
-      <div className="space-y-6">
-        <div>
-          <p className="eyebrow">{t('helpEyebrow')}</p>
-          <h1 className="mt-1 text-2xl font-bold text-ink">{t('helpTitle')}</h1>
-          <p className="mt-1 text-slate">{t('helpIntro')}</p>
-        </div>
+      <CrewPageHead title={t('helpTitle')} intro={t('helpIntro')} />
+      <div className="mt-5">
         <HelpCenter sections={sections} base="/crew/help" askTex />
       </div>
     </AppShell>

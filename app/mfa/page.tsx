@@ -61,7 +61,7 @@ function MfaInner() {
     <main className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
       <LogoBadge />
       <div className="mt-10 w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-ink">{t('mfaTitle')}</h1>
+        <h1 className="ct-title">{t('mfaTitle')}</h1>
         <p className="mb-6 mt-1 text-sm text-slate">
           {role === 'CUSTOMER' ? t('mfaIntroCustomer') : t('mfaIntroStaff')}
         </p>

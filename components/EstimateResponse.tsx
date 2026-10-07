@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { signIn } from 'next-auth/react';
+import { translator, type Locale } from '@/lib/i18n';
+import { accountMessages } from '@/lib/i18n/messages/account';
 
 type Status = 'DRAFT' | 'SENT' | 'APPROVED' | 'DECLINED' | 'EXPIRED';
 
@@ -22,6 +24,7 @@ export default function EstimateResponse({
   clientHasPassword,
   clientPhone,
   autoRespond,
+  locale = 'en',
 }: {
   token: string;
   initialStatus: Status;
@@ -30,7 +33,9 @@ export default function EstimateResponse({
   clientHasPassword: boolean;
   clientPhone?: string;
   autoRespond?: 'APPROVE' | 'DECLINE';
+  locale?: Locale;
 }) {
+  const t = translator(accountMessages, locale);
   const [status, setStatus] = useState<Status>(initialStatus);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -51,7 +56,7 @@ export default function EstimateResponse({
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-          setError(data.error || 'Something went wrong. Please try again.');
+          setError(data.error || t('estErr'));
           return;
         }
         setStatus(data.status as Status);
@@ -85,7 +90,7 @@ export default function EstimateResponse({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setPasswordError(data.error || 'Could not save that password.');
+        setPasswordError(data.error || t('estPwErr'));
         return;
       }
       // Straight into the booking flow at the rate they just approved.
@@ -102,7 +107,7 @@ export default function EstimateResponse({
   if (expired && status !== 'APPROVED' && status !== 'DECLINED') {
     return (
       <p className="mt-6 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        This estimate has expired. Give us a call and we'll send you an updated price.
+        {t('estExpired')}
       </p>
     );
   }
@@ -110,7 +115,7 @@ export default function EstimateResponse({
   if (status === 'DECLINED') {
     return (
       <p className="mt-6 rounded-xl bg-surface px-4 py-3 text-sm text-slate">
-        Thanks for letting us know — no hard feelings. If anything changes, we'd be glad to hear from you.
+        {t('estDeclined')}
       </p>
     );
   }
@@ -119,20 +124,20 @@ export default function EstimateResponse({
     return (
       <div className="mt-6">
         <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
-          Approved — thank you! This price is locked in for you.
+          {t('estApproved')}
         </p>
 
         {clientHasPassword ? (
           <a href="/book" className="btn-primary mt-4 w-full">
-            Book your first clean
+            {t('estBookFirst')}
           </a>
         ) : (
           <form onSubmit={savePassword} className="mt-4">
             <p className="mb-3 text-sm text-slate">
-              Create a password and you can pick your first cleaning time right now.
+              {t('estCreatePwIntro')}
             </p>
             <label className="label" htmlFor="estimate-password">
-              Password
+              {t('estPassword')}
             </label>
             <input
               id="estimate-password"
@@ -141,16 +146,16 @@ export default function EstimateResponse({
               minLength={8}
               required
               autoComplete="new-password"
-              placeholder="At least 8 characters"
+              placeholder={t('estPwPlaceholder')}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
             {clientPhone && (
-              <p className="mt-1.5 text-xs text-muted">You'll sign in with {clientPhone} from now on.</p>
+              <p className="mt-1.5 text-xs text-muted">{t('estSignInWith', { phone: clientPhone })}</p>
             )}
             {passwordError && <p className="mt-2 text-sm text-red-600">{passwordError}</p>}
             <button type="submit" disabled={savingPassword} className="btn-primary mt-4 w-full">
-              {savingPassword ? 'Setting up…' : 'Create password & pick a time'}
+              {savingPassword ? t('estSettingUp') : t('estCreatePw')}
             </button>
           </form>
         )}
@@ -162,10 +167,10 @@ export default function EstimateResponse({
   // rejects that anyway).
   return (
     <div className="mt-6">
-      {expiresAt && <p className="mb-3 text-sm text-muted">Good through {expiresAt}.</p>}
+      {expiresAt && <p className="mb-3 text-sm text-muted">{t('estGoodThrough', { date: expiresAt })}</p>}
       {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
       <button type="button" onClick={() => respond('APPROVE')} disabled={busy} className="btn-primary w-full">
-        {busy ? 'One moment…' : 'Approve this estimate'}
+        {busy ? t('estOneMoment') : t('estApprove')}
       </button>
       <button
         type="button"
@@ -173,7 +178,7 @@ export default function EstimateResponse({
         disabled={busy}
         className="mt-3 w-full text-sm text-muted hover:text-ink"
       >
-        No thanks
+        {t('estDecline')}
       </button>
     </div>
   );

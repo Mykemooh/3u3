@@ -13,13 +13,19 @@ import AccessNotice from '@/components/AccessNotice';
 import { db } from '@/db/client';
 import { tenants } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { getUnreadAdminAlerts } from '@/lib/data';
+import { getUnreadAdminAlerts, getTenant } from '@/lib/data';
+import type { Metadata } from 'next';
 import { PLANS, effectivePlanKey } from '@/lib/billing/plans';
 
 // Every admin page reads live operational data (bookings, leads, rates,
 // crew). Setting this here cascades to all nested /admin pages, so none of
 // them ever get baked into a static build-time snapshot.
 export const dynamic = 'force-dynamic';
+
+export async function generateMetadata(): Promise<Metadata> {
+  const tenant = await getTenant().catch(() => undefined);
+  return { title: tenant ? `${tenant.name} · TRASHCAN` : 'TRASHCAN', icons: { icon: '/brand/trashcan/app-icon.svg' } };
+}
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions);

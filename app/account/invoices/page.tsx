@@ -32,10 +32,9 @@ export default async function AccountInvoices() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="eyebrow">{t('invEyebrow')}</p>
-        <h1 className="mt-1 text-3xl font-extrabold">{t('invTitle')}</h1>
+        <h1 className="ct-title">{t('invTitle')}</h1>
         {due.length > 0 && (
-          <p className="mt-2 text-slate">
+          <p className="ct-lead money mt-1">
             {t(due.length === 1 ? 'invDueOne' : 'invDueMany', { amount: formatMoney(due.reduce((s, r) => s + r.invoice!.totalCents, 0)), count: due.length })}
           </p>
         )}
@@ -43,23 +42,23 @@ export default async function AccountInvoices() {
 
       {batches.length > 0 && (
         <div className="space-y-3">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-muted">{t('invMonthlyStatements')}</h2>
+          <h2 className="ct-h2">{t('invMonthlyStatements')}</h2>
           {batches.map((b) =>
             b.status === 'OPEN' ? (
-              <div key={b.id} className="card flex items-center justify-between gap-4 p-5 opacity-70">
-                <div>
-                  <p className="font-semibold">{t('periodRange', { start: b.periodStart, end: b.periodEnd })}</p>
-                  <p className="text-sm text-slate">{t('invAccumulating')}</p>
+              <div key={b.id} className="card flex items-center justify-between gap-4 border-dashed bg-white/60 p-5">
+                <div className="min-w-0">
+                  <p className="ct-h3">{t('periodRange', { start: b.periodStart, end: b.periodEnd })}</p>
+                  <p className="ct-meta mt-0.5">{t('invAccumulating')}</p>
                 </div>
-                <span className="font-semibold text-bronze">{formatMoney(b.totalCents)}</span>
+                <span className="money shrink-0 font-semibold text-ink">{formatMoney(b.totalCents)}</span>
               </div>
             ) : (
               <Link key={b.id} href={`/account/billing-statements/${b.id}`} className="card-interactive flex items-center justify-between gap-4 p-5">
-                <div>
-                  <p className="font-semibold">{t('periodRange', { start: b.periodStart, end: b.periodEnd })}</p>
-                  <p className="text-sm text-slate">{t('invMonthlyStatement')}</p>
+                <div className="min-w-0">
+                  <p className="ct-h3">{t('periodRange', { start: b.periodStart, end: b.periodEnd })}</p>
+                  <p className="ct-meta mt-0.5">{t('invMonthlyStatement')}</p>
                 </div>
-                <span className={`pill ${b.status === 'PAID' ? 'bg-emerald-100 text-green' : b.status === 'FAILED' ? 'bg-red-100 text-red-700' : 'bg-gold/20 text-bronze'}`}>
+                <span className={`pill shrink-0 ${b.status === 'PAID' ? 'bg-green-light text-ink' : b.status === 'FAILED' ? 'bg-red-50 text-red-700' : 'bg-gold/15 text-bronze'}`}>
                   {b.status === 'PAID' ? t('stmtPillPaid') : b.status === 'FAILED' ? t('invPaymentIssue') : t('stmtPillDue')}
                 </span>
               </Link>
@@ -69,24 +68,25 @@ export default async function AccountInvoices() {
       )}
 
       {rows.length === 0 && batches.length === 0 ? (
-        <p className="card text-slate">{t('invEmpty')}</p>
+        <p className="card ct-lead">{t('invEmpty')}</p>
       ) : (
         rows.length > 0 && (
           <div className="space-y-3">
-            {batches.length > 0 && <h2 className="text-sm font-bold uppercase tracking-wide text-muted">{t('invPerVisit')}</h2>}
+            {batches.length > 0 && <h2 className="ct-h2 pt-2">{t('invPerVisit')}</h2>}
             {rows.map(({ invoice, booking, service }) => (
               <Link key={invoice!.id} href={`/account/invoices/${invoice!.id}`} className="card-interactive flex items-center justify-between gap-4 p-5">
-                <div>
-                  <p className="font-semibold">
-                    {invoiceLabel(invoice!)} · {formatMoney(invoice!.totalCents)}
-                  </p>
-                  <p className="text-sm text-slate">
-                    {service ? serviceName(service.key, service.name, locale) : t('serviceFallback')} · {formatDateLabel(booking.slotStart.slice(0, 10), locale)}
+                <div className="min-w-0">
+                  <p className="ct-h3">{formatDateLabel(booking.slotStart.slice(0, 10), locale)}</p>
+                  <p className="ct-meta mt-0.5">
+                    {service ? serviceName(service.key, service.name, locale) : t('serviceFallback')} · {invoiceLabel(invoice!)}
                   </p>
                 </div>
-                <span className={`pill ${invoice!.status === 'PAID' ? 'bg-emerald-100 text-green' : 'bg-gold/20 text-bronze'}`}>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <span className="money text-[17px] font-semibold text-ink">{formatMoney(invoice!.totalCents)}</span>
+                <span className={`pill ${invoice!.status === 'PAID' ? 'bg-green-light text-ink' : 'bg-gold/15 text-bronze'}`}>
                   {invoice!.status === 'PAID' ? t('pillPaid') : t('pillDue')}
                 </span>
+                </div>
               </Link>
             ))}
           </div>

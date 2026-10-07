@@ -3,7 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import PricingHelper from '@/components/PricingHelper';
+import QuoteCalculator from '@/components/QuoteCalculator';
 import type { Intake } from '@/lib/intake';
+import type { QuotingConfig } from '@/lib/quoting';
 import type { QuotePricing } from '@/lib/pricingGuides';
 
 type Item = { description: string; amountCents: number };
@@ -26,6 +28,8 @@ export default function EstimateEditor({
   clientHasEmail,
   intake = null,
   initialPricing = null,
+  quoting = null,
+  home = null,
 }: {
   quoteId: string;
   initialItems: Item[];
@@ -35,6 +39,10 @@ export default function EstimateEditor({
   clientHasEmail: boolean;
   intake?: Intake | null;
   initialPricing?: QuotePricing | null;
+  /** The company's quoting settings (Settings → Quoting): powers the calculator for home cleans. */
+  quoting?: QuotingConfig | null;
+  /** The client's home as recorded, to start the calculator from. */
+  home?: { bedrooms: number | null; bathrooms: number | null } | null;
 }) {
   const router = useRouter();
   const [items, setItems] = useState<Item[]>(
@@ -139,10 +147,34 @@ export default function EstimateEditor({
             kind={helperKind}
             intake={intake}
             initial={pricing}
+            starting={
+              quoting
+                ? {
+                    postConPerSqFt: { ROUGH: quoting.postConstruction.roughPerSqFt, FINAL: quoting.postConstruction.finalPerSqFt, TOUCH_UP: quoting.postConstruction.touchUpPerSqFt },
+                    sqFtPerHour: quoting.commercial.sqFtPerHour,
+                    hourlyRateCents: quoting.commercial.hourlyRateCents,
+                  }
+                : undefined
+            }
             onApply={(next, p) => {
               touch();
               setItems(next);
               setPricing(p);
+            }}
+          />
+        </div>
+      )}
+      {!helperKind && quoting && (
+        <div className="mb-5">
+          <QuoteCalculator
+            key={serviceTypeId}
+            config={quoting}
+            serviceName={services.find((s) => s.id === serviceTypeId)?.name ?? 'Cleaning'}
+            isDeep={serviceKey === 'DEEP' || serviceKey === 'MOVE_IN_OUT'}
+            home={home}
+            onApply={(lines) => {
+              touch();
+              setItems(lines);
             }}
           />
         </div>

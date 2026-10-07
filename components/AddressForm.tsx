@@ -10,14 +10,17 @@ export default function AddressForm({
   endpoint,
   initial,
   onSaved,
+  startEditing = false,
 }: {
   endpoint: string;
+  /** Open straight into the form (no address yet, and it's needed now). */
+  startEditing?: boolean;
   initial: { line1: string; city: string; state: string; zip?: string | null; notes?: string | null; bedrooms?: number | null };
   onSaved?: () => void;
 }) {
   const t = useT(commonMessages);
   const router = useRouter();
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(startEditing);
   const [line1, setLine1] = useState(initial.line1 ?? '');
   const [city, setCity] = useState(initial.city ?? '');
   const [state, setState] = useState(initial.state ?? '');
@@ -62,7 +65,7 @@ export default function AddressForm({
   if (!editing) {
     return (
       <div className="flex items-start justify-between gap-4">
-        <div className="text-sm text-slate">
+        <div className="text-[15px] text-slate">
           {initial.line1 ? (
             <>
               <p className="font-medium text-ink">{initial.line1}</p>
@@ -70,7 +73,7 @@ export default function AddressForm({
                 {initial.city}, {initial.state} {initial.zip}
               </p>
               {initial.notes && (
-                <p className="mt-2 rounded-lg bg-gold/10 px-3 py-2 text-xs text-ink">
+                <p className="mt-2 rounded-lg bg-gold/10 px-3 py-2 text-sm text-ink">
                   <span className="font-semibold text-bronze">{t('addrCleanerNeedsToKnowPrefix')}</span>
                   {initial.notes}
                 </p>
@@ -80,7 +83,7 @@ export default function AddressForm({
             <p className="text-muted">{t('addrNone')}</p>
           )}
         </div>
-        <button onClick={() => setEditing(true)} className="btn-secondary !px-4 !py-2 text-sm">
+        <button onClick={() => setEditing(true)} className="btn-secondary btn-sm min-h-[44px] shrink-0 whitespace-nowrap">
           {initial.line1 ? t('addrEdit') : t('addrAdd')}
         </button>
       </div>
@@ -117,7 +120,7 @@ export default function AddressForm({
             </option>
           ))}
         </select>
-        <p className="mt-1 text-xs text-muted">{t('addrBedroomsHelp')}</p>
+        <p className="mt-1 text-sm text-muted">{t('addrBedroomsHelp')}</p>
       </div>
       <div>
         <label className="label">{t('addrCleanerNeedsToKnow')}</label>
@@ -128,17 +131,17 @@ export default function AddressForm({
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
         />
-        <p className="mt-1 text-xs text-muted">{t('addrNotesHelp')}</p>
+        <p className="mt-1 text-sm text-muted">{t('addrNotesHelp')}</p>
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex gap-2">
-        <button type="submit" disabled={status === 'saving'} className="btn-primary !px-4 !py-2 text-sm">
+        <button type="submit" disabled={status === 'saving'} className="btn-primary btn-sm min-h-[44px]">
           {status === 'saving' ? t('saving') : t('addrSave')}
         </button>
         <button
           type="button"
           onClick={() => setEditing(false)}
-          className="btn-secondary !px-4 !py-2 text-sm"
+          className="btn-secondary btn-sm min-h-[44px]"
           disabled={status === 'saving'}
         >
           {t('cancel')}

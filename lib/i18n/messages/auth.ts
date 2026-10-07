@@ -169,7 +169,7 @@ export const authMessages = defineMessages({
   },
   es: {
     emailOrPhone: 'Correo electrónico o número de teléfono',
-    identifierPlaceholder: 'nombre@ejemplo.com o +1 281 555 0199',
+    identifierPlaceholder: 'usted@correo.com o 281 555 0199',
     password: 'Contraseña',
     signIn: 'Iniciar sesión',
     signOut: 'Cerrar sesión',

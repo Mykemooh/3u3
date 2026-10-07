@@ -39,7 +39,7 @@ export default function SupplyReportForm() {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-3">
+    <form onSubmit={submit} className="space-y-4">
       <div>
         <label className="label">{t('supplyProduct')}</label>
         <input
@@ -52,14 +52,16 @@ export default function SupplyReportForm() {
       </div>
       <div>
         <label className="label">{t('supplyWhat')}</label>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label={t('supplyWhat')}>
           {STATUS_OPTIONS.map((o) => (
             <button
               key={o.value}
               type="button"
+              role="radio"
+              aria-checked={status === o.value}
               onClick={() => setStatus(o.value)}
-              className={`rounded-xl border-2 px-3 py-2 text-center text-sm font-medium transition ${
-                status === o.value ? 'border-gold bg-gold/10' : 'border-line hover:border-gold'
+              className={`min-h-[52px] rounded-xl border-2 px-2 py-2 text-center text-[14px] font-semibold leading-tight transition-colors ${
+                status === o.value ? 'border-tc-black bg-tc-black text-white' : 'border-tc-200 bg-white text-tc-900 hover:border-tc-500'
               }`}
             >
               {t(o.label)}
@@ -71,11 +73,11 @@ export default function SupplyReportForm() {
         <label className="label">{t('supplyNotes')}</label>
         <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t('supplyNotesPlaceholder')} />
       </div>
-      <button type="submit" disabled={state === 'saving'} className="btn-primary w-full">
+      <button type="submit" disabled={state === 'saving'} className="btn-primary min-h-[52px] w-full">
         {state === 'saving' ? t('supplySending') : t('supplyNotify')}
       </button>
-      {state === 'sent' && <p className="text-center text-sm font-semibold text-bronze">{t('supplySent')}</p>}
-      {state === 'error' && <p className="text-center text-sm text-red-600">{t('supplyError')}</p>}
+      {state === 'sent' && <p role="status" className="rounded-xl bg-emerald-50 px-4 py-3 text-center text-[15px] font-semibold text-emerald-800">{t('supplySent')}</p>}
+      {state === 'error' && <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-center text-[15px] text-red-800">{t('supplyError')}</p>}
     </form>
   );
 }

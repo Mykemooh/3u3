@@ -57,8 +57,8 @@ export default function ReviewPrompt({
   if (status === 'done') {
     return (
       <div className="card text-center">
-        <p className="font-semibold text-ink">{t('reviewThanks')}</p>
-        {rating > 0 && <p className="mt-1 text-sm text-slate">{t(rating === 1 ? 'reviewYouRatedOne' : 'reviewYouRatedMany', { count: rating })}</p>}
+        <p className="ct-h3">{t('reviewThanks')}</p>
+        {rating > 0 && <p className="mt-1 text-[15px] text-slate">{t(rating === 1 ? 'reviewYouRatedOne' : 'reviewYouRatedMany', { count: rating })}</p>}
         {outcome?.recleanRequested && (
           <p className="mx-auto mt-3 max-w-sm rounded-xl bg-cream px-4 py-3 text-sm text-ink">
             {t('reviewSorry')}
@@ -66,13 +66,13 @@ export default function ReviewPrompt({
         )}
         {outcome?.googleReviewUrl && (
           <div className="mt-4">
-            <p className="text-sm text-slate">{t('reviewGoogleAsk')}</p>
+            <p className="text-[15px] text-slate">{t('reviewGoogleAsk')}</p>
             <a href={outcome.googleReviewUrl} target="_blank" rel="noreferrer" className="btn-primary btn-sm mt-3">{t('reviewGoogleButton')}</a>
           </div>
         )}
         {!avatarUrl && (
           <div className="mt-5 border-t border-line pt-5">
-            <p className="mb-3 text-sm text-slate">{t('reviewAddAvatar')}</p>
+            <p className="mb-3 text-[15px] text-slate">{t('reviewAddAvatar')}</p>
             <div className="flex justify-center">
               <AvatarUpload name={name} initialUrl={avatarUrl} />
             </div>
@@ -84,9 +84,9 @@ export default function ReviewPrompt({
 
   return (
     <div className="card text-center">
-      <p className="font-semibold text-ink">{t('reviewHow')}</p>
-      <p className="mt-1 text-sm text-slate">{t('reviewSub')}</p>
-      <div className="mt-4 flex justify-center gap-1" role="radiogroup" aria-label={t('reviewRatingAria')}>
+      <h2 className="ct-h2">{t('reviewHow')}</h2>
+      <p className="mx-auto mt-1 max-w-[40ch] text-[15px] text-slate">{t('reviewSub')}</p>
+      <div className="mt-4 flex justify-center gap-0.5" role="radiogroup" aria-label={t('reviewRatingAria')}>
         {[1, 2, 3, 4, 5].map((star) => (
           <button
             key={star}
@@ -98,22 +98,22 @@ export default function ReviewPrompt({
             onMouseEnter={() => setHoverRating(star)}
             onMouseLeave={() => setHoverRating(0)}
             onClick={() => setRating(star)}
-            className="text-3xl leading-none transition hover:scale-110"
+            className="flex h-12 w-12 items-center justify-center rounded-full transition-transform hover:scale-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-bronze"
           >
-            <span className={(hoverRating || rating) >= star ? 'text-gold' : 'text-line'}>★</span>
+            <Star on={(hoverRating || rating) >= star} size={34} />
           </button>
         ))}
       </div>
       {rating > 0 && (
         <div className="mx-auto mt-4 max-w-sm space-y-3">
           {rooms.length > 0 && (
-            <div className="rounded-xl bg-surface p-3 text-left">
-              <p className="mb-2 text-xs font-semibold text-slate">{t('reviewRateRooms')}</p>
-              <ul className="space-y-1.5">
+            <div className="rounded-xl bg-surface px-4 py-3 text-left">
+              <p className="ct-label mb-1">{t('reviewRateRooms')}</p>
+              <ul className="divide-y divide-line">
                 {rooms.map((room) => (
-                  <li key={room.id} className="flex items-center justify-between gap-2 text-sm">
+                  <li key={room.id} className="flex items-center justify-between gap-2 py-1 text-[15px]">
                     <span className="truncate text-ink">{room.roomName}</span>
-                    <span className="flex gap-0.5" role="radiogroup" aria-label={t('reviewRoomAria', { room: room.roomName })}>
+                    <span className="flex shrink-0" role="radiogroup" aria-label={t('reviewRoomAria', { room: room.roomName })}>
                       {[1, 2, 3, 4, 5].map((n) => (
                         <button
                           key={n}
@@ -122,9 +122,9 @@ export default function ReviewPrompt({
                           aria-checked={roomScores[room.id] === n}
                           aria-label={t('reviewOfFive', { n })}
                           onClick={() => setRoomScores((s) => ({ ...s, [room.id]: n }))}
-                          className="text-lg leading-none"
+                          className="flex h-9 w-8 items-center justify-center rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-bronze"
                         >
-                          <span className={(roomScores[room.id] ?? 0) >= n ? 'text-gold' : 'text-line'}>★</span>
+                          <Star on={(roomScores[room.id] ?? 0) >= n} size={20} />
                         </button>
                       ))}
                     </span>
@@ -147,5 +147,20 @@ export default function ReviewPrompt({
         </div>
       )}
     </div>
+  );
+}
+
+/** A filled star in the brand colour, or an outline dark enough to see (3:1+). */
+function Star({ on, size }: { on: boolean; size: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true" className={on ? 'text-gold' : 'text-muted'}>
+      <path
+        d="M12 3.2l2.6 5.5 6 .8-4.4 4.2 1.1 6-5.3-2.9-5.3 2.9 1.1-6L3.4 9.5l6-.8L12 3.2Z"
+        fill={on ? 'currentColor' : 'none'}
+        stroke="currentColor"
+        strokeWidth={on ? 1 : 1.5}
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }

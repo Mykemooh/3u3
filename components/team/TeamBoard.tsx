@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -57,6 +57,10 @@ export default function TeamBoard({ teams, employees: initial, roleLabels }: { t
   const [employees, setEmployees] = useState(initial);
   const [error, setError] = useState('');
   const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState('');
+  // The server's list wins after a refresh (someone added, a role renamed);
+  // local state only carries optimistic drags between refreshes.
+  useEffect(() => setEmployees(initial), [initial]);
   const sensors = useSensors(
     // A small drag distance / touch delay, so tapping the role picker or a link isn't a drag.
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -129,7 +133,12 @@ export default function TeamBoard({ teams, employees: initial, roleLabels }: { t
         <p className="text-sm text-muted">Drag people between teams. Changes save as you go.</p>
       </div>
 
-      {adding && <AddEmployeeForm teams={teams} onDone={() => { setAdding(false); router.refresh(); }} />}
+      {adding && <AddEmployeeForm teams={teams} onDone={(name) => { setAdding(false); setAdded(name); router.refresh(); }} />}
+      {added && (
+        <p role="status" className="rounded-xl bg-green-light px-4 py-3 text-sm font-semibold text-green">
+          {added} is on the team. We emailed them a link to set their password and sign in.
+        </p>
+      )}
       {error && (
         <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
           {error}
@@ -317,7 +326,7 @@ const PAY_TYPE_OPTIONS: { value: 'HOURLY' | 'PER_CLEAN' | 'DAY_RATE'; label: str
   { value: 'DAY_RATE', label: 'Full workday (flat daily rate)', rateLabel: 'Rate per day' },
 ];
 
-function AddEmployeeForm({ teams, onDone }: { teams: BoardTeam[]; onDone: () => void }) {
+function AddEmployeeForm({ teams, onDone }: { teams: BoardTeam[]; onDone: (name: string) => void }) {
   const labels = useContext(RoleLabels);
   const [form, setForm] = useState({
     name: '',
@@ -353,7 +362,7 @@ function AddEmployeeForm({ teams, onDone }: { teams: BoardTeam[]; onDone: () => 
     });
     setBusy(false);
     if (!res.ok) return setError((await res.json().catch(() => ({}))).error || 'Could not add them.');
-    onDone();
+    onDone(form.name.trim());
   }
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -363,21 +372,21 @@ function AddEmployeeForm({ teams, onDone }: { teams: BoardTeam[]; onDone: () => 
   return (
     <form onSubmit={submit} className="card grid gap-4 sm:grid-cols-2">
       <div>
-        <label className="label">Name</label>
-        <input className="input" value={form.name} onChange={set('name')} required />
+        <label className="label" htmlFor="emp-name">Name</label>
+        <input id="emp-name" className="input" value={form.name} onChange={set('name')} required />
       </div>
       <div>
-        <label className="label">Email (they sign in with this)</label>
-        <input className="input" type="email" value={form.email} onChange={set('email')} required />
+        <label className="label" htmlFor="emp-email">Email (they sign in with this)</label>
+        <input id="emp-email" className="input" type="email" value={form.email} onChange={set('email')} required />
       </div>
       <div>
-        <label className="label">Phone (optional)</label>
-        <PhoneInput value={form.phone} onChange={(phone) => setForm((f) => ({ ...f, phone }))} />
+        <label className="label" htmlFor="emp-phone">Phone (optional)</label>
+        <PhoneInput id="emp-phone" value={form.phone} onChange={(phone) => setForm((f) => ({ ...f, phone }))} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="label">Role</label>
-          <select className="input" value={form.staffRole} onChange={set('staffRole')}>
+          <label className="label" htmlFor="emp-role">Role</label>
+          <select id="emp-role" className="input" value={form.staffRole} onChange={set('staffRole')}>
             {(Object.keys(ROLE_LABELS) as StaffRole[]).map((r) => (
               <option key={r} value={r}>
                 {labels[r]}
@@ -386,8 +395,8 @@ function AddEmployeeForm({ teams, onDone }: { teams: BoardTeam[]; onDone: () => 
           </select>
         </div>
         <div>
-          <label className="label">Team</label>
-          <select className="input" value={form.crewId} onChange={set('crewId')}>
+          <label className="label" htmlFor="emp-team">Team</label>
+          <select id="emp-team" className="input" value={form.crewId} onChange={set('crewId')}>
             {teams.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.name}
@@ -399,8 +408,8 @@ function AddEmployeeForm({ teams, onDone }: { teams: BoardTeam[]; onDone: () => 
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="label">Pay type</label>
-          <select className="input" value={form.payType} onChange={set('payType')}>
+          <label className="label" htmlFor="emp-paytype">Pay type</label>
+          <select id="emp-paytype" className="input" value={form.payType} onChange={set('payType')}>
             {PAY_TYPE_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
@@ -409,10 +418,10 @@ function AddEmployeeForm({ teams, onDone }: { teams: BoardTeam[]; onDone: () => 
           </select>
         </div>
         <div>
-          <label className="label">{payTypeMeta.rateLabel} (optional)</label>
+          <label className="label" htmlFor="emp-rate">{payTypeMeta.rateLabel} (optional)</label>
           <div className="relative">
             <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate">$</span>
-            <input className="input pl-6" type="number" min={0} step={0.01} value={form.payRate} onChange={set('payRate')} placeholder="0.00" />
+            <input id="emp-rate" className="input pl-6" type="number" min={0} step={0.01} value={form.payRate} onChange={set('payRate')} placeholder="0.00" />
           </div>
         </div>
       </div>

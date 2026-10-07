@@ -1,3 +1,6 @@
+import { translator } from '@/lib/i18n';
+import { bookMessages } from '@/lib/i18n/messages/book';
+import { getLocale } from '@/lib/i18n/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getServerSession } from 'next-auth';
@@ -29,13 +32,13 @@ export async function POST(req: Request) {
   const tenant = await getTenant();
   if (!tenant) return NextResponse.json({ error: 'Not set up' }, { status: 500 });
 
-  const body = await req.json();
+  const body = await req.json().catch(() => ({}));
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
   const { serviceTypeId, slotStart, slotEnd, cadence, addOnServiceIds } = parsed.data;
 
   const service = await getServiceType(serviceTypeId);
-  if (!service) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  if (!service || service.tenantId !== tenant.id) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   if (cadence !== 'ONE_TIME' && !service.recurringEligible) {
     return NextResponse.json({ error: `${service.name} does not support recurring booking.` }, { status: 400 });
@@ -43,6 +46,10 @@ export async function POST(req: Request) {
 
   const rate = (await getClientRatesFor(clientId)).find((r) => r.serviceTypeId === serviceTypeId);
   const addresses = await getAddressesFor(clientId);
+  const tb = translator(bookMessages, await getLocale());
+  // Only at a price the client agreed, and only to a home the crew can find.
+  if (!rate) return NextResponse.json({ error: tb('noRate') }, { status: 400 });
+  if (!addresses.length) return NextResponse.json({ error: tb('needAddressBody') }, { status: 400 });
 
   // Re-price every selection server-side against the client's own catalog
   // — never trust a price sent from the browser.

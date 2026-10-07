@@ -3,6 +3,7 @@ import { getTenant, formatMoney } from '@/lib/data';
 import { cleaningReport, rangeFor, type RangeKey } from '@/lib/reports';
 import { businessTodayISO } from '@/lib/time';
 import { adminSession } from '@/lib/adminApi';
+import { travelReport, type TravelSummary } from '@/lib/trips';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +15,12 @@ const RANGES: [RangeKey, string][] = [
 ];
 
 const mins = (m: number | null) => (m == null ? '—' : m >= 60 ? `${Math.floor(m / 60)}h ${Math.round(m % 60)}m` : `${Math.round(m)} min`);
+/** "22 → 27 min (+23%)": the route's estimate against the real drive, for trips that have both. */
+function plannedVsActual(x: TravelSummary) {
+  if (x.plannedMinutes == null || x.actualMinutes == null) return '—';
+  const pct = x.plannedMinutes > 0 ? Math.round(((x.actualMinutes - x.plannedMinutes) / x.plannedMinutes) * 100) : 0;
+  return `${Math.round(x.plannedMinutes)} → ${Math.round(x.actualMinutes)} min (${pct >= 0 ? '+' : ''}${pct}%)`;
+}
 const pretty = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 
 function Stat({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: 'good' | 'bad' }) {
@@ -29,7 +36,7 @@ function Stat({ label, value, hint, tone }: { label: string; value: string; hint
 function Bar({ value, max }: { value: number; max: number }) {
   return (
     <div className="h-2 w-full rounded-full bg-surface">
-      <div className="h-2 rounded-full bg-gradient-to-r from-gold to-green-light" style={{ width: `${max ? Math.max(2, (value / max) * 100) : 0}%` }} />
+      <div className="h-2 rounded-full bg-ink" style={{ width: `${max ? Math.max(2, (value / max) * 100) : 0}%` }} />
     </div>
   );
 }
@@ -40,7 +47,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: { ra
   const today = businessTodayISO();
   const key = (['this_month', 'last_month', 'last_90', 'this_year', 'custom'].includes(searchParams.range ?? '') ? searchParams.range : 'this_month') as RangeKey;
   const { from, to } = rangeFor(key, today, { from: searchParams.from, to: searchParams.to });
-  const r = await cleaningReport(tenant.id, from, to);
+  const [r, travel] = await Promise.all([cleaningReport(tenant.id, from, to), travelReport(tenant.id, from, to)]);
   // What each person was paid is for people who run payroll.
   const perms = (await adminSession())?.permissions ?? new Set<string>();
   const seesPay = perms.has('payroll.manage');
@@ -172,6 +179,69 @@ export default async function ReportsPage({ searchParams }: { searchParams: { ra
         </div>
       </section>
 
+      {/* Travel — the drive to each job (lib/trips.ts): from "Start driving" and the crew app's in-app directions. */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold uppercase tracking-wide text-muted">Travel</h3>
+          <a href={`/api/admin/export?kind=trips&${q}`} className="text-sm font-semibold text-gold hover:underline">CSV</a>
+        </div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Stat label="Trips" value={String(travel.total.trips)} hint={`${travel.total.miles.toLocaleString('en-US')} miles on the planned routes`} />
+          <Stat label="Drive time" value={mins(travel.total.trips ? travel.total.driveMinutes : null)} hint="Real time where the arrival is known, otherwise the route’s estimate" />
+          <Stat
+            label="Average trip"
+            value={mins(travel.total.averageTripMinutes)}
+            hint={travel.total.comparedTrips ? `Planned vs actual: ${plannedVsActual(travel.total)}` : 'Start driving to arrival'}
+          />
+          <Stat
+            label="Tolls paid"
+            value={formatMoney(travel.total.tollsCents)}
+            hint={
+              travel.total.avoidedPct != null
+                ? `${travel.total.avoidedPct}% of trips with a toll option went toll-free${travel.total.unpricedTollTrips ? ` · ${travel.total.unpricedTollTrips} toll trip${travel.total.unpricedTollTrips === 1 ? '' : 's'} without a price` : ''}`
+                : 'No toll roads on these trips'
+            }
+          />
+        </div>
+        <div className="overflow-x-auto rounded-2xl border border-line bg-white">
+          {travel.teams.length === 0 ? (
+            <p className="p-5 text-sm text-muted">No trips in this range. Trips are recorded when a team taps Start driving or starts directions in the crew app.</p>
+          ) : (
+            <table className="w-full min-w-[720px] text-sm">
+              <thead>
+                <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
+                  <th className="px-4 py-2.5 font-semibold">Team</th>
+                  <th className="px-3 py-2.5 text-right font-semibold">Trips</th>
+                  <th className="px-3 py-2.5 text-right font-semibold">Miles</th>
+                  <th className="px-3 py-2.5 text-right font-semibold">Drive time</th>
+                  <th className="px-3 py-2.5 text-right font-semibold">Avg trip</th>
+                  <th className="px-3 py-2.5 text-right font-semibold">Planned → actual</th>
+                  <th className="px-3 py-2.5 text-right font-semibold">Tolls</th>
+                  <th className="px-4 py-2.5 text-right font-semibold">Avoided tolls</th>
+                </tr>
+              </thead>
+              <tbody>
+                {travel.teams.map((x) => (
+                  <tr key={x.crewId ?? x.name} className="border-b border-line/60 last:border-0">
+                    <td className="px-4 py-3 font-semibold">{x.name}</td>
+                    <td className="px-3 py-3 text-right">{x.trips}</td>
+                    <td className="px-3 py-3 text-right">{x.miles.toLocaleString('en-US')}</td>
+                    <td className="px-3 py-3 text-right">{mins(x.driveMinutes)}</td>
+                    <td className="px-3 py-3 text-right">{mins(x.averageTripMinutes)}</td>
+                    <td className="px-3 py-3 text-right">{plannedVsActual(x)}</td>
+                    <td className="px-3 py-3 text-right font-semibold">
+                      {formatMoney(x.tollsCents)}
+                      {x.tollTrips > 0 && <span className="block text-xs font-normal text-muted">{x.tollTrips} toll trip{x.tollTrips === 1 ? '' : 's'}</span>}
+                    </td>
+                    <td className="px-4 py-3 text-right">{x.avoidedPct == null ? '—' : `${x.avoidedPct}%`}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </section>
+
       {/* Quality and pipeline */}
       <section className="grid gap-4 lg:grid-cols-2">
         <div className="card space-y-3">
@@ -221,6 +291,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: { ra
             ['payroll', 'Pay by person'],
             ['expenses', 'Expenses'],
             ['room-times', 'Room times'],
+            ['trips', 'Trips'],
             ['clients', 'Client list'],
           ]
             .filter(([k]) => !NEEDS[k] || perms.has(NEEDS[k]))

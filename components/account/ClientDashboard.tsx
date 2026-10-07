@@ -13,18 +13,29 @@ type Props = {
   lastClean: { jobId: string; date: string; photoCount: number; reviewed: boolean } | null;
   balanceCents: number;
   unpaidHref: string | null;
+  /** Has a card pay link; otherwise the invoice page explains how to pay. */
+  unpaidPayOnline?: boolean;
   canBook: boolean;
+  /** The last clean is already the page's cleaning card — don't repeat it here. */
+  lastInFocus?: boolean;
+  /** The next clean (or the invitation to book one) is already the page's cleaning card. */
+  nextInFocus?: boolean;
   referral: { link: string; rewardCents: number; creditCents: number } | null;
 };
 
+/**
+ * One item of the at-a-glance panel: a plain label, the answer in the
+ * heading face, a line of context, then what you can do about it. The
+ * items share one panel split by hairlines — the cleaning card above is
+ * the page's hero, so these stay quiet.
+ */
 function Card({ title, big, sub, children }: { title: string; big: string; sub?: string; children?: React.ReactNode }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-line bg-white p-5">
-      <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1" style={{ backgroundImage: 'linear-gradient(90deg,#016AEE,#2DBD91)' }} />
-      <p className="text-sm font-semibold text-slate">{title}</p>
-      <p className="mt-1 font-display text-2xl font-extrabold tracking-tight text-ink">{big}</p>
-      {sub && <p className="text-xs text-muted">{sub}</p>}
-      {children && <div className="mt-3 space-y-1.5 border-t border-line pt-3 text-sm">{children}</div>}
+    <div className="flex h-full flex-col bg-white px-5 py-5">
+      <p className="ct-label">{title}</p>
+      <p className="ct-h2 money mt-1">{big}</p>
+      {sub && <p className="ct-meta mt-0.5">{sub}</p>}
+      {children && <div className="mt-3 flex flex-col items-start">{children}</div>}
     </div>
   );
 }
@@ -38,24 +49,24 @@ export default async function ClientDashboard(p: Props) {
   const locale = await getLocale();
   const t = translator(accountMessages, locale);
   return (
-    <section aria-label={t('dashAria')} className="grid gap-3 sm:grid-cols-2">
-      <Card
+    <section aria-label={t('dashAria')} className="grid gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-2 sm:[&>*:last-child:nth-child(odd)]:col-span-2">
+      {!p.nextInFocus && <Card
         title={t('dashNextTitle')}
         big={p.next ? formatDateLabel(p.next.slotStart.slice(0, 10), locale) : t('dashNothingBooked')}
         sub={p.next ? `${formatSlotLabel(p.next.slotStart, p.next.slotEnd, locale)} · ${p.next.serviceName}` : undefined}
       >
         {p.next ? (
           <>
-            {p.next.onTheWay && <p className="font-semibold text-green">{t('dashOnTheWay')}</p>}
-            <Link href="/account/settings#bookings" className="block font-semibold text-bronze hover:underline">{t('dashReschedule')}</Link>
+            {p.next.onTheWay && <p className="ct-status ct-status-done mb-1">{t('dashOnTheWay')}</p>}
+            <Link href="/account/settings#bookings" className="ct-action">{t('dashReschedule')}</Link>
             <TeamNoteButton bookingId={p.next.bookingId} initial={p.next.note} />
           </>
         ) : p.canBook ? (
-          <Link href="/book" className="block font-semibold text-bronze hover:underline">{t('bookACleaning')}</Link>
+          <Link href="/book" className="ct-action">{t('bookACleaning')}</Link>
         ) : (
-          <p className="text-muted">{t('dashCanBookLater')}</p>
+          <p className="ct-meta">{t('dashCanBookLater')}</p>
         )}
-      </Card>
+      </Card>}
 
       <Card
         title={t('dashQuotesTitle')}
@@ -63,38 +74,38 @@ export default async function ClientDashboard(p: Props) {
         sub={p.openQuotes.length ? t('dashQuotesSub') : undefined}
       >
         {p.openQuotes.length === 0 ? (
-          <Link href="/new" className="block font-semibold text-bronze hover:underline">{t('dashRequestQuote')}</Link>
+          <Link href="/new" className="ct-action">{t('dashRequestQuote')}</Link>
         ) : (
           p.openQuotes.slice(0, 2).map((q) =>
             q.href ? (
-              <Link key={q.id} href={q.href} className="flex justify-between font-semibold text-bronze hover:underline">
+              <Link key={q.id} href={q.href} className="ct-action self-stretch justify-between">
                 <span>{t('dashReviewQuote')}</span>
-                <span>{formatMoney(q.totalCents)}</span>
+                <span className="money text-ink">{formatMoney(q.totalCents)}</span>
               </Link>
             ) : null,
           )
         )}
       </Card>
 
-      <Card
+      {!p.lastInFocus && p.lastClean && <Card
         title={t('dashLastTitle')}
         big={p.lastClean ? formatDateLabel(p.lastClean.date, locale) : t('dashNotYet')}
         sub={p.lastClean ? t(p.lastClean.photoCount === 1 ? 'dashPhotosOne' : 'dashPhotosMany', { count: p.lastClean.photoCount }) : undefined}
       >
         {p.lastClean && (
           <>
-            <Link href={`/account/jobs/${p.lastClean.jobId}`} className="block font-semibold text-bronze hover:underline">{t('dashSeeBeforeAfter')}</Link>
+            <Link href={`/account/jobs/${p.lastClean.jobId}`} className="ct-action">{t('dashSeeBeforeAfter')}</Link>
             {!p.lastClean.reviewed && (
-              <Link href={`/account/jobs/${p.lastClean.jobId}#rate`} className="block font-semibold text-bronze hover:underline">{t('dashRate')}</Link>
+              <Link href={`/account/jobs/${p.lastClean.jobId}#rate`} className="ct-action">{t('dashRate')}</Link>
             )}
           </>
         )}
-      </Card>
+      </Card>}
 
       <Card title={t('dashBillingTitle')} big={formatMoney(p.balanceCents)} sub={p.balanceCents ? t('dashDueNow') : t('dashNothingOwed')}>
-        {p.unpaidHref && <Link href={p.unpaidHref} className="block font-semibold text-bronze hover:underline">{t('dashPayNow')}</Link>}
-        <Link href="/account/invoices" className="block font-semibold text-bronze hover:underline">{t('dashInvoicesReceipts')}</Link>
-        <Link href="/account/settings#payment" className="block text-slate hover:text-ink">{t('dashCardAutopay')}</Link>
+        {p.unpaidHref && <Link href={p.unpaidHref} className="ct-action">{p.unpaidPayOnline ? t('dashPayNow') : t('jobViewInvoice')}</Link>}
+        <Link href="/account/invoices" className="ct-action">{t('dashInvoicesReceipts')}</Link>
+        <Link href="/account/settings#payment" className="ct-action font-medium text-slate">{t('dashCardAutopay')}</Link>
       </Card>
 
       {p.referral && (

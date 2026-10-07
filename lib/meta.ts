@@ -4,7 +4,7 @@ import { adConcepts, metaConnections } from '@/db/schema';
 import { seal, unseal } from '@/lib/secretBox';
 import { logChange, type Actor } from '@/lib/audit';
 import { appUrl } from '@/lib/url';
-import { copyIssues, imageUrlFor, getConcept, MuseError } from '@/lib/muse';
+import { copyIssues, imageUrlFor, getConcept, MuseError, tenantBookingLink } from '@/lib/muse';
 
 /**
  * Facebook and Instagram ads through the owner's OWN Meta ad account
@@ -157,7 +157,7 @@ export async function publishPaused(tenantId: string, id: string, days: number, 
         name: `${c.title} creative`,
         object_story_spec: {
           page_id: conn!.pageId,
-          link_data: { message: c.primaryText, link: appUrl('/new'), name: c.headline, picture: imageUrlFor(c.imagePrompt, c.imageSeed, true), call_to_action: { type: 'LEARN_MORE', value: { link: appUrl('/new') } } },
+          link_data: { message: c.primaryText, link: await tenantBookingLink(tenantId), name: c.headline, picture: imageUrlFor(c.imagePrompt, c.imageSeed, true), call_to_action: { type: 'LEARN_MORE', value: { link: await tenantBookingLink(tenantId) } } },
         },
       },
     });

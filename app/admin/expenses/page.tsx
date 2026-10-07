@@ -3,8 +3,8 @@ import { getTenant, formatMoney } from '@/lib/data';
 import { listExpenses, expenseSummary, monthlyTotals, EXPENSE_CATEGORIES } from '@/lib/expenses';
 import { businessTodayISO } from '@/lib/time';
 import { db } from '@/db/client';
-import { crews } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { crews, jobs, bookings, users } from '@/db/schema';
+import { and, eq, inArray } from 'drizzle-orm';
 import ExpensesManager from '@/components/admin/ExpensesManager';
 
 export const dynamic = 'force-dynamic';
@@ -28,6 +28,17 @@ export default async function ExpensesPage({ searchParams }: { searchParams: { m
     monthlyTotals(tenant.id, month, 6),
     db.select().from(crews).where(eq(crews.tenantId, tenant.id)),
   ]);
+  // Tolls the crew app adds (lib/trips.ts) carry their job: name the client it was for.
+  const jobIds = Array.from(new Set(rows.map((r) => r.jobId).filter((j): j is string => !!j)));
+  const jobRows = jobIds.length
+    ? await db
+        .select({ id: jobs.id, client: users.name })
+        .from(jobs)
+        .innerJoin(bookings, eq(bookings.id, jobs.bookingId))
+        .innerJoin(users, eq(users.id, bookings.clientId))
+        .where(and(inArray(jobs.id, jobIds), eq(bookings.tenantId, tenant.id)))
+    : [];
+  const jobLabel = new Map(jobRows.map((j) => [j.id, j.client]));
   const peak = Math.max(1, ...trend.map((t) => t.cents));
   return (
     <div className="space-y-6">
@@ -72,7 +83,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: { m
                   <span className="font-semibold">{formatMoney(c.cents)}</span>
                 </div>
                 <div className="mt-1 h-2 rounded-full bg-surface">
-                  <div className="h-2 rounded-full bg-gradient-to-r from-gold to-green-light" style={{ width: `${(c.cents / Math.max(1, summary.totalCents)) * 100}%` }} />
+                  <div className="h-2 rounded-full bg-ink" style={{ width: `${(c.cents / Math.max(1, summary.totalCents)) * 100}%` }} />
                 </div>
               </div>
             ))}
@@ -81,7 +92,10 @@ export default async function ExpensesPage({ searchParams }: { searchParams: { m
       </section>
 
       <ExpensesManager
-        expenses={rows.map((r) => ({ id: r.id, spentOn: r.spentOn, category: r.category, vendor: r.vendor, amountCents: r.amountCents, notes: r.notes, crewId: r.crewId }))}
+        expenses={rows.map((r) => ({
+          id: r.id, spentOn: r.spentOn, category: r.category, vendor: r.vendor, amountCents: r.amountCents, notes: r.notes, crewId: r.crewId,
+          job: r.jobId && jobLabel.has(r.jobId) ? { id: r.jobId, client: jobLabel.get(r.jobId)! } : null,
+        }))}
         categories={EXPENSE_CATEGORIES}
         crews={crewRows.map((c) => ({ id: c.id, name: c.name }))}
         today={today}

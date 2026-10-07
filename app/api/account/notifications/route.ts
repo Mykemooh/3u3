@@ -18,7 +18,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: 'Sign in required' }, { status: 401 });
   }
 
-  const parsed = schema.safeParse(await req.json());
+  const parsed = schema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: 'Pick a valid notification channel.' }, { status: 400 });
   const { notificationChannel } = parsed.data;
 

@@ -29,19 +29,19 @@ export default function PhonePinCard({ initiallySet }: { initiallySet: boolean }
 
   return (
     <section className="card">
-      <h2 className="mb-1 text-lg font-bold text-ink">{t('pinTitle')}</h2>
-      <p className="mb-4 text-sm text-slate">
+      <h2 className="ct-h2">{t('pinTitle')}</h2>
+      <p className="mb-5 mt-1 max-w-[60ch] text-[15px] text-slate">
         {t('pinIntro')} {set ? t('pinIsSet') : t('pinNotSet')}
       </p>
       <form className="flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); if (/^\d{4}$/.test(pin)) call('PUT'); }}>
         <label>
           <span className="label">{set ? t('pinNew') : t('pinLabel')}</span>
-          <input className="input w-28 tracking-widest" inputMode="numeric" autoComplete="off" maxLength={4} pattern="\d{4}" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))} />
+          <input className="input money w-32 text-center text-lg tracking-[0.3em]" inputMode="numeric" autoComplete="off" maxLength={4} pattern="\d{4}" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))} />
         </label>
-        <button className="btn-primary btn-sm" disabled={busy || pin.length !== 4}>{set ? t('pinChange') : t('pinSet')}</button>
-        {set && <button type="button" className="btn-secondary btn-sm" disabled={busy} onClick={() => call('DELETE')}>{t('remove')}</button>}
+        <button className="btn-primary btn-sm min-h-[48px]" disabled={busy || pin.length !== 4}>{set ? t('pinChange') : t('pinSet')}</button>
+        {set && <button type="button" className="btn-secondary btn-sm min-h-[48px]" disabled={busy} onClick={() => call('DELETE')}>{t('remove')}</button>}
       </form>
-      {msg && <p className="mt-2 text-sm text-slate" role="status">{msg}</p>}
+      {msg && <p className="mt-3 text-[15px] text-slate" role="status">{msg}</p>}
     </section>
   );
 }

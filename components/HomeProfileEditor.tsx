@@ -102,7 +102,7 @@ export default function HomeProfileEditor({ endpoint, initial, entryCodeConfigur
       <div>
         <label className="label">{t('homeEntryCode')}</label>
         {!entryCodeConfigured && (
-          <p className="mb-1.5 text-xs text-amber-700">{t('homeEntryNotConfigured')}</p>
+          <p className="mb-1.5 text-sm text-amber-700">{t('homeEntryNotConfigured')}</p>
         )}
         <div className="flex items-center gap-2">
           <input
@@ -114,11 +114,11 @@ export default function HomeProfileEditor({ endpoint, initial, entryCodeConfigur
             disabled={!entryCodeConfigured}
             autoComplete="off"
           />
-          <button type="button" onClick={() => setShowEntryCode((v) => !v)} className="shrink-0 text-xs font-semibold text-bronze hover:underline">
+          <button type="button" onClick={() => setShowEntryCode((v) => !v)} className="shrink-0 text-sm font-semibold text-bronze hover:underline">
             {showEntryCode ? t('homeHide') : t('homeShow')}
           </button>
         </div>
-        <p className="mt-1 text-xs text-muted">{t('homeEntryHelp')}</p>
+        <p className="mt-1 text-sm text-muted">{t('homeEntryHelp')}</p>
       </div>
 
       <div>
@@ -130,7 +130,7 @@ export default function HomeProfileEditor({ endpoint, initial, entryCodeConfigur
                 <span className="font-semibold text-ink">{n.roomName}: </span>
                 <span className="text-slate">{n.notes}</span>
               </div>
-              <button type="button" onClick={() => removeRoomNote(n.id)} className="shrink-0 text-xs text-muted hover:text-ink">
+              <button type="button" onClick={() => removeRoomNote(n.id)} className="shrink-0 text-sm text-muted hover:text-ink">
                 {t('remove')}
               </button>
             </div>
@@ -146,7 +146,7 @@ export default function HomeProfileEditor({ endpoint, initial, entryCodeConfigur
             <label className="label">{t('homeNote')}</label>
             <input className="input" placeholder={t('homeNotePlaceholder')} value={newNote} onChange={(e) => setNewNote(e.target.value)} />
           </div>
-          <button type="button" onClick={addRoomNote} disabled={!newRoom.trim() || !newNote.trim()} className="btn-secondary !px-4 !py-2.5 text-sm">
+          <button type="button" onClick={addRoomNote} disabled={!newRoom.trim() || !newNote.trim()} className="btn-secondary btn-sm min-h-[48px]">
             {t('homeAdd')}
           </button>
         </div>

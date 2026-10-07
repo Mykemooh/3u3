@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth';
 import { quickbooksConnection } from '@/lib/quickbooks';
 import { integrationOverview, STATUS_LABEL, type IntegrationStatus } from '@/lib/integrationsHub';
 import { appUrl } from '@/lib/url';
+import { getTenant } from '@/lib/data';
+import { isHouseBrand } from '@/lib/brand';
 import DisconnectQuickbooksButton from '@/components/admin/DisconnectQuickbooksButton';
 import CalendarConnectCard from '@/components/CalendarConnectCard';
 import ProviderConnect from '@/components/admin/ProviderConnect';
@@ -13,8 +15,8 @@ import { calendarConnection } from '@/lib/googleCalendar';
 export const dynamic = 'force-dynamic';
 
 const PILL: Record<IntegrationStatus, string> = {
-  connected: 'bg-green-light text-[#0E6B62]',
-  built_in: 'bg-green-light text-[#0E6B62]',
+  connected: 'bg-green-light text-green',
+  built_in: 'bg-green-light text-green',
   needs_connect: 'bg-gold/10 text-bronze',
   not_used: 'bg-surface text-slate',
   missing_keys: 'bg-amber-50 text-amber-800',
@@ -37,6 +39,11 @@ export default async function AdminIntegrations({ searchParams }: { searchParams
   const user = session?.user as { tenantId?: string; id?: string } | undefined;
   if (!user?.tenantId) redirect('/admin');
 
+  // Server keys are the platform operator's job. The house account (whose
+  // owner runs this deployment) sees how to add them; every other company
+  // sees that the TRASHCAN team switches those on — nothing for them to do.
+  const tenant = await getTenant();
+  const operator = !!tenant && isHouseBrand(tenant);
   const [items, qb, cal] = await Promise.all([
     integrationOverview(user.tenantId, user.id ?? null),
     quickbooksConnection(user.tenantId),
@@ -52,18 +59,19 @@ export default async function AdminIntegrations({ searchParams }: { searchParams
       <div>
         <h1 className="mb-1 text-2xl font-bold text-ink">Integrations</h1>
         <p className="max-w-2xl text-slate">
-          What this company is connected to. Keys live in Vercel → Settings → Environment Variables (never in this
-          app or in a message); per-company accounts connect with their own sign-in button.
+          {operator
+            ? 'What this company is connected to. Keys live in Vercel → Settings → Environment Variables (never in this app or in a message); per-company accounts connect with their own sign-in button.'
+            : 'What this company is connected to. Your own accounts (QuickBooks, Google Calendar and others) connect with their sign-in button. Anything marked “Not available yet” is switched on by the TRASHCAN team — there’s nothing for you to set up.'}
         </p>
         <p className="mt-3 text-sm text-slate">
           <span className="font-semibold text-ink">{working}</span> working ·{' '}
-          <span className="font-semibold text-ink">{missing}</span> missing keys ·{' '}
+          <span className="font-semibold text-ink">{missing}</span> {operator ? 'missing keys' : 'not available yet'} ·{' '}
           <span className="font-semibold text-ink">{items.length - working - missing}</span> waiting on a step here
         </p>
       </div>
 
-      {searchParams.qb_connected && <p className="rounded-xl bg-green-light px-4 py-3 text-sm font-semibold text-[#0E6B62]">QuickBooks connected.</p>}
-      {searchParams.connected && <p className="rounded-xl bg-green-light px-4 py-3 text-sm font-semibold text-[#0E6B62]">{searchParams.connected} connected.</p>}
+      {searchParams.qb_connected && <p className="rounded-xl bg-green-light px-4 py-3 text-sm font-semibold text-green">QuickBooks connected.</p>}
+      {searchParams.connected && <p className="rounded-xl bg-green-light px-4 py-3 text-sm font-semibold text-green">{searchParams.connected} connected.</p>}
       {(searchParams.qb_error || searchParams.error) && (
         <p className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{searchParams.qb_error || searchParams.error}</p>
       )}
@@ -79,7 +87,7 @@ export default async function AdminIntegrations({ searchParams }: { searchParams
                 <div key={i.key} id={i.key} className="card !p-5">
                   <div className="flex items-start justify-between gap-3">
                     <h3 className="font-semibold text-ink">{i.name}</h3>
-                    <span className={`pill shrink-0 ${PILL[i.status]}`}>{STATUS_LABEL[i.status]}</span>
+                    <span className={`pill shrink-0 ${PILL[i.status]}`}>{!operator && i.status === 'missing_keys' ? 'Not available yet' : STATUS_LABEL[i.status]}</span>
                   </div>
                   <p className="mt-1 text-sm text-slate">{i.does}</p>
 
@@ -117,7 +125,7 @@ export default async function AdminIntegrations({ searchParams }: { searchParams
                     </p>
                   )}
 
-                  {(i.steps.length > 0 || i.env.length > 0) && (
+                  {(operator || i.status !== 'missing_keys') && (i.steps.length > 0 || (operator && i.env.length > 0)) && (
                     <details className="group mt-3 text-sm">
                       <summary className="cursor-pointer font-semibold text-bronze">How to set it up</summary>
                       <ol className="mt-2 list-decimal space-y-1 pl-5 text-slate">
@@ -125,7 +133,7 @@ export default async function AdminIntegrations({ searchParams }: { searchParams
                           <li key={s}>{fill(s)}</li>
                         ))}
                       </ol>
-                      {i.env.length > 0 && (
+                      {operator && i.env.length > 0 && (
                         <ul className="mt-3 space-y-1">
                           {i.env.map((v) => (
                             <li key={v.name} className="text-slate">
@@ -136,7 +144,7 @@ export default async function AdminIntegrations({ searchParams }: { searchParams
                           ))}
                         </ul>
                       )}
-                      {i.getFrom && (
+                      {operator && i.getFrom && (
                         <p className="mt-2 text-muted">
                           Get them from{' '}
                           <a className="text-bronze underline" href={i.getFrom.url} target="_blank" rel="noreferrer">{i.getFrom.label}</a>.

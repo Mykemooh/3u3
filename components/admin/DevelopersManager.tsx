@@ -22,7 +22,7 @@ const when = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—';
 
 const DELIVERY_PILL: Record<Delivery['status'], string> = {
-  SUCCEEDED: 'bg-green-light text-[#0E6B62]',
+  SUCCEEDED: 'bg-green-light text-green',
   PENDING: 'bg-amber-50 text-amber-800',
   FAILED: 'bg-red-50 text-red-700',
 };

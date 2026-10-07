@@ -9,7 +9,7 @@ type Check = { id: string; userId: string; status: string; result: string | null
 const LABEL: Record<string, [string, string]> = {
   INVITED: ['Form sent', 'bg-gold/10 text-bronze'],
   PENDING: ['In progress', 'bg-amber-50 text-amber-800'],
-  CLEAR: ['Clear', 'bg-green-light text-[#0E6B62]'],
+  CLEAR: ['Clear', 'bg-green-light text-green'],
   CONSIDER: ['Needs review', 'bg-amber-100 text-amber-900'],
   SUSPENDED: ['On hold at Checkr', 'bg-amber-50 text-amber-800'],
   DISPUTE: ['Disputed', 'bg-amber-50 text-amber-800'],

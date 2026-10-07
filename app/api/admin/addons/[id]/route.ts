@@ -22,7 +22,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     return NextResponse.json({ error: 'Admin only' }, { status: 403 });
   }
   if (!(await belongsTo(guardAdmin.tenantId, 'addon', params.id))) return notFound();
-  const body = await req.json();
+  const body = await req.json().catch(() => ({}));
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
 

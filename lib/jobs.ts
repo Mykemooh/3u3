@@ -170,6 +170,14 @@ export async function startJob(
     .set({ status: 'IN_PROGRESS', startedAt, cleanerNotesAckAt, ...stamp, ...CLEAR_TRACKING })
     .where(eq(jobs.id, jobId));
   await jobEvent('job.started', jobId);
+  // Closes the drive over (lib/trips.ts) with its real time, unless the
+  // in-app map already saw them arrive. Reporting only — never blocks starting.
+  try {
+    const { markTripArrived } = await import('@/lib/trips');
+    await markTripArrived(jobId, startedAt, 'job_start');
+  } catch (err) {
+    console.error('[jobs] could not close the trip for job', jobId, err);
+  }
   return { ...job, ...CLEAR_TRACKING, ...stamp, status: 'IN_PROGRESS' as const, startedAt, cleanerNotesAckAt };
 }
 

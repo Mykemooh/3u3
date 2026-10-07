@@ -84,7 +84,7 @@ function SetupInner() {
       <div className="mt-10 w-full max-w-md">
         {step === 'intro' && (
           <>
-            <h1 className="text-2xl font-bold text-ink">{t('mfaSetupTitle')}</h1>
+            <h1 className="ct-title">{t('mfaSetupTitle')}</h1>
             <p className="mt-2 text-slate">
               {t('mfaSetupIntro')}
             </p>
@@ -116,12 +116,12 @@ function SetupInner() {
 
         {step === 'scan' && qr && (
           <>
-            <h1 className="text-2xl font-bold text-ink">{t('mfaSetupScanTitle')}</h1>
+            <h1 className="ct-title">{t('mfaSetupScanTitle')}</h1>
             <div className="mt-5 flex justify-center rounded-2xl border border-line bg-white p-4">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={qr.qrDataUrl} alt={t('mfaSetupQrAlt')} width={220} height={220} />
             </div>
-            <p className="mt-3 text-center text-xs text-muted">
+            <p className="mt-3 text-center text-sm text-muted">
               {t('mfaSetupCantScan')}
               <br />
               <span className="font-mono text-sm text-ink">{qr.secret.match(/.{1,4}/g)?.join(' ')}</span>
@@ -146,7 +146,7 @@ function SetupInner() {
 
         {step === 'codes' && (
           <>
-            <h1 className="text-2xl font-bold text-ink">{t('mfaSetupCodesTitle')}</h1>
+            <h1 className="ct-title">{t('mfaSetupCodesTitle')}</h1>
             <p className="mt-2 text-sm text-slate">
               {t('mfaSetupCodesIntro')}
             </p>

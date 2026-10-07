@@ -4,7 +4,9 @@ import { invoices, invoiceItems, bookings, users, serviceTypes, addresses, tenan
 import { and, eq, gte, sql } from 'drizzle-orm';
 import { formatSlotDateLong } from '@/lib/time';
 import { getBookingAddOns } from '@/lib/addons';
-import { getStripe } from '@/lib/stripe';
+import { getStripe, isStripeConfigured } from '@/lib/stripe';
+import { appUrl } from '@/lib/url';
+import { logChange } from '@/lib/audit';
 import { getOwnerEmail } from '@/lib/data';
 import { logNotification } from '@/lib/bookings';
 import { sendEmail, invoiceEmail, paymentReceivedCustomerEmail, paymentReceivedOwnerEmail, type EmailBrand } from '@/lib/email';
@@ -165,7 +167,35 @@ export async function getInvoiceWithItems(invoiceId: string) {
     ? (await db.select().from(serviceTypes).where(eq(serviceTypes.id, booking.serviceTypeId)).limit(1))[0]
     : undefined;
   const brand = await brandFor(invoice.tenantId);
-  return { invoice, items, client, booking, address, service, brand };
+  return { invoice, items, client, booking, address, service, brand, lines: billableLines(invoice, items, service?.name, booking?.slotStart) };
+}
+
+export type InvoiceLine = { id: string; description: string; amountCents: number; synthetic?: boolean };
+
+/**
+ * The lines that add up to what the client is charged — the stored items
+ * minus any tip line (a tip is shown on its own, never in the total). An
+ * invoice saved without items (an import, an older row) or whose items no
+ * longer add up to its total still reads correctly: the service becomes the
+ * one line, or the difference shows as an adjustment, so the subtotal on
+ * the page, the email and the Stripe invoice always match the total.
+ */
+export function billableLines(
+  invoice: { totalCents: number },
+  items: { id: string; description: string; amountCents: number; isTip?: boolean | null }[],
+  serviceName?: string | null,
+  slotStart?: string | null,
+): InvoiceLine[] {
+  const lines: InvoiceLine[] = items.filter((i) => !i.isTip).map((i) => ({ id: i.id, description: i.description, amountCents: i.amountCents }));
+  const sum = lines.reduce((s, i) => s + i.amountCents, 0);
+  const gap = invoice.totalCents - sum;
+  if (lines.length === 0 && invoice.totalCents !== 0) {
+    const label = serviceName ?? 'Cleaning service';
+    lines.push({ id: 'service', description: slotStart ? `${label} — ${formatSlotDateLong(slotStart)}` : label, amountCents: invoice.totalCents, synthetic: true });
+  } else if (gap !== 0) {
+    lines.push({ id: 'adjustment', description: 'Adjustment', amountCents: gap, synthetic: true });
+  }
+  return lines;
 }
 
 /** Replaces an invoice's line items wholesale — only while it's still a DRAFT. */
@@ -246,16 +276,49 @@ export async function getOrCreateStripeCustomer(clientId: string): Promise<strin
  * before. A declined/failed autopay charge falls back to that same
  * emailed pay link rather than leaving the invoice stuck.
  */
-export async function sendInvoice(invoiceId: string): Promise<{ url: string }> {
+export async function sendInvoice(invoiceId: string): Promise<{ url: string; online: boolean }> {
   const data = await getInvoiceWithItems(invoiceId);
   if (!data) throw new InvoiceError('Invoice not found');
-  const { invoice, items, client } = data;
+  const { invoice, lines: items, client } = data;
 
   if (invoice.status === 'PAID') throw new InvoiceError('This invoice is already paid');
   if (invoice.status === 'VOID') throw new InvoiceError('This invoice is void');
 
   let hostedUrl = invoice.hostedInvoiceUrl;
   let autopayCharged = false;
+
+  // No card payments here yet — Stripe isn't set up on this server, or the
+  // company hasn't connected its own Stripe account. The invoice still goes
+  // out: the email opens the client's invoice page (which says how to pay),
+  // and the owner records the payment when it arrives (recordOfflinePayment).
+  const online = !hostedUrl && (await onlinePaymentsReady(invoice.tenantId, invoice.totalCents));
+  if (!hostedUrl && !online) {
+    if (invoice.status === 'DRAFT') {
+      await db.update(invoices).set({ status: 'SENT', sentAt: new Date() }).where(eq(invoices.id, invoiceId));
+    }
+    const viewUrl = appUrl(`/account/invoices/${invoiceId}`);
+    if (client?.email) {
+      const { subject, html } = invoiceEmail({
+        brand: await brandFor(invoice.tenantId),
+        name: client.name,
+        totalCents: invoice.totalCents,
+        items,
+        payUrl: viewUrl,
+        viewOnly: true,
+        locale: client.locale,
+      });
+      await sendEmail({ to: client.email, subject, html });
+    }
+    await logNotification({
+      tenantId: invoice.tenantId,
+      channel: 'EMAIL',
+      recipient: client?.email ?? client?.phone ?? 'customer',
+      triggerEvent: 'INVOICE_SENT_CUSTOMER',
+      relatedBookingId: invoice.bookingId,
+    });
+    await invoiceEvent('invoice.sent', invoiceId);
+    return { url: viewUrl, online: false };
+  }
 
   if (!hostedUrl) {
     const stripe = getStripe();
@@ -356,7 +419,59 @@ export async function sendInvoice(invoiceId: string): Promise<{ url: string }> {
   }
   await invoiceEvent('invoice.sent', invoiceId);
 
-  return { url: hostedUrl };
+  return { url: hostedUrl, online: true };
+}
+
+/** Whether a card payment link can be made for this company right now. */
+export async function onlinePaymentsReady(tenantId: string, amountCents: number): Promise<boolean> {
+  if (!isStripeConfigured()) return false;
+  try {
+    await cardRouting(tenantId, amountCents);
+    return true;
+  } catch (err) {
+    if (err instanceof ConnectError) return false;
+    throw err;
+  }
+}
+
+export const OFFLINE_METHODS = ['CASH', 'CHECK', 'BANK_TRANSFER', 'CARD_ELSEWHERE', 'OTHER'] as const;
+export type OfflineMethod = (typeof OFFLINE_METHODS)[number];
+const METHOD_LABEL: Record<OfflineMethod, string> = {
+  CASH: 'cash',
+  CHECK: 'check',
+  BANK_TRANSFER: 'bank transfer',
+  CARD_ELSEWHERE: 'card (outside TRASHCAN)',
+  OTHER: 'other',
+};
+
+/**
+ * The owner got paid some other way — cash, a check, Zelle — and records
+ * it, so the invoice reads Paid, the client gets their receipt email, and
+ * payroll, reports and accounting sync see it like any other payment.
+ */
+export async function recordOfflinePayment(
+  invoiceId: string,
+  tenantId: string,
+  method: OfflineMethod,
+  actor?: { id: string; name: string },
+  note?: string,
+) {
+  const invoice = (await db.select().from(invoices).where(and(eq(invoices.id, invoiceId), eq(invoices.tenantId, tenantId))).limit(1))[0];
+  if (!invoice) throw new InvoiceError('Invoice not found');
+  if (invoice.status === 'PAID') throw new InvoiceError('This invoice is already paid');
+  if (invoice.status === 'VOID') throw new InvoiceError('This invoice is void');
+  const now = new Date();
+  await db.update(invoices).set({ status: 'PAID', paidAt: now, sentAt: invoice.sentAt ?? now }).where(eq(invoices.id, invoice.id));
+  await logChange({
+    tenantId,
+    actor: actor ?? null,
+    entityType: 'invoice',
+    entityId: invoice.id,
+    action: 'paid',
+    summary: `Payment recorded — ${METHOD_LABEL[method]}${note ? ` (${note.slice(0, 120)})` : ''}`,
+  });
+  await invoiceEvent('invoice.paid', invoice.id);
+  await afterInvoicePaid(invoice.id);
 }
 
 /**
@@ -386,7 +501,13 @@ export async function confirmInvoicePaid(stripeInvoice: Stripe.Invoice) {
     .set({ status: 'PAID', paidAt: new Date(), stripePaymentIntentId: paymentIntentId, receiptUrl })
     .where(eq(invoices.id, invoice.id));
   await invoiceEvent('invoice.paid', invoice.id);
+  await afterInvoicePaid(invoice.id, receiptUrl);
+}
 
+/** Receipts, the owner's alert and accounting sync — however the invoice was paid. */
+async function afterInvoicePaid(invoiceId: string, receiptUrl?: string) {
+  const invoice = (await db.select().from(invoices).where(eq(invoices.id, invoiceId)).limit(1))[0];
+  if (!invoice) return;
   const client = (await db.select().from(users).where(eq(users.id, invoice.clientId)).limit(1))[0];
   const items = await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoice.id));
   const brand = await brandFor(invoice.tenantId);

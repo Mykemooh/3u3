@@ -29,7 +29,7 @@ export default function SocialMediaConsent({ initialConsent }: { initialConsent:
 
   if (consent !== null) {
     return (
-      <p className="card text-sm text-slate">
+      <p className="card text-[15px] text-slate">
         {consent ? t('consentYesNote') : t('consentNoNote')}{' '}
         <button onClick={() => answer(!consent)} disabled={busy} className="font-semibold text-bronze hover:underline">
           {t('consentChange')}
@@ -40,15 +40,15 @@ export default function SocialMediaConsent({ initialConsent }: { initialConsent:
 
   return (
     <div className="card space-y-3">
-      <p className="font-semibold text-ink">{t('consentAsk')}</p>
-      <p className="text-sm text-slate">
+      <h2 className="ct-h3">{t('consentAsk')}</h2>
+      <p className="max-w-[60ch] text-[15px] text-slate">
         {t('consentBody')}
       </p>
-      <div className="flex gap-2">
-        <button onClick={() => answer(true)} disabled={busy} className="btn-primary !px-4 !py-2 text-sm">
+      <div className="flex flex-wrap gap-2">
+        <button onClick={() => answer(true)} disabled={busy} className="btn-primary btn-sm min-h-[44px]">
           {t('consentYes')}
         </button>
-        <button onClick={() => answer(false)} disabled={busy} className="btn-secondary !px-4 !py-2 text-sm">
+        <button onClick={() => answer(false)} disabled={busy} className="btn-secondary btn-sm min-h-[44px]">
           {t('consentNo')}
         </button>
       </div>

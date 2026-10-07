@@ -5,6 +5,8 @@ import Providers from './providers';
 import BrandWatermark from '@/components/BrandWatermark';
 import TexWidget from '@/components/TexWidget';
 import ErrorReporter from '@/components/ErrorReporter';
+import { getTenant } from '@/lib/data';
+import { isHouseBrand } from '@/lib/brand';
 
 /**
  * Two faces, per the brand book: Inter for body/UI text, Plus Jakarta Sans
@@ -42,11 +44,20 @@ const tcDisplay = localFont({
   display: 'swap',
 });
 
-export const metadata: Metadata = {
+const HOUSE_METADATA: Metadata = {
   title: '3U3 Cleaning — House cleaning in Katy & Houston',
   description:
     'Family owned, built in Texas. Standard, deep and move-in/move-out cleaning. A real person confirms your exact price at your door.',
 };
+
+// The fallback tab title for any page without its own: the company this
+// visitor or signed-in user belongs to — never 3U3's on another company's
+// portal.
+export async function generateMetadata(): Promise<Metadata> {
+  const tenant = await getTenant().catch(() => undefined);
+  if (!tenant || isHouseBrand(tenant)) return HOUSE_METADATA;
+  return { title: tenant.isPlatform ? 'TRASHCAN' : tenant.name, description: tenant.tagline ?? undefined };
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

@@ -223,7 +223,15 @@ export default function ScheduleCleanForm({
               </div>
               <button type="button" className="text-sm font-semibold text-bronze" onClick={() => setClientId('')}>Change</button>
             </div>
-          ) : (
+          ) : null}
+          {client && !client.address && (
+            <p className="mt-2 rounded-xl bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
+              No home address yet, so the team won’t have directions.{' '}
+              <a href={`/admin/clients/${client.id}`} target="_blank" rel="noreferrer" className="font-semibold underline">Add it on their page</a>{' '}
+              — visits you schedule now pick it up automatically.
+            </p>
+          )}
+          {client ? null : (
             <>
               <input className="input" placeholder="Search by name or phone" value={search} onChange={(e) => setSearch(e.target.value)} autoFocus />
               <ul className="mt-2 divide-y divide-line rounded-xl border border-line">

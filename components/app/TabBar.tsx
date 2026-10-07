@@ -40,9 +40,11 @@ function isActive(pathname: string, href: string, all: Tab[]) {
   return best?.href === href;
 }
 
-/** Desktop: inline tabs in the header. */
-export function HeaderTabs({ tabs, label = 'Sections' }: { tabs: Tab[]; label?: string }) {
+/** Desktop: inline tabs in the header. `tone="dark"` is the cleaner app's black header. */
+export function HeaderTabs({ tabs, label = 'Sections', tone = 'light' }: { tabs: Tab[]; label?: string; tone?: 'light' | 'dark' }) {
   const pathname = usePathname();
+  const on = tone === 'dark' ? 'bg-white/10 text-white' : 'bg-surface text-ink';
+  const off = tone === 'dark' ? 'text-white/60 hover:bg-white/[0.06] hover:text-white' : 'text-muted hover:bg-surface hover:text-ink';
   return (
     <nav className="hidden items-center gap-1 md:flex" aria-label={label}>
       {tabs.map((t) => {
@@ -52,9 +54,7 @@ export function HeaderTabs({ tabs, label = 'Sections' }: { tabs: Tab[]; label?: 
             key={t.href}
             href={t.href}
             aria-current={active ? 'page' : undefined}
-            className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
-              active ? 'bg-white/10 text-gold' : 'text-white/70 hover:bg-white/10 hover:text-white'
-            }`}
+            className={`rounded-[10px] px-3 py-2 text-[15px] font-semibold transition-colors ${active ? on : off}`}
           >
             {t.label}
           </Link>
@@ -64,24 +64,34 @@ export function HeaderTabs({ tabs, label = 'Sections' }: { tabs: Tab[]; label?: 
   );
 }
 
-/** Phone: a tab bar within thumb reach, clear of the home indicator. */
-export function BottomTabs({ tabs, label = 'Sections' }: { tabs: Tab[]; label?: string }) {
+/**
+ * Phone: a tab bar within thumb reach, clear of the home indicator.
+ * `tone="dark"` (the cleaner app) is a black dock, a fixed 64px tall, so a
+ * page's own action bar can sit right on top of it (components/CrewJob.tsx).
+ * `data-tex-avoid` tells the Tex bubble to stay above it.
+ */
+export function BottomTabs({ tabs, label = 'Sections', tone = 'light' }: { tabs: Tab[]; label?: string; tone?: 'light' | 'dark' }) {
   const pathname = usePathname();
+  const dark = tone === 'dark';
   return (
     <nav
       aria-label={label}
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 backdrop-blur md:hidden"
+      data-tex-avoid=""
+      className={`fixed inset-x-0 bottom-0 z-40 md:hidden ${dark ? 'tc-dark border-t border-white/[0.08] bg-tc-black' : 'border-t border-line bg-white/95 backdrop-blur'}`}
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <div className="mx-auto grid max-w-xl" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
         {tabs.map((t) => {
           const active = isActive(pathname, t.href, tabs);
+          const color = dark ? (active ? 'text-white' : 'text-white/50') : active ? 'text-ink' : 'text-muted';
           return (
             <Link
               key={t.href}
               href={t.href}
               aria-current={active ? 'page' : undefined}
-              className={`flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-semibold ${active ? 'text-bronze' : 'text-muted'}`}
+              className={`flex flex-col items-center justify-center gap-1 px-1 text-center text-[12px] font-semibold leading-tight ${
+                dark ? 'h-16 pt-1.5' : 'min-h-[60px] pb-1.5 pt-2'
+              } ${color}`}
             >
               <svg
                 viewBox="0 0 24 24"
@@ -96,7 +106,10 @@ export function BottomTabs({ tabs, label = 'Sections' }: { tabs: Tab[]; label?: 
                 {ICONS[t.icon]}
               </svg>
               {t.label}
-              <span className={`mt-0.5 h-0.5 w-5 rounded-full ${active ? 'bg-gold' : 'bg-transparent'}`} />
+              <span
+                className={`h-[3px] w-5 rounded-full ${active ? (dark ? 'bg-tc-lime' : 'tab-indicator bg-gold') : 'bg-transparent'}`}
+                aria-hidden="true"
+              />
             </Link>
           );
         })}

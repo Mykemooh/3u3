@@ -214,6 +214,8 @@ export function invoiceEmail(input: {
   totalCents: number;
   items: { description: string; amountCents: number }[];
   payUrl: string;
+  /** No card link yet: the button opens the invoice page, which says how to pay. */
+  viewOnly?: boolean;
   locale?: Locale;
 }) {
   const t = tFor(input.locale);
@@ -239,8 +241,9 @@ export function invoiceEmail(input: {
           </tr>
         </table>
         <p style="text-align:center;margin:24px 0;">
-          <a href="${input.payUrl}" style="background:${input.brand.primaryColor};color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">${t('invPay')}</a>
+          <a href="${input.payUrl}" style="background:${input.brand.primaryColor};color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:bold;display:inline-block;">${t(input.viewOnly ? 'invView' : 'invPay')}</a>
         </p>
+        ${input.viewOnly ? `<p style="color:#555;font-size:14px;">${t('invHowToPay', { brand: esc(input.brand.name) })}</p>` : ''}
         ${brandFooter(input.brand)}
       </div>
     `,

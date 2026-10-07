@@ -92,6 +92,50 @@ export async function afterReview(input: { tenantId: string; bookingId: string; 
   return { googleReviewUrl: happy ? tenant?.googleReviewUrl ?? null : null, recleanRequested: false };
 }
 
+/**
+ * A client says something about a finished clean wasn't right, from the
+ * "Anything not quite right?" card on their before-and-after page — with or
+ * without having rated it. Lands with the owner the same way a low rating
+ * does: an alert on the dashboard, an email, and (if they already rated
+ * this visit) the review flips to an open re-clean request.
+ */
+export async function reportProblem(input: { tenantId: string; bookingId: string; clientId: string; note: string }) {
+  const note = input.note.trim().slice(0, 2000);
+  const [client, booking, tenant, review] = await Promise.all([
+    db.select().from(users).where(eq(users.id, input.clientId)).limit(1).then((r) => r[0]),
+    db.select().from(bookings).where(eq(bookings.id, input.bookingId)).limit(1).then((r) => r[0]),
+    db.select().from(tenants).where(eq(tenants.id, input.tenantId)).limit(1).then((r) => r[0]),
+    db.select().from(reviews).where(and(eq(reviews.bookingId, input.bookingId), eq(reviews.tenantId, input.tenantId))).limit(1).then((r) => r[0]),
+  ]);
+  if (review && review.recleanStatus !== 'REQUESTED') {
+    await db.update(reviews).set({ recleanStatus: 'REQUESTED' }).where(eq(reviews.id, review.id));
+  }
+  const who = client?.name ?? 'A client';
+  const when = booking?.slotStart.slice(0, 10) ?? 'their last clean';
+  await db.insert(notificationLog).values({
+    id: crypto.randomUUID(),
+    tenantId: input.tenantId,
+    channel: 'EMAIL',
+    recipient: 'admin',
+    triggerEvent: `RECLEAN_REQUESTED: ${who} reported a problem with the ${when} clean: ${note.slice(0, 160)}`,
+    relatedBookingId: input.bookingId,
+    isRead: false,
+  });
+  const owner = await getOwnerEmail(input.tenantId);
+  if (owner) {
+    await sendEmail({
+      to: owner,
+      subject: `Problem reported — ${who}`,
+      html: simpleEmail({
+        brandName: tenant?.name ?? 'TrashCan',
+        heading: 'A client says something wasn’t right',
+        body: `${who} reported a problem with the ${when} clean.\n\n“${note}”\n\nReach out today and offer to come back.${client?.phone ? ` Their phone: ${client.phone}.` : ''}`,
+        cta: { label: 'Open the client', url: appUrl(`/admin/clients/${input.clientId}`) },
+      }),
+    }).catch(() => false);
+  }
+}
+
 /** Average room scores and re-clean counts, for reports and the reviews page. */
 export async function qualitySummary(tenantId: string) {
   const rooms = await db.select().from(roomRatings).where(eq(roomRatings.tenantId, tenantId));

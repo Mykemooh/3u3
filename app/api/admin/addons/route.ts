@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   if (!(await adminSession()) || !tenantId) {
     return NextResponse.json({ error: 'Admin only' }, { status: 403 });
   }
-  const body = await req.json();
+  const body = await req.json().catch(() => ({}));
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
 

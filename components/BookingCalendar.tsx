@@ -82,25 +82,25 @@ export default function BookingCalendar({
           type="button"
           onClick={() => shiftMonth(-1)}
           disabled={atMin}
-          className="rounded-lg border border-line px-2.5 py-1.5 text-sm font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-30"
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-line text-ink transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-30"
           aria-label={t('prevMonth')}
         >
-          ←
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6" /></svg>
         </button>
-        <p className="font-semibold text-ink">
+        <p className="ct-h3">
           {monthHeading(new Date(viewYear, viewMonth, 1), locale)}
         </p>
         <button
           type="button"
           onClick={() => shiftMonth(1)}
           disabled={atMax}
-          className="rounded-lg border border-line px-2.5 py-1.5 text-sm font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-30"
+          className="flex h-11 w-11 items-center justify-center rounded-full border border-line text-ink transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-30"
           aria-label={t('nextMonth')}
         >
-          →
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
         </button>
       </div>
-      <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-muted">
+      <div className="grid grid-cols-7 gap-1 text-center text-[13px] font-semibold text-muted">
         {weekdays.map((d, i) => (
           <div key={i} className="py-1">
             {d}
@@ -115,12 +115,12 @@ export default function BookingCalendar({
               type="button"
               disabled={!cell.available}
               onClick={() => onSelectDate(cell.date!)}
-              className={`relative aspect-square rounded-lg text-sm font-medium transition ${
+              className={`money relative aspect-square min-h-[40px] rounded-xl sm:aspect-auto sm:h-12 text-[15px] transition ${
                 !cell.available
                   ? 'cursor-not-allowed text-muted/50'
                   : selectedDate === cell.date
-                  ? 'bg-gold text-ink'
-                  : 'text-ink hover:bg-cream'
+                  ? 'bg-gold font-semibold text-white'
+                  : 'font-semibold text-ink hover:bg-cream'
               } ${cell.isToday && selectedDate !== cell.date ? 'ring-1 ring-inset ring-gold/60' : ''}`}
             >
               {cell.dayNum}

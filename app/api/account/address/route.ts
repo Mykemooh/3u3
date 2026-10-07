@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/db/client';
 import { addresses } from '@/db/schema';
-import { getAddressesFor, getTenant, getOwnerEmail, getUserById } from '@/lib/data';
+import { getAddressesFor, getTenant, getOwnerEmail, getUserById, attachAddressToOpenVisits } from '@/lib/data';
 import { logNotification } from '@/lib/bookings';
 import { sendEmail, clientAccountChangeOwnerEmail } from '@/lib/email';
 import { appUrl } from '@/lib/url';
@@ -30,7 +30,7 @@ export async function PATCH(req: Request) {
   }
   const clientId = (session.user as any).id as string;
 
-  const body = await req.json();
+  const body = await req.json().catch(() => ({}));
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: 'Please fill in a complete address.' }, { status: 400 });
   const { line1, city, state, zip, notes, bedrooms } = parsed.data;
@@ -47,6 +47,7 @@ export async function PATCH(req: Request) {
   } else {
     await db.insert(addresses).values({ id: crypto.randomUUID(), userId: clientId, line1, city, state, zip, notes: notes ?? null, bedrooms: bedrooms ?? null, isPrimary: true });
   }
+  await attachAddressToOpenVisits(clientId);
 
   if (changed) {
     const client = await getUserById(clientId);

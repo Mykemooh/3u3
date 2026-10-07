@@ -1,3 +1,5 @@
+import { normalizePhone, samePhone } from '@/lib/phone';
+import { belongsTo, notFound } from '@/lib/tenantGuard';
 import { adminSession } from '@/lib/adminApi';
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
@@ -18,17 +20,20 @@ const schema = z.object({
 // home, never a flat rate. Creates the client record if this phone number
 // isn't on file yet.
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions);
-  const tenantId = (session?.user as any)?.tenantId;
-  if (!(await adminSession())) {
+  const admin = await adminSession();
+  if (!admin) {
     return NextResponse.json({ error: 'Admin only' }, { status: 403 });
   }
-  const body = await req.json();
+  const tenantId = admin.tenantId;
+  const body = await req.json().catch(() => ({}));
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
-  const { clientPhone, clientName, serviceTypeId, rateDollars } = parsed.data;
+  const { clientName, serviceTypeId, rateDollars } = parsed.data;
+  const clientPhone = normalizePhone(parsed.data.clientPhone);
+  if (!(await belongsTo(tenantId, 'service', serviceTypeId))) return notFound();
 
-  let client = (await db.select().from(users).where(eq(users.phone, clientPhone)).limit(1))[0];
+  // This company's own client with that number — never another company's.
+  let client = (await db.select().from(users).where(and(samePhone(clientPhone) ?? eq(users.phone, clientPhone), eq(users.tenantId, tenantId))).limit(1))[0];
   if (!client) {
     const id = crypto.randomUUID();
     await db.insert(users).values({ id, tenantId, role: 'CUSTOMER', name: clientName, phone: clientPhone });

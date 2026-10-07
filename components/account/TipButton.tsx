@@ -23,7 +23,7 @@ export default function TipButton({ invoiceId }: { invoiceId: string }) {
     });
     const data = await res.json().catch(() => ({}));
     setBusy(false);
-    if (!res.ok || !data.url) return setError(data.error || t('tipError'));
+    if (!res.ok || !data.url) return setError(data.error && data.error !== 'tips-unavailable' ? data.error : t('tipError'));
     window.location.href = data.url;
   }
 
@@ -37,10 +37,10 @@ export default function TipButton({ invoiceId }: { invoiceId: string }) {
 
   return (
     <div className="rounded-xl border border-line p-4">
-      <p className="mb-3 text-sm font-semibold text-ink">{t('tipAdd')}</p>
+      <p className="ct-label mb-3 text-ink">{t('tipAdd')}</p>
       <div className="flex flex-wrap items-center gap-2">
         {PRESETS_CENTS.map((cents) => (
-          <button key={cents} type="button" disabled={busy} onClick={() => startTip(cents)} className="btn-secondary !px-4 !py-2 text-sm">
+          <button key={cents} type="button" disabled={busy} onClick={() => startTip(cents)} className="btn-secondary btn-sm money min-h-[44px]">
             ${(cents / 100).toFixed(0)}
           </button>
         ))}
@@ -53,18 +53,18 @@ export default function TipButton({ invoiceId }: { invoiceId: string }) {
             placeholder={t('tipOther')}
             value={custom}
             onChange={(e) => setCustom(e.target.value)}
-            className="input w-20 !py-2 text-sm"
+            className="input money w-24 !py-2.5"
           />
           <button
             type="button"
             disabled={busy || !custom || Number(custom) <= 0}
             onClick={() => startTip(Math.round(Number(custom) * 100))}
-            className="btn-primary !px-4 !py-2 text-sm"
+            className="btn-primary btn-sm min-h-[44px]"
           >
             {t('tipGo')}
           </button>
         </div>
-        <button type="button" onClick={() => setOpen(false)} className="text-sm text-muted hover:text-ink">
+        <button type="button" onClick={() => setOpen(false)} className="ct-action mx-0 text-slate">
           {t('cancel')}
         </button>
       </div>

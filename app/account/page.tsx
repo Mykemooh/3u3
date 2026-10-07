@@ -11,6 +11,7 @@ import { invoiceLabel } from '@/lib/invoices';
 import JourneyRail from '@/components/app/JourneyRail';
 import LiveTrackingMap from '@/components/app/LiveTrackingMap';
 import AddToCalendar from '@/components/AddToCalendar';
+import TeamNoteButton from '@/components/account/TeamNoteButton';
 import { getTracking, publicMapboxToken, type TrackingState } from '@/lib/tracking';
 import ClientDashboard from '@/components/account/ClientDashboard';
 import { getEstimatesForClient } from '@/lib/estimates';
@@ -41,6 +42,7 @@ export default async function AccountHome() {
   const locale = await getLocale();
   const t = translator(accountMessages, locale);
   const tenant = await getTenant();
+  const companyName = tenant?.name ?? '';
   const [rows, rates, quoteRows, reviewRows, referralOn, me] = await Promise.all([
     getAccountBookings(user.id),
     getClientRatesFor(user.id),
@@ -86,37 +88,46 @@ export default async function AccountHome() {
       : null,
     balanceCents: needsPayment.reduce((sum, r) => sum + (r.invoice?.totalCents ?? 0), 0),
     unpaidHref: needsPayment[0] ? `/account/invoices/${needsPayment[0].invoice!.id}` : null,
+    unpaidPayOnline: !!needsPayment[0]?.invoice?.hostedInvoiceUrl,
     canBook: rates.length > 0,
+    // The cleaning card above already shows the last clean when it's the
+    // focus, so the glance panel doesn't repeat it.
+    lastInFocus: !!lastRow && focus === lastRow,
+    nextInFocus: !focus || (!!nextRow && focus === nextRow),
     referral: code && tenant ? { link: referralLink(code), rewardCents: tenant.referralCreditCents, creditCents: me?.creditCents ?? 0 } : null,
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="eyebrow">{t('homeEyebrow')}</p>
-          <h1 className="mt-1 text-3xl font-extrabold">{first ? t('homeHi', { name: first }) : t('homeHiNoName')}</h1>
+    <div className="space-y-6">
+      <header className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="ct-title">{first ? t('homeHi', { name: first }) : t('homeHiNoName')}</h1>
+          <p className="ct-lead mt-1">{t('homeEyebrow')}</p>
         </div>
-        <Link href="/account/settings" className="mt-1 text-sm font-semibold text-bronze hover:underline">
+        <Link href="/account/settings" className="ct-action mt-0.5 shrink-0">
+          <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" />
+          </svg>
           {t('homeSettingsLink')}
         </Link>
-      </div>
-
-      <ClientDashboard {...dashboard} />
-
+      </header>
 
       {focus ? (
         <FocusCard
           row={focus}
           isPast={focus.job?.status === 'COMPLETE' && focus === past[0] && !active && upcoming.length === 0}
+          upcoming={focus === nextRow && focus.job?.status !== 'COMPLETE'}
+          rateHref={focus.job?.status === 'COMPLETE' && !reviewed.has(focus.booking.id) ? `/account/jobs/${focus.job.id}#rate` : null}
           tracking={tracking}
           locale={locale}
+          companyName={companyName}
           t={t}
         />
       ) : (
-        <div className="card text-center">
-          <h2 className="text-xl font-bold">{t('homeEmptyTitle')}</h2>
-          <p className="mx-auto mt-2 max-w-sm text-slate">
+        <div className="rounded-2xl border border-line bg-white px-6 py-8 text-center shadow-card">
+          <h2 className="ct-hero">{t('homeEmptyTitle')}</h2>
+          <p className="ct-lead mx-auto mt-2 max-w-[34ch]">
             {rates.length ? t('homeEmptyCanBook') : t('homeEmptyNeedsEstimate')}
           </p>
           {rates.length > 0 && (
@@ -127,40 +138,42 @@ export default async function AccountHome() {
         </div>
       )}
 
+      <ClientDashboard {...dashboard} />
+
       {upcoming.filter((r) => r !== focus).length > 0 && (
         <section>
-          <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-muted">{t('homeAlsoBooked')}</h2>
-          <div className="space-y-3">
+          <h2 className="ct-h2 mb-3 mt-4">{t('homeAlsoBooked')}</h2>
+          <ul className="divide-y divide-line rounded-2xl border border-line bg-white">
             {upcoming
               .filter((r) => r !== focus)
               .map((r) => (
-                <div key={r.booking.id} className="card flex items-center justify-between gap-3 p-5">
-                  <div>
-                    <p className="font-semibold">{formatDateLabel(r.booking.slotStart.slice(0, 10), locale)}</p>
-                    <p className="text-sm text-slate">
-                      {formatSlotLabel(r.booking.slotStart, r.booking.slotEnd, locale)} · {serviceName(r, locale, t)}
-                    </p>
+                <li key={r.booking.id} className="flex items-center justify-between gap-3 px-5 py-4">
+                  <div className="min-w-0">
+                    <p className="ct-h3">{formatDateLabel(r.booking.slotStart.slice(0, 10), locale)}</p>
+                    <p className="money mt-0.5 text-[15px] text-slate">{formatSlotLabel(r.booking.slotStart, r.booking.slotEnd, locale)}</p>
+                    <p className="ct-meta">{serviceName(r, locale, t)}</p>
                   </div>
                   <AddToCalendar
+                    compact
                     bookingId={r.booking.id}
                     event={{
                       uid: `booking-${r.booking.id}@3u3cleaning`,
-                      title: t('calendarTitle', { service: serviceName(r, locale, t) }),
-                      description: t('calendarDescription', { service: serviceName(r, locale, t).toLowerCase() }),
+                      title: t('calendarTitle', { service: serviceName(r, locale, t), company: companyName }),
+                      description: t('calendarDescription', { service: serviceName(r, locale, t).toLowerCase(), company: companyName }),
                       location: r.address ? `${r.address.line1}, ${r.address.city}` : undefined,
                       slotStart: r.booking.slotStart,
                       slotEnd: r.booking.slotEnd,
                     }}
                   />
-                </div>
+                </li>
               ))}
-          </div>
+          </ul>
         </section>
       )}
 
       {past.filter((r) => r !== focus).length > 0 && (
         <section>
-          <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-muted">{t('homePastCleanings')}</h2>
+          <h2 className="ct-h2 mb-3 mt-4">{t('homePastCleanings')}</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             {past
               .filter((r) => r !== focus)
@@ -168,9 +181,9 @@ export default async function AccountHome() {
                 <Link key={r.booking.id} href={`/account/jobs/${r.job!.id}`} className="card-interactive flex items-center gap-4 p-4">
                   <Thumb url={r.cover} noPhoto={t('homeNoPhoto')} />
                   <div className="min-w-0">
-                    <p className="font-semibold">{formatDateLabel(r.booking.slotStart.slice(0, 10), locale)}</p>
-                    <p className="text-sm text-slate">{serviceName(r, locale, t)}</p>
-                    <p className="text-xs font-semibold text-bronze">{t('seeBeforeAfter')}</p>
+                    <p className="ct-h3">{formatDateLabel(r.booking.slotStart.slice(0, 10), locale)}</p>
+                    <p className="text-[15px] text-slate">{serviceName(r, locale, t)}</p>
+                    <p className="mt-0.5 text-sm font-semibold text-bronze">{t('seeBeforeAfter')}</p>
                   </div>
                 </Link>
               ))}
@@ -179,7 +192,7 @@ export default async function AccountHome() {
       )}
 
       {rates.length > 0 && focus && (
-        <Link href="/book" className="btn-dark w-full">
+        <Link href="/book" className="btn-dark w-full sm:w-auto">
           {t('homeBookAnother')}
         </Link>
       )}
@@ -191,11 +204,36 @@ function Thumb({ url, noPhoto }: { url: string | null; noPhoto: string }) {
   return url ? (
     <img src={url} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover" loading="lazy" />
   ) : (
-    <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-surface text-xs text-muted">{noPhoto}</span>
+    <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-surface text-muted">
+      <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <rect x="3" y="4" width="18" height="16" rx="2.5" />
+        <circle cx="9" cy="10" r="1.8" />
+        <path d="m21 16-5-5-9 9" />
+      </svg>
+      <span className="sr-only">{noPhoto}</span>
+    </span>
   );
 }
 
-function FocusCard({ row, isPast, tracking, locale, t }: { row: AccountBooking; isPast: boolean; tracking: TrackingState | null; locale: Locale; t: T }) {
+function FocusCard({
+  row,
+  isPast,
+  upcoming,
+  rateHref,
+  tracking,
+  locale,
+  t,
+  companyName,
+}: {
+  row: AccountBooking;
+  isPast: boolean;
+  upcoming: boolean;
+  rateHref: string | null;
+  tracking: TrackingState | null;
+  locale: Locale;
+  t: T;
+  companyName: string;
+}) {
   const { booking, job, invoice } = row;
   const status = job?.status;
   const heading =
@@ -209,36 +247,46 @@ function FocusCard({ row, isPast, tracking, locale, t }: { row: AccountBooking; 
         : t('focusAllDone')
       : t('focusNext');
 
+  const settled = status === 'COMPLETE';
   return (
-    <section className="overflow-hidden rounded-2xl border border-line bg-white shadow-card">
-      <div className="p-6">
+    <section className="overflow-hidden rounded-2xl border border-line bg-white shadow-card" aria-labelledby={`focus-${booking.id}`}>
+      <div className="p-5 sm:p-7">
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="eyebrow">{heading}</p>
-            <p className="mt-2 text-2xl font-bold">{formatDateLabel(booking.slotStart.slice(0, 10), locale)}</p>
+          <div className="min-w-0">
+            <p className={`ct-status ${settled ? 'ct-status-done' : ''}`}>{heading}</p>
+            <h2 id={`focus-${booking.id}`} className="ct-hero mt-2">{formatDateLabel(booking.slotStart.slice(0, 10), locale)}</h2>
           </div>
-          {!status || status === 'PENDING' ? (
+        </div>
+        <p className="money mt-1.5 font-semibold text-ink">{formatSlotLabel(booking.slotStart, booking.slotEnd, locale)}</p>
+        <p className="money text-slate">
+          {serviceName(row, locale, t)}
+          {booking.priceCents != null ? ` · ${formatMoney(booking.priceCents)}` : ''}
+        </p>
+        {row.address && <p className="ct-meta mt-0.5">{row.address.line1}, {row.address.city}</p>}
+        <div className="mt-7">
+          <JourneyRail steps={cleaningJourney(row, locale)} />
+        </div>
+        {upcoming && (
+          <div className="mt-5 flex flex-col items-start gap-1 border-t border-line pt-4">
+            {(!status || status === 'PENDING') && (
+              <div className="mb-1">
             <AddToCalendar
               bookingId={booking.id}
               event={{
                 uid: `booking-${booking.id}@3u3cleaning`,
-                title: t('calendarTitle', { service: serviceName(row, locale, t) }),
-                description: t('calendarDescription', { service: serviceName(row, locale, t).toLowerCase() }),
+                title: t('calendarTitle', { service: serviceName(row, locale, t), company: companyName }),
+                description: t('calendarDescription', { service: serviceName(row, locale, t).toLowerCase(), company: companyName }),
                 location: row.address ? `${row.address.line1}, ${row.address.city}` : undefined,
                 slotStart: booking.slotStart,
                 slotEnd: booking.slotEnd,
               }}
             />
-          ) : null}
-        </div>
-        <p className="mt-1 text-slate">
-          {formatSlotLabel(booking.slotStart, booking.slotEnd, locale)} · {serviceName(row, locale, t)}
-          {booking.priceCents != null ? ` · ${formatMoney(booking.priceCents)}` : ''}
-        </p>
-        {row.address && <p className="text-slate">{row.address.line1}, {row.address.city}</p>}
-        <div className="mt-6">
-          <JourneyRail steps={cleaningJourney(row, locale)} />
-        </div>
+              </div>
+            )}
+            <Link href="/account/settings#bookings" className="ct-action">{t('dashReschedule')}</Link>
+            <TeamNoteButton bookingId={booking.id} initial={booking.clientNotes ?? null} />
+          </div>
+        )}
         {job && tracking?.status === 'EN_ROUTE' && (
           <div className="mt-6">
             <LiveTrackingMap jobId={job.id} token={publicMapboxToken()} initial={tracking} />
@@ -246,30 +294,52 @@ function FocusCard({ row, isPast, tracking, locale, t }: { row: AccountBooking; 
         )}
       </div>
       {status === 'COMPLETE' && job && (
-        <Link href={`/account/jobs/${job.id}`} className="flex items-center gap-4 border-t border-line bg-surface p-4 transition hover:bg-cream/60">
+        <Link href={`/account/jobs/${job.id}`} className="group flex items-center gap-4 border-t border-line px-5 py-4 transition-colors hover:bg-surface sm:px-7">
           <Thumb url={row.cover} noPhoto={t('homeNoPhoto')} />
-          <div>
-            <p className="font-semibold">{t('focusSeeBeforeAfter')}</p>
-            <p className="text-sm text-slate">
+          <div className="min-w-0 flex-1">
+            <p className="ct-h3">{t('focusSeeBeforeAfter')}</p>
+            <p className="ct-meta mt-0.5">
               {t(row.photoCount === 1 ? 'focusPhotosOne' : 'focusPhotosMany', { count: row.photoCount })}
               {row.videoCount ? ` · ${t(row.videoCount === 1 ? 'focusVideosOne' : 'focusVideosMany', { count: row.videoCount })}` : ''}
             </p>
           </div>
+          <Chevron />
+        </Link>
+      )}
+      {rateHref && (
+        <Link href={rateHref} className="flex min-h-[56px] items-center justify-between gap-3 border-t border-line px-5 py-3 text-[15px] font-semibold text-bronze transition-colors hover:bg-surface sm:px-7">
+          {t('dashRate')}
+          <Chevron />
         </Link>
       )}
       {invoice && (
-        <Link href={`/account/invoices/${invoice.id}`} className="flex items-center justify-between border-t border-line px-6 py-4 text-sm font-semibold transition hover:bg-cream/60">
-          <span>
-            {invoiceLabel(invoice)} · {formatMoney(invoice.totalCents)}
+        <Link href={`/account/invoices/${invoice.id}`} className="flex min-h-[56px] items-center justify-between gap-3 border-t border-line px-5 py-3 transition-colors hover:bg-surface sm:px-7">
+          <span className="text-[15px] text-slate">
+            {invoiceLabel(invoice)} · <span className="money font-semibold text-ink">{formatMoney(invoice.totalCents)}</span>
           </span>
-          <span className={invoice.status === 'PAID' ? 'text-green' : 'text-bronze'}>{invoice.status === 'PAID' ? t('pillPaid') : t('focusViewAndPay')}</span>
+          <span className="flex items-center gap-2">
+            {invoice.status === 'PAID' ? (
+              <span className="ct-status ct-status-done">{t('pillPaid')}</span>
+            ) : (
+              <span className="text-[15px] font-semibold text-bronze">{t('focusViewAndPay')}</span>
+            )}
+            <Chevron />
+          </span>
         </Link>
       )}
       {status === 'IN_PROGRESS' && (
-        <p className="border-t border-line bg-cream/60 px-6 py-3 text-sm text-bronze">
+        <p className="border-t border-line bg-cream px-5 py-3 text-[15px] text-slate sm:px-7">
           {t('focusPhotosSoon')}
         </p>
       )}
     </section>
+  );
+}
+
+function Chevron() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-muted" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m9 6 6 6-6 6" />
+    </svg>
   );
 }

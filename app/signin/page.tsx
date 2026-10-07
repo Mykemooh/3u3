@@ -128,7 +128,7 @@ function SignInInner() {
       )}
 
       <div className="w-full max-w-sm">
-        <h1 className="text-2xl font-bold text-ink">{t('signIn')}</h1>
+        <h1 className="ct-title">{t('signIn')}</h1>
         <p className="mb-6 mt-1 text-sm text-slate">
           {t('signinIntro')}
         </p>
@@ -152,7 +152,7 @@ function SignInInner() {
               </svg>
               {t('signinWithGoogle')}
             </button>
-            <div className="mb-4 flex items-center gap-3 text-xs text-muted">
+            <div className="mb-4 flex items-center gap-3 text-sm text-muted">
               <span className="h-px flex-1 bg-line" /> {t('signinOr')} <span className="h-px flex-1 bg-line" />
             </div>
           </>
@@ -208,7 +208,7 @@ function SignInInner() {
               onChange={(e) => setIdentifier(e.target.value)}
               required
             />
-            <p className="mt-1.5 text-xs text-muted">
+            <p className="mt-1.5 text-sm text-muted">
               {t('signinIdentifierHelp')}
             </p>
           </div>
@@ -226,7 +226,7 @@ function SignInInner() {
               onChange={(e) => setPassword(e.target.value)}
               required
             />
-            <p className="mt-1.5 text-right text-xs">
+            <p className="mt-1.5 text-right text-sm">
               <Link href="/forgot" className="font-semibold text-bronze hover:underline">
                 {t('signinForgot')}
               </Link>
@@ -261,7 +261,7 @@ function SignInInner() {
                 ),
               })}
             </p>
-            <p className="mt-2 text-center text-xs text-muted">
+            <p className="mt-2 text-center text-sm text-muted">
               {t('signinNewAccountNote')}
             </p>
           </>
