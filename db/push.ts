@@ -1282,6 +1282,9 @@ async function main() {
     -- English / Spanish (lib/i18n): each person's language, for the app and
     -- for every text and email they receive.
     ALTER TABLE users ADD COLUMN IF NOT EXISTS locale TEXT NOT NULL DEFAULT 'en';
+
+    -- How a company prices a home clean (lib/quoting.ts).
+    ALTER TABLE tenants ADD COLUMN IF NOT EXISTS quoting_json TEXT;
     DO $$ BEGIN
       ALTER TABLE users ADD CONSTRAINT users_locale_check CHECK (locale IN ('en','es'));
     EXCEPTION WHEN duplicate_object THEN NULL; END $$;

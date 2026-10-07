@@ -38,6 +38,7 @@ export async function setupSteps(tenantId: string): Promise<SetupStep[]> {
   const steps: Omit<SetupStep, 'skipped'>[] = [
     { key: 'profile', title: 'Set up your company', why: 'Your name, logo and colours appear on quotes, invoices and the client portal.', href: '/admin/settings', cta: 'Company settings', done: !!(tenant.logoUrl || tenant.tagline) },
     { key: 'services', title: 'Check your services', why: 'Each service has its own checklist and default length. Pre-filled from your answers at signup.', href: '/admin/services', cta: 'Review services', done: services.length > 0 && skipped.has('services-reviewed') },
+    { key: 'quoting', title: 'Choose how you quote', why: 'By rooms, square footage, the hour or a walkthrough, plus clutter, pets and repeat-visit discounts. Estimates then work out the price for you.', href: '/admin/settings/quoting', cta: 'Set up quoting', done: !!tenant.quotingJson },
     { key: 'team', title: 'Invite your team', why: 'Cleaners get their own portal with their jobs, pay and next payout.', href: '/admin/team', cta: 'Add people', done: people.some((p) => p.role === 'CLEANER') },
     { key: 'clients', title: 'Add your clients', why: 'Add them one by one, or import a spreadsheet you already keep.', href: '/admin/clients', cta: 'Add clients', done: people.some((p) => p.role === 'CUSTOMER') },
     { key: 'templates', title: 'Pick schedule templates', why: 'A template holds a clean’s length, arrival window and repeat pattern, so booking takes three taps.', href: '/admin/templates', cta: 'Open templates', done: templates.length > 0 },
@@ -63,7 +64,7 @@ export async function setupSteps(tenantId: string): Promise<SetupStep[]> {
     focus = undefined;
   }
   const first = FOCUS[focus ?? ''] ?? [];
-  const rank = (key: string) => (key === 'profile' ? 0 : key === 'services' ? 1 : first.includes(key) ? 2 + first.indexOf(key) : 10);
+  const rank = (key: string) => (key === 'profile' ? 0 : key === 'services' ? 1 : key === 'quoting' ? 2 : first.includes(key) ? 3 + first.indexOf(key) : 10);
   const ordered = steps.map((s, i) => ({ s, i })).sort((a, b) => rank(a.s.key) - rank(b.s.key) || a.i - b.i).map((x) => x.s);
   return ordered.map((s) => ({ ...s, skipped: skipped.has(s.key) }));
 }

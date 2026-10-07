@@ -97,6 +97,9 @@ export const tenants = pgTable('tenants', {
   googleReviewUrl: text('google_review_url'),
   referralCreditCents: integer('referral_credit_cents').notNull().default(2500),
   winbackDays: integer('winback_days').notNull().default(60),
+  // How the company prices a home clean (lib/quoting.ts, Settings → Quoting).
+  // Null until the owner saves; until then the signup answer picks defaults.
+  quotingJson: text('quoting_json'),
   // Self-serve signup (app/start) — the six intake answers as JSON, and
   // which setup-guide steps the owner marked "I don't need this".
   intakeJson: text('intake_json'),
