@@ -1,5 +1,20 @@
 /** @type {import('next').NextConfig} */
+// Hosts that only send cleaners to the cleaner app (e.g. trashcancleaning.app),
+// on the main address (NEXTAUTH_URL), where they sign in once and add
+// "TrashCan Crew" to their home screen (app/crew/layout.tsx).
+const CREW_HOSTS = (process.env.CREW_HOSTS || '').split(',').map((h) => h.trim().toLowerCase()).filter(Boolean);
+const RAW_ORIGIN = (process.env.NEXTAUTH_URL || '').trim().replace(/\/+$/, '');
+// NEXTAUTH_URL is sometimes set as a bare hostname; links need the scheme.
+const APP_ORIGIN = RAW_ORIGIN && !/^https?:\/\//.test(RAW_ORIGIN) ? `https://${RAW_ORIGIN}` : RAW_ORIGIN;
+
 const nextConfig = {
+  async redirects() {
+    if (!CREW_HOSTS.length || !/^https?:\/\//.test(APP_ORIGIN)) return [];
+    return CREW_HOSTS.flatMap((host) => [
+      { source: '/crew/:path*', has: [{ type: 'host', value: host }], destination: `${APP_ORIGIN}/crew/:path*`, permanent: false },
+      { source: '/:path*', has: [{ type: 'host', value: host }], destination: `${APP_ORIGIN}/crew`, permanent: false },
+    ]);
+  },
   // The address picker (components/AddressInput.tsx) calls Mapbox from the
   // browser, so it needs the public token client-side. Mirroring it here
   // means MAPBOX_ACCESS_TOKEN stays the only variable to set.
