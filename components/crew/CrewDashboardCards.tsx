@@ -25,7 +25,7 @@ export default function CrewDashboardCards({ data, locale = 'en' }: { data: NonN
   return (
     <section aria-label={t('dashAria')} className="grid gap-3 sm:grid-cols-2">
       <div className="relative overflow-hidden rounded-2xl border border-line bg-white p-5">
-        <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1" style={{ backgroundImage: 'linear-gradient(90deg,#016AEE,#2DBD91)' }} />
+        <span aria-hidden="true" className="accent-bar absolute inset-x-0 top-0 h-1" />
         <p className="text-sm font-semibold text-slate">{t('dashToday')}</p>
         {next ? (
           <>
@@ -43,7 +43,7 @@ export default function CrewDashboardCards({ data, locale = 'en' }: { data: NonN
       </div>
 
       <div className="relative overflow-hidden rounded-2xl border border-line bg-white p-5">
-        <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1" style={{ backgroundImage: 'linear-gradient(90deg,#016AEE,#2DBD91)' }} />
+        <span aria-hidden="true" className="accent-bar absolute inset-x-0 top-0 h-1" />
         <p className="text-sm font-semibold text-slate">{t('dashComingUp')}</p>
         <p className="mt-1 font-display text-2xl font-extrabold text-ink">{t(data.upcoming.length === 1 ? 'dashJobsOne' : 'dashJobsMany', { count: data.upcoming.length })}</p>
         <ul className="mt-2 space-y-1.5">
@@ -64,7 +64,7 @@ export default function CrewDashboardCards({ data, locale = 'en' }: { data: NonN
       </div>
 
       <div className="relative overflow-hidden rounded-2xl border border-line bg-white p-5">
-        <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1" style={{ backgroundImage: 'linear-gradient(90deg,#016AEE,#2DBD91)' }} />
+        <span aria-hidden="true" className="accent-bar absolute inset-x-0 top-0 h-1" />
         <p className="text-sm font-semibold text-slate">{t('dashEarned')}</p>
         {!data.period ? (
           <p className="mt-2 text-sm text-muted">{t('dashNoPayroll')}</p>
@@ -86,7 +86,7 @@ export default function CrewDashboardCards({ data, locale = 'en' }: { data: NonN
       </div>
 
       <div className="relative overflow-hidden rounded-2xl border border-line bg-white p-5">
-        <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1" style={{ backgroundImage: 'linear-gradient(90deg,#016AEE,#2DBD91)' }} />
+        <span aria-hidden="true" className="accent-bar absolute inset-x-0 top-0 h-1" />
         <p className="text-sm font-semibold text-slate">{t('dashNextPayout')}</p>
         {data.period ? (
           <>

@@ -58,8 +58,9 @@ export default function TexWidget() {
   if (onTcSurface) return null;
   if (HIDDEN.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return null;
   const lifted = WITH_TABS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-  // In the owner's workspace (TRASHCAN-styled), Tex wears the workspace's colours.
-  const workspace = pathname === '/admin' || pathname.startsWith('/admin/');
+  // In the owner's workspace and the cleaner app (TRASHCAN-styled), Tex wears TrashCan's colours.
+  // The cleaner app wears it too (components/app/AppShell.tsx).
+  const workspace = ['/admin', '/crew'].some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
   async function ask(text: string) {
     const q = text.trim();

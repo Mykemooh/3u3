@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { authOptions } from '@/lib/auth';
 import { getTenant, getServiceTypes, getClientRatesFor, formatMoney } from '@/lib/data';
 import BookWizard from '@/components/BookWizard';
+import CompanyBrandFrame from '@/components/brand/CompanyBrandFrame';
 import AccessNotice from '@/components/AccessNotice';
 import { homeForRole } from '@/lib/nav';
 import { HIDDEN_SERVICE_KEYS } from '@/lib/services';
@@ -47,6 +48,7 @@ export default async function BookPage() {
   // carries its own EN | ES toggle (top-right, above the wizard's logo).
   return (
     <LocaleProvider locale={locale}>
+      <CompanyBrandFrame>
       <div className="relative" lang={locale}>
         <div className="absolute right-4 top-4 z-10">
           <LanguageToggle tone="light" />
@@ -60,6 +62,7 @@ export default async function BookPage() {
           addOns={addOns}
         />
       </div>
+      </CompanyBrandFrame>
     </LocaleProvider>
   );
 }

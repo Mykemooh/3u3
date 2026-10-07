@@ -52,8 +52,8 @@ export function HeaderTabs({ tabs, label = 'Sections' }: { tabs: Tab[]; label?: 
             key={t.href}
             href={t.href}
             aria-current={active ? 'page' : undefined}
-            className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
-              active ? 'bg-white/10 text-gold' : 'text-white/70 hover:bg-white/10 hover:text-white'
+            className={`rounded-[10px] px-3 py-2 text-[14px] font-semibold transition-colors ${
+              active ? 'bg-surface text-ink' : 'text-muted hover:bg-surface hover:text-ink'
             }`}
           >
             {t.label}
@@ -81,7 +81,7 @@ export function BottomTabs({ tabs, label = 'Sections' }: { tabs: Tab[]; label?: 
               key={t.href}
               href={t.href}
               aria-current={active ? 'page' : undefined}
-              className={`flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-semibold ${active ? 'text-bronze' : 'text-muted'}`}
+              className={`flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-semibold ${active ? 'text-ink' : 'text-muted'}`}
             >
               <svg
                 viewBox="0 0 24 24"
@@ -96,7 +96,7 @@ export function BottomTabs({ tabs, label = 'Sections' }: { tabs: Tab[]; label?: 
                 {ICONS[t.icon]}
               </svg>
               {t.label}
-              <span className={`mt-0.5 h-0.5 w-5 rounded-full ${active ? 'bg-gold' : 'bg-transparent'}`} />
+              <span className={`mt-0.5 h-[3px] w-5 rounded-full ${active ? 'tab-indicator bg-gold' : 'bg-transparent'}`} />
             </Link>
           );
         })}

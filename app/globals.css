@@ -336,6 +336,16 @@
     @apply relative;
   }
 
+  /* The brand line along the top of a summary card: the company's two
+     colours. The cleaner app (TrashCan's look) keeps its cards plain, like
+     the owner workspace's. */
+  .accent-bar {
+    background-image: linear-gradient(90deg, rgb(var(--c-gold)), rgb(var(--c-gold-light)));
+  }
+  .theme-tc .accent-bar {
+    display: none;
+  }
+
   /* The same line, drawn across the top of a card as the pointer lands. */
   .card-line {
     position: relative;
@@ -620,6 +630,12 @@
 /* The company watermark and Tex bubble belong to the company's site, not
    TrashCan's pages. */
 body:has([data-tc-surface]) .brand-watermark {
+  display: none;
+}
+/* The 3U3 watermark is 3U3's own: not in the cleaner app (TrashCan's look)
+   or another company's client portal. */
+body:has(.portal-crew) .brand-watermark,
+body:has(.portal-company) .brand-watermark {
   display: none;
 }
 

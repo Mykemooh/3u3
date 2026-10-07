@@ -20,7 +20,7 @@ type Props = {
 function Card({ title, big, sub, children }: { title: string; big: string; sub?: string; children?: React.ReactNode }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-line bg-white p-5">
-      <span aria-hidden="true" className="absolute inset-x-0 top-0 h-1" style={{ backgroundImage: 'linear-gradient(90deg,#016AEE,#2DBD91)' }} />
+      <span aria-hidden="true" className="accent-bar absolute inset-x-0 top-0 h-1" />
       <p className="text-sm font-semibold text-slate">{title}</p>
       <p className="mt-1 font-display text-2xl font-extrabold tracking-tight text-ink">{big}</p>
       {sub && <p className="text-xs text-muted">{sub}</p>}
