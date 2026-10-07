@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
+import { useT } from '@/components/i18n/LocaleProvider';
+import { formsMessages } from '@/lib/i18n/messages/forms';
 
 export type PickedAddress = { line1: string; city: string; state: string; zip: string };
 
@@ -48,6 +50,7 @@ export default function AddressInput({
   placeholder?: string;
   required?: boolean;
 }) {
+  const t = useT(formsMessages);
   const listId = useId();
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [open, setOpen] = useState(false);
@@ -184,9 +187,9 @@ export default function AddressInput({
         </ul>
       )}
       {TOKEN && !failed && !picked && value.trim().length >= 4 && !showList && (
-        <p className="mt-1 text-xs text-muted">Pick your address from the list so our crew can find you.</p>
+        <p className="mt-1 text-xs text-muted">{t('addressPickHint')}</p>
       )}
-      {picked && <p className="mt-1 text-xs font-semibold text-green">✓ Address found</p>}
+      {picked && <p className="mt-1 text-xs font-semibold text-green">{t('addressFound')}</p>}
     </div>
   );
 }

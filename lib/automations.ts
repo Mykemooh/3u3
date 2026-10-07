@@ -432,7 +432,7 @@ export async function sendWalkthroughReminders(now = Date.now()) {
         key: 'walkthrough_reminder',
         state,
         client,
-        vars: { date: formatDateLabel(b.slotStart.slice(0, 10), clientLocale(client)), time: formatSlotLabel(b.slotStart, b.slotEnd) },
+        vars: { date: formatDateLabel(b.slotStart.slice(0, 10), clientLocale(client)), time: formatSlotLabel(b.slotStart, b.slotEnd, clientLocale(client)) },
         relatedBookingId: b.id,
       });
       sent += 1;

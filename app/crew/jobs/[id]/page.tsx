@@ -32,7 +32,7 @@ export default async function CrewJobPage({ params }: { params: { id: string } }
   const isLead = await canLead(viewer, job);
   const locale = await getLocale();
   const t = translator(crewMessages, locale);
-  const whenLabel = `${formatSlot(booking.slotStart, locale).split(' · ')[0]} · ${formatSlotLabel(booking.slotStart, booking.slotEnd)}`;
+  const whenLabel = `${formatSlot(booking.slotStart, locale).split(' · ')[0]} · ${formatSlotLabel(booking.slotStart, booking.slotEnd, locale)}`;
   // The viewer already passed canWorkJob above (assigned crew, or admin)
   // — that's the authorization boundary for decrypting the entry code.
   const homeProfile = address ? await getHomeProfile(address.id) : null;

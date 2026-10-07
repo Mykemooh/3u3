@@ -58,7 +58,7 @@ export default async function JobGallery({ params }: { params: { id: string } })
           <p className="mt-1 text-slate">
             {job.startedAt && job.completedAt
               ? t('jobOnSite', { start: formatClock(job.startedAt, locale), end: formatClock(job.completedAt, locale) })
-              : formatSlotLabel(booking.slotStart, booking.slotEnd)}
+              : formatSlotLabel(booking.slotStart, booking.slotEnd, locale)}
           </p>
         </div>
         <JourneyRail steps={cleaningJourney({ job, invoice: invoice ?? null }, locale)} />

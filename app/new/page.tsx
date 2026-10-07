@@ -309,7 +309,7 @@ export default function NewCustomerPage() {
                           : 'border-line hover:border-gold'
                       }`}
                     >
-                      {formatSlotLabel(slot.start, slot.end)}
+                      {formatSlotLabel(slot.start, slot.end, locale)}
                     </button>
                   ))}
                 </div>
@@ -336,7 +336,7 @@ export default function NewCustomerPage() {
           <p className="text-sm text-slate mb-1">
             {selectedService && nameOf(selectedService)}
             {selectedService ? ' — ' : ''}
-            {selected && `${formatDateLabel(selected.start.split('T')[0], locale)}, ${formatSlotLabel(selected.start, selected.end)}`}
+            {selected && `${formatDateLabel(selected.start.split('T')[0], locale)}, ${formatSlotLabel(selected.start, selected.end, locale)}`}
           </p>
           <p className="text-sm text-slate mb-6">
             {customerEmailSent ? t('newEmailed') : ''}

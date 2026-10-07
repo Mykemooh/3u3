@@ -259,7 +259,7 @@ export async function sendBookingConfirmationEmails(input: {
     const { subject, html } = bookingConfirmedCustomerEmail({
       name: client.name,
       serviceName: localizedServiceName(locale, input.serviceName, input.serviceKey),
-      whenLabel: locale === 'es' ? `${formatDateLabel(input.slotStart.slice(0, 10), locale)}, ${formatSlotLabel(input.slotStart, input.slotEnd)}` : whenLabel,
+      whenLabel: locale === 'es' ? `${formatDateLabel(input.slotStart.slice(0, 10), locale)}, ${formatSlotLabel(input.slotStart, input.slotEnd, locale)}` : whenLabel,
       addressLabel,
       priceLabel,
       accountUrl: appUrl('/account'),

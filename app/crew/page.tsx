@@ -153,7 +153,7 @@ function NextJobCard({ row, t, locale }: { row: Row; t: T; locale: Locale }) {
         <p className="text-xs font-bold uppercase tracking-[0.12em] text-gold">{started ? t('nextKeepGoing') : driving ? t('nextOnTheWay') : t('nextUpNext')}</p>
         <p className="mt-2 text-2xl font-bold text-white">{client?.name}</p>
         <p className="mt-1 text-white/70">
-          {service ? (SERVICE_LABELS[service.key] ? serviceLabel(service.key, locale) : service.name) : t('serviceFallback')} · {formatSlotLabel(booking.slotStart, booking.slotEnd)}
+          {service ? (SERVICE_LABELS[service.key] ? serviceLabel(service.key, locale) : service.name) : t('serviceFallback')} · {formatSlotLabel(booking.slotStart, booking.slotEnd, locale)}
         </p>
         {address && <p className="text-white/70">{address}</p>}
         <div className="mt-5 flex items-center gap-3">
@@ -183,7 +183,7 @@ function Section({ t, locale, title, rows, showDate, muted, tone }: { t: T; loca
               <p className="truncate font-semibold text-ink">{client?.name}</p>
               <p className="truncate text-sm text-slate">
                 {showDate || tone === 'warn' ? `${formatDateLabel(booking.slotStart.slice(0, 10), locale)} · ` : ''}
-                {formatSlotLabel(booking.slotStart, booking.slotEnd)} · {service ? (SERVICE_LABELS[service.key] ? serviceLabel(service.key, locale) : service.name) : t('serviceFallback')}
+                {formatSlotLabel(booking.slotStart, booking.slotEnd, locale)} · {service ? (SERVICE_LABELS[service.key] ? serviceLabel(service.key, locale) : service.name) : t('serviceFallback')}
               </p>
             </div>
             <span

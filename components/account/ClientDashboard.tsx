@@ -42,7 +42,7 @@ export default async function ClientDashboard(p: Props) {
       <Card
         title={t('dashNextTitle')}
         big={p.next ? formatDateLabel(p.next.slotStart.slice(0, 10), locale) : t('dashNothingBooked')}
-        sub={p.next ? `${formatSlotLabel(p.next.slotStart, p.next.slotEnd)} · ${p.next.serviceName}` : undefined}
+        sub={p.next ? `${formatSlotLabel(p.next.slotStart, p.next.slotEnd, locale)} · ${p.next.serviceName}` : undefined}
       >
         {p.next ? (
           <>

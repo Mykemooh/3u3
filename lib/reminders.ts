@@ -81,7 +81,7 @@ export async function sendBookingReminders(): Promise<{ sent3d: number; sent36h:
     const serviceName = service
       ? localizedServiceName(locale, SERVICE_LABELS[service.key as keyof typeof SERVICE_LABELS] ?? service.name, service.key)
       : t('serviceFallbackTitle');
-    const [dateLabel, timeLabel] = [formatDateLabel(booking.slotStart.slice(0, 10), locale), formatSlotLabel(booking.slotStart, booking.slotEnd)];
+    const [dateLabel, timeLabel] = [formatDateLabel(booking.slotStart.slice(0, 10), locale), formatSlotLabel(booking.slotStart, booking.slotEnd, locale)];
 
     const send = async (key: 'visit_reminder_first' | 'visit_reminder_second', state: AutomationState, hours: number, event: string) => {
       // English reads "in {horizon}"; Spanish carries its own preposition ("en 3 días", "mañana").

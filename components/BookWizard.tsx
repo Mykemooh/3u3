@@ -249,7 +249,7 @@ export default function BookWizard({
                           selected?.start === slot.start ? 'border-gold bg-gold/10 text-ink' : 'border-line hover:border-gold'
                         }`}
                       >
-                        {formatSlotLabel(slot.start, slot.end)}
+                        {formatSlotLabel(slot.start, slot.end, locale)}
                       </button>
                     ))}
                   </div>
@@ -278,7 +278,7 @@ export default function BookWizard({
                                     selected?.start === slot.start ? 'border-gold bg-gold/10 text-ink' : 'border-line hover:border-gold'
                                   }`}
                                 >
-                                  {formatSlotLabel(slot.start, slot.end)}
+                                  {formatSlotLabel(slot.start, slot.end, locale)}
                                 </button>
                               ))}
                           </div>
@@ -396,7 +396,7 @@ export default function BookWizard({
             <p className="mb-4 rounded-lg bg-surface px-4 py-3 text-sm text-slate">
               {t(cadence === 'BIWEEKLY' ? 'cadenceBiweeklySummary' : 'cadenceMonthlySummary', {
                 weekday: new Date(selected.start).toLocaleDateString(intlLocale(locale), { weekday: 'long' }),
-                time: formatSlotLabel(selected.start, selected.end),
+                time: formatSlotLabel(selected.start, selected.end, locale),
               })}
             </p>
           )}
@@ -416,7 +416,7 @@ export default function BookWizard({
           <div className="mb-6 space-y-1 text-sm text-slate">
             <p className="font-semibold text-ink">{nameOf(service)}</p>
             <p>{dateLabel(selected.start.split('T')[0])}</p>
-            <p>{formatSlotLabel(selected.start, selected.end)}</p>
+            <p>{formatSlotLabel(selected.start, selected.end, locale)}</p>
             <p>{t(CADENCE_LABEL[cadence])} · {service.rateLabel}</p>
             {selectedAddOns.length > 0 && (
               <p>+ {selectedAddOns.map((a) => a.name).join(', ')} ({formatMoney(addOnsTotalCents)})</p>

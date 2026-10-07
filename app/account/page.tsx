@@ -138,7 +138,7 @@ export default async function AccountHome() {
                   <div>
                     <p className="font-semibold">{formatDateLabel(r.booking.slotStart.slice(0, 10), locale)}</p>
                     <p className="text-sm text-slate">
-                      {formatSlotLabel(r.booking.slotStart, r.booking.slotEnd)} · {serviceName(r, locale, t)}
+                      {formatSlotLabel(r.booking.slotStart, r.booking.slotEnd, locale)} · {serviceName(r, locale, t)}
                     </p>
                   </div>
                   <AddToCalendar
@@ -232,7 +232,7 @@ function FocusCard({ row, isPast, tracking, locale, t }: { row: AccountBooking; 
           ) : null}
         </div>
         <p className="mt-1 text-slate">
-          {formatSlotLabel(booking.slotStart, booking.slotEnd)} · {serviceName(row, locale, t)}
+          {formatSlotLabel(booking.slotStart, booking.slotEnd, locale)} · {serviceName(row, locale, t)}
           {booking.priceCents != null ? ` · ${formatMoney(booking.priceCents)}` : ''}
         </p>
         {row.address && <p className="text-slate">{row.address.line1}, {row.address.city}</p>}

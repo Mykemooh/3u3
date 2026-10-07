@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AddressInput, { type PickedAddress } from '@/components/AddressInput';
+import { useT } from '@/components/i18n/LocaleProvider';
+import { commonMessages } from '@/lib/i18n/messages/common';
 
 export default function AddressForm({
   endpoint,
@@ -13,6 +15,7 @@ export default function AddressForm({
   initial: { line1: string; city: string; state: string; zip?: string | null; notes?: string | null; bedrooms?: number | null };
   onSaved?: () => void;
 }) {
+  const t = useT(commonMessages);
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [line1, setLine1] = useState(initial.line1 ?? '');
@@ -52,7 +55,7 @@ export default function AddressForm({
       onSaved?.();
     } else {
       setStatus('error');
-      setError(data.error || "Couldn't save — please try again.");
+      setError(data.error || t('saveError'));
     }
   }
 
@@ -68,17 +71,17 @@ export default function AddressForm({
               </p>
               {initial.notes && (
                 <p className="mt-2 rounded-lg bg-gold/10 px-3 py-2 text-xs text-ink">
-                  <span className="font-semibold text-bronze">Cleaner needs to know: </span>
+                  <span className="font-semibold text-bronze">{t('addrCleanerNeedsToKnowPrefix')}</span>
                   {initial.notes}
                 </p>
               )}
             </>
           ) : (
-            <p className="text-muted">No address on file yet.</p>
+            <p className="text-muted">{t('addrNone')}</p>
           )}
         </div>
         <button onClick={() => setEditing(true)} className="btn-secondary !px-4 !py-2 text-sm">
-          {initial.line1 ? 'Edit' : 'Add address'}
+          {initial.line1 ? t('addrEdit') : t('addrAdd')}
         </button>
       </div>
     );
@@ -87,50 +90,50 @@ export default function AddressForm({
   return (
     <form onSubmit={onSubmit} className="space-y-3">
       <div>
-        <label className="label">Street address</label>
+        <label className="label">{t('addrStreet')}</label>
         <AddressInput value={line1} onChange={setLine1} picked={picked} onPick={onPick} required />
       </div>
       <div className="grid grid-cols-3 gap-3">
         <div className="col-span-1">
-          <label className="label">City</label>
+          <label className="label">{t('addrCity')}</label>
           <input className="input" value={city} onChange={(e) => setCity(e.target.value)} required />
         </div>
         <div>
-          <label className="label">State</label>
+          <label className="label">{t('addrState')}</label>
           <input className="input" value={state} onChange={(e) => setState(e.target.value)} maxLength={2} required />
         </div>
         <div>
-          <label className="label">ZIP</label>
+          <label className="label">{t('addrZip')}</label>
           <input className="input" value={zip} onChange={(e) => setZip(e.target.value)} />
         </div>
       </div>
       <div>
-        <label className="label">Bedrooms</label>
+        <label className="label">{t('addrBedrooms')}</label>
         <select className="input" value={bedrooms} onChange={(e) => setBedrooms(e.target.value)}>
-          <option value="">Not set</option>
+          <option value="">{t('addrNotSet')}</option>
           {[1, 2, 3, 4, 5, 6].map((n) => (
             <option key={n} value={n}>
               {n} {n === 6 ? '+' : ''}
             </option>
           ))}
         </select>
-        <p className="mt-1 text-xs text-muted">Sets how many "Bedroom" entries show up on the cleaning checklist.</p>
+        <p className="mt-1 text-xs text-muted">{t('addrBedroomsHelp')}</p>
       </div>
       <div>
-        <label className="label">Cleaner needs to know</label>
+        <label className="label">{t('addrCleanerNeedsToKnow')}</label>
         <textarea
           className="input"
           rows={3}
-          placeholder="Pets, gate or lockbox codes, parking, anything the crew should know before they arrive"
+          placeholder={t('addrNotesPlaceholder')}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
         />
-        <p className="mt-1 text-xs text-muted">Shown to the crew on this job — they'll see it before they can start.</p>
+        <p className="mt-1 text-xs text-muted">{t('addrNotesHelp')}</p>
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex gap-2">
         <button type="submit" disabled={status === 'saving'} className="btn-primary !px-4 !py-2 text-sm">
-          {status === 'saving' ? 'Saving…' : 'Save address'}
+          {status === 'saving' ? t('saving') : t('addrSave')}
         </button>
         <button
           type="button"
@@ -138,7 +141,7 @@ export default function AddressForm({
           className="btn-secondary !px-4 !py-2 text-sm"
           disabled={status === 'saving'}
         >
-          Cancel
+          {t('cancel')}
         </button>
       </div>
     </form>

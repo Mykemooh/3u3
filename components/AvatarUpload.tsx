@@ -2,8 +2,11 @@
 
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useT } from '@/components/i18n/LocaleProvider';
+import { commonMessages } from '@/lib/i18n/messages/common';
 
 export default function AvatarUpload({ name, initialUrl }: { name: string; initialUrl: string | null }) {
+  const t = useT(commonMessages);
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [url, setUrl] = useState(initialUrl);
@@ -21,7 +24,7 @@ export default function AvatarUpload({ name, initialUrl }: { name: string; initi
     const res = await fetch('/api/account/avatar', { method: 'POST', body: form });
     const data = await res.json().catch(() => ({}));
     setBusy(false);
-    if (!res.ok) return setError(data.error || 'Could not upload that photo.');
+    if (!res.ok) return setError(data.error || t('avatarUploadError'));
     setUrl(data.avatarUrl);
     router.refresh();
   }
@@ -31,7 +34,7 @@ export default function AvatarUpload({ name, initialUrl }: { name: string; initi
     setError('');
     const res = await fetch('/api/account/avatar', { method: 'DELETE' });
     setBusy(false);
-    if (!res.ok) return setError('Could not remove your photo.');
+    if (!res.ok) return setError(t('avatarRemoveError'));
     setUrl(null);
     router.refresh();
   }
@@ -50,11 +53,11 @@ export default function AvatarUpload({ name, initialUrl }: { name: string; initi
       <div>
         <div className="flex gap-2">
           <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className="btn-secondary !px-4 !py-2 text-sm">
-            {busy ? 'Uploading…' : url ? 'Change photo' : 'Add photo'}
+            {busy ? t('avatarUploading') : url ? t('avatarChange') : t('avatarAdd')}
           </button>
           {url && (
             <button type="button" onClick={remove} disabled={busy} className="text-sm text-muted hover:text-ink">
-              Remove
+              {t('remove')}
             </button>
           )}
         </div>

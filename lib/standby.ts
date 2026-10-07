@@ -132,7 +132,7 @@ async function tryOfferDate(request: typeof standbyRequests.$inferSelect): Promi
       const locale: Locale = client.locale === 'es' ? 'es' : 'en';
       const serviceName = localizedServiceName(locale, service.name, service.key);
       const dateLabel = formatDateLabel(request.preferredDate, locale);
-      const timeLabel = formatSlotLabel(open.start, open.end);
+      const timeLabel = formatSlotLabel(open.start, open.end, locale);
       const url = offerUrl(token);
       await notifyClient({
         tenantId: request.tenantId,
