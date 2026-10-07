@@ -45,7 +45,11 @@ export default function TexWidget() {
     }
     if (open) setTimeout(() => input.current?.focus(), 50);
   }, [open, config]);
-  useEffect(() => bottom.current?.scrollIntoView({ block: 'end' }), [messages.length, busy]);
+  // Braces matter: newer Chrome returns a Promise from scrollIntoView, and an
+  // effect that returns anything but a function crashes React on cleanup.
+  useEffect(() => {
+    bottom.current?.scrollIntoView({ block: 'end' });
+  }, [messages.length, busy]);
   // TrashCan's own pages (on its own domain they sit at /, /pricing…) mark
   // themselves with data-tc-surface; Tex is the company's assistant, not TrashCan's.
   const [onTcSurface, setOnTcSurface] = useState(false);
