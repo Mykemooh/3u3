@@ -51,7 +51,7 @@ export const TC_IMAGES: Record<ImageSlotKey, { title: string; brief: string; alt
     title: 'The family behind TRASHCAN',
     brief:
       'The founding couple at home or by their work vehicle — the people who built TrashCan for their own crews. Natural, warm daylight, not a studio portrait. Landscape, 3:2.',
-    alt: 'The founders, who built TrashCan for their own cleaning company',
-    file: null,
+    alt: 'The founders of TRASHCAN, hand in hand',
+    file: '/images/trashcan/founders.jpg',
   },
 };
