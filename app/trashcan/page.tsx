@@ -171,7 +171,8 @@ export default function TrashCanHome() {
       <section className="mx-auto grid max-w-[1280px] items-center gap-12 px-4 py-20 sm:px-6 md:py-28 lg:grid-cols-2 lg:px-8">
         <div className="relative order-last lg:order-first">
           <ImageSlot slot="crew-arrival" aspect="aspect-[16/11]" captionClass="sm:mr-[36%]" />
-          <PhoneMockup className="absolute -bottom-8 right-4 w-[34%] max-w-[210px] sm:right-8" />
+          {/* Sized like a phone held up to the photo, tucked over its bottom-right corner. */}
+          <PhoneMockup className="absolute -bottom-6 -right-2 w-[23%] max-w-[148px] sm:-bottom-8 sm:-right-4" />
         </div>
         <div>
           <h2 className="tc-h1">Your cleaners clean. TRASHCAN handles the rest.</h2>
