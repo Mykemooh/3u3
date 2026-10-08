@@ -23,8 +23,8 @@ export const TC_IMAGES: Record<ImageSlotKey, { title: string; brief: string; alt
     title: 'Crew arriving at a home',
     brief:
       'Two or three cleaners in black polos walking up a Texas suburban driveway with caddies and a vacuum, late-morning daylight, one checking a phone. Wide environmental frame — the house and the walk matter more than faces. Landscape, 16:10.',
-    alt: 'A TRASHCAN crew lead going over the day’s jobs on his phone with three cleaners beside the TRASHCAN van',
-    file: '/images/trashcan/crew-van-trashcan.jpg',
+    alt: 'A crew lead going over the day’s jobs on his phone with three cleaners beside their van',
+    file: '/images/trashcan/crew-van.jpg',
   },
   'kitchen-finish': {
     title: 'A finished kitchen',
