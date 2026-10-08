@@ -16,6 +16,7 @@ import {
 } from '@dnd-kit/core';
 import { boardCollision } from '@/lib/dndCollision';
 import { ROLE_LABELS, ROLE_STYLES } from '@/components/team/TeamBoard';
+import type { DayWeather, WeatherKind } from '@/lib/forecast';
 
 type StaffRole = 'TEAM_LEAD' | 'CLEANER' | 'JR_CLEANER';
 
@@ -80,12 +81,17 @@ export default function ScheduleBoard({
   teams,
   cards: initial,
   people,
+  weather = {},
+  weatherPlace = null,
 }: {
   dates: string[];
   today: string;
   teams: { id: string; name: string }[];
   cards: BoardCard[];
   people: BoardPerson[];
+  /** Day forecast keyed by date (lib/forecast.ts). */
+  weather?: Record<string, DayWeather>;
+  weatherPlace?: string | null;
 }) {
   const router = useRouter();
   const [cards, setCards] = useState(initial);
@@ -158,20 +164,27 @@ export default function ScheduleBoard({
   const rows: { id: string; name: string }[] = [...teams];
   const unassigned = cards.filter((c) => !c.isQuoteVisit && !c.crewId);
   if (unassigned.length) rows.push({ id: NONE, name: 'Needs a team' });
+  const weekend = (d: string) => {
+    const [y, m, dd] = d.split('-').map(Number);
+    const wd = new Date(y, m - 1, dd).getDay();
+    return wd === 0 || wd === 6;
+  };
+  const colTone = (d: string) => (d === today ? 'bg-tc-lime-wash/60' : weekend(d) ? 'bg-tc-50' : 'bg-white');
+  const hasForecast = Object.keys(weather).length > 0;
 
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <label className="flex items-center gap-2 text-sm text-slate">
-          <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} />
+        <label className="flex items-center gap-2 text-sm text-tc-700">
+          <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} className="accent-tc-black" />
           Email clients when their day or time changes
         </label>
-        <p className="text-sm text-muted">Drag a job to move it · tap it to edit time or crew</p>
+        <p className="text-sm text-tc-500">Drag a job to move it · tap it to edit time or crew</p>
       </div>
       {message && (
         <p
           role={message.tone === 'error' ? 'alert' : 'status'}
-          className={`mb-3 rounded-xl px-4 py-3 text-sm font-medium ${message.tone === 'error' ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-green'}`}
+          className={`mb-3 rounded-xl px-4 py-3 text-sm font-medium ${message.tone === 'error' ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-800'}`}
         >
           {message.text}
         </p>
@@ -180,64 +193,75 @@ export default function ScheduleBoard({
       <DndContext sensors={sensors} collisionDetection={boardCollision} onDragEnd={onDragEnd} onDragCancel={() => (lastDragEnd.current = Date.now())}
         accessibility={{ announcements }}
       >
-        <div className="overflow-x-auto">
-          <div className="min-w-[980px]">
-            <div className="grid grid-cols-[130px_repeat(7,1fr)] gap-2">
-              <div />
+        <div className="overflow-x-auto rounded-2xl border border-tc-200 bg-white shadow-tc-ring">
+          <div className="min-w-[1040px]">
+            <div className="grid grid-cols-[176px_repeat(7,minmax(0,1fr))]">
+              {/* Header row: the day, its date, and the forecast */}
+              <div className="flex items-end border-b border-tc-200 bg-tc-50 px-4 pb-3 pt-4">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-tc-500">Team</span>
+              </div>
               {dates.map((date) => (
-                <div
-                  key={date}
-                  className={`rounded-lg px-2 py-1.5 text-center text-sm font-semibold ${date === today ? 'bg-gold/20 text-bronze' : 'text-slate'}`}
-                >
-                  {dayLabel(date)}
-                </div>
+                <DayHeader key={date} date={date} today={date === today} weekend={weekend(date)} weather={weather[date]} />
               ))}
 
-              {rows.map((row) => (
-                <div key={row.id} className="contents">
-                  <div className={`flex flex-col justify-center pr-2 text-sm font-semibold ${row.id === NONE ? 'text-amber-700' : 'text-ink'}`}>
-                    {row.name}
-                    {row.id !== NONE && (
-                      <span className="mt-1 flex flex-wrap gap-1">
-                        {people
-                          .filter((p) => p.crewId === row.id)
-                          .map((p) => (
-                            <span key={p.id} title={`${p.name} · ${ROLE_LABELS[p.staffRole]}`} className={`pill !px-1.5 !py-0 text-[10px] ${ROLE_STYLES[p.staffRole]}`}>
-                              {initials(p.name)}
-                            </span>
+              {rows.map((row) => {
+                const members = people.filter((p) => p.crewId === row.id);
+                const count = cards.filter((c) => !c.isQuoteVisit && (c.crewId ?? NONE) === row.id).length;
+                return (
+                  <div key={row.id} className="contents">
+                    <div className={`flex flex-col justify-center gap-1.5 border-b border-tc-100 px-4 py-3 ${row.id === NONE ? 'bg-amber-50' : 'bg-white'}`}>
+                      <span className={`text-[14px] font-semibold leading-tight ${row.id === NONE ? 'text-amber-800' : 'text-tc-900'}`}>{row.name}</span>
+                      {row.id !== NONE && (
+                        <span className="flex items-center gap-2">
+                          <span className="flex -space-x-1">
+                            {members.map((p) => (
+                              <Avatar key={p.id} person={p} />
+                            ))}
+                          </span>
+                          <span className="text-[12px] text-tc-500">
+                            {count} {count === 1 ? 'job' : 'jobs'}
+                          </span>
+                        </span>
+                      )}
+                    </div>
+                    {dates.map((date) => (
+                      <Cell key={date} id={`cell|${row.id}|${date}`} tone={colTone(date)} warn={row.id === NONE} disabled={row.id === NONE}>
+                        {cards
+                          .filter((c) => !c.isQuoteVisit && (c.crewId ?? NONE) === row.id && c.slotStart.startsWith(date))
+                          .sort((a, b) => a.slotStart.localeCompare(b.slotStart))
+                          .map((c) => (
+                            <JobCard
+                              key={c.bookingId}
+                              card={c}
+                              personById={personById}
+                              onOpen={() => Date.now() - lastDragEnd.current > 300 && setEditing(c)}
+                            />
                           ))}
-                      </span>
-                    )}
+                      </Cell>
+                    ))}
                   </div>
-                  {dates.map((date) => (
-                    <Cell key={date} id={`cell|${row.id}|${date}`} today={date === today} warn={row.id === NONE} disabled={row.id === NONE}>
-                      {cards
-                        .filter((c) => !c.isQuoteVisit && (c.crewId ?? NONE) === row.id && c.slotStart.startsWith(date))
-                        .sort((a, b) => a.slotStart.localeCompare(b.slotStart))
-                        .map((c) => (
-                          <JobCard
-                            key={c.bookingId}
-                            card={c}
-                            personById={personById}
-                            onOpen={() => Date.now() - lastDragEnd.current > 300 && setEditing(c)}
-                          />
-                        ))}
-                    </Cell>
-                  ))}
-                </div>
-              ))}
+                );
+              })}
 
               <div className="contents">
-                <div className="flex items-center pr-2 text-sm font-semibold text-muted">Quote visits</div>
+                <div className="flex flex-col justify-center gap-0.5 bg-tc-50 px-4 py-3">
+                  <span className="text-[14px] font-semibold text-tc-700">Quote visits</span>
+                  <span className="text-[12px] text-tc-500">Your own calendar</span>
+                </div>
                 {dates.map((date) => (
-                  <div key={date} className={`min-h-[60px] space-y-2 rounded-xl border border-dashed border-line p-1.5 ${date === today ? 'bg-gold/5' : ''}`}>
+                  <div key={date} className={`min-h-[72px] space-y-2 border-l border-tc-100 p-2 ${date === today ? 'bg-tc-lime-wash/60' : 'bg-tc-50'}`}>
                     {cards
                       .filter((c) => c.isQuoteVisit && c.slotStart.startsWith(date))
                       .map((c) => (
-                        <Link key={c.bookingId} href="/admin/leads" className="block rounded-xl border border-line bg-white p-2 text-xs hover:border-gold">
-                          <span className="font-semibold text-ink">{timeLabel(c.slotStart)}</span>
-                          <p className="font-medium text-ink">{c.clientName}</p>
-                          {c.addressLine && <p className="truncate text-muted">{c.addressLine}</p>}
+                        <Link
+                          key={c.bookingId}
+                          href="/admin/leads"
+                          className="block rounded-lg border border-dashed border-tc-300 bg-white px-2.5 py-2 text-xs transition hover:border-tc-900"
+                        >
+                          <span className="font-semibold tabular-nums text-tc-900">{timeLabel(c.slotStart)}</span>
+                          <span className="ml-1.5 rounded bg-tc-100 px-1 py-px text-[10px] font-semibold uppercase tracking-wide text-tc-500">Quote</span>
+                          <p className="mt-0.5 truncate font-semibold text-tc-900">{c.clientName}</p>
+                          {c.addressLine && <p className="truncate text-tc-500">{c.addressLine}</p>}
                         </Link>
                       ))}
                   </div>
@@ -246,6 +270,11 @@ export default function ScheduleBoard({
             </div>
           </div>
         </div>
+        {hasForecast && (
+          <p className="mt-2 text-right text-[11px] text-tc-500">
+            Forecast{weatherPlace ? ` for ${weatherPlace}` : ''} from the National Weather Service · about 7 days ahead
+          </p>
+        )}
       </DndContext>
 
       {editing && (
@@ -267,13 +296,131 @@ export default function ScheduleBoard({
   );
 }
 
-function Cell({ id, today, warn, disabled, children }: { id: string; today: boolean; warn: boolean; disabled: boolean; children: React.ReactNode }) {
+function DayHeader({ date, today, weekend, weather }: { date: string; today: boolean; weekend: boolean; weather?: DayWeather }) {
+  const [y, m, d] = date.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  const wd = dt.toLocaleDateString('en-US', { weekday: 'short' });
+  return (
+    <div
+      className={`border-b border-l border-tc-200 px-3 pb-2.5 pt-3 ${today ? 'bg-tc-lime-wash/60 shadow-[inset_0_3px_0_0_#B8FF00]' : weekend ? 'bg-tc-50' : 'bg-white'}`}
+      aria-label={`${dt.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}${weather ? `, ${weather.summary}` : ''}`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className={`text-[11px] font-semibold uppercase tracking-[0.08em] ${today ? 'text-tc-900' : 'text-tc-500'}`}>
+          {wd}
+          {today && <span className="ml-1.5 normal-case tracking-normal text-tc-lime-ink">Today</span>}
+        </span>
+        <span
+          className={`flex h-8 min-w-8 items-center justify-center rounded-lg px-1.5 font-tc-display text-[17px] font-extrabold tabular-nums ${
+            today ? 'bg-tc-black text-tc-lime' : 'text-tc-900'
+          }`}
+        >
+          {d}
+        </span>
+      </div>
+      <div className="mt-2 flex h-5 items-center gap-1.5 text-[12px] text-tc-700" title={weather?.summary}>
+        {weather ? (
+          <>
+            <WeatherIcon kind={weather.kind} />
+            <span className="font-semibold tabular-nums text-tc-900">{weather.highF != null ? `${weather.highF}°` : `${weather.lowF}°`}</span>
+            {weather.highF != null && weather.lowF != null && <span className="tabular-nums text-tc-500">{weather.lowF}°</span>}
+            {weather.rainChance != null && weather.rainChance >= 20 && (
+              <span className={`ml-auto flex items-center gap-0.5 tabular-nums ${weather.rainChance >= 60 ? 'font-semibold text-blue-700' : 'text-blue-600'}`}>
+                <svg width="10" height="12" viewBox="0 0 10 12" aria-hidden="true">
+                  <path d="M5 0.8C3.4 3.2 1 5.6 1 7.9A4 4 0 0 0 9 7.9C9 5.6 6.6 3.2 5 0.8Z" fill="currentColor" />
+                </svg>
+                {weather.rainChance}%
+              </span>
+            )}
+          </>
+        ) : (
+          <span className="text-tc-300">—</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function WeatherIcon({ kind }: { kind: WeatherKind }) {
+  const sun = (
+    <g>
+      <circle cx="12" cy="12" r="4.2" fill="#F59E0B" />
+      {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
+        <rect key={a} x="11.2" y="2" width="1.6" height="3.4" rx="0.8" fill="#F59E0B" transform={`rotate(${a} 12 12)`} />
+      ))}
+    </g>
+  );
+  const cloud = (fill: string) => <path d="M7.5 19h9.3a3.7 3.7 0 0 0 .3-7.4A5.2 5.2 0 0 0 7 11.3 3.9 3.9 0 0 0 7.5 19Z" fill={fill} />;
+  const icons: Record<WeatherKind, React.ReactNode> = {
+    sun,
+    partly: (
+      <>
+        <g transform="translate(-3 -3) scale(0.85)">{sun}</g>
+        {cloud('#9CA3AF')}
+      </>
+    ),
+    cloud: cloud('#9CA3AF'),
+    rain: (
+      <>
+        <g transform="translate(0 -3)">{cloud('#6B7280')}</g>
+        {[8, 12, 16].map((x) => (
+          <rect key={x} x={x} y="17.5" width="1.6" height="4" rx="0.8" fill="#3882F6" transform={`rotate(15 ${x} 19)`} />
+        ))}
+      </>
+    ),
+    storm: (
+      <>
+        <g transform="translate(0 -3)">{cloud('#4B5563')}</g>
+        <path d="M12.5 15.5 10 19.5h2.2l-1 3.5 3.6-5h-2.3l1-2.5Z" fill="#F59E0B" />
+      </>
+    ),
+    snow: (
+      <>
+        <g transform="translate(0 -3)">{cloud('#9CA3AF')}</g>
+        {[8, 12, 16].map((x) => (
+          <circle key={x} cx={x} cy="20" r="1.2" fill="#93C5FD" />
+        ))}
+      </>
+    ),
+    fog: (
+      <>
+        {[8, 12, 16].map((y) => (
+          <rect key={y} x="4" y={y} width="16" height="1.8" rx="0.9" fill="#9CA3AF" />
+        ))}
+      </>
+    ),
+    wind: (
+      <path d="M3 9h11a2.5 2.5 0 1 0-2.5-2.5M3 13h15a2.5 2.5 0 1 1-2.5 2.5M3 17h8" stroke="#6B7280" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+    ),
+  };
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
+      {icons[kind]}
+    </svg>
+  );
+}
+
+function Avatar({ person }: { person: BoardPerson }) {
+  const lead = person.staffRole === 'TEAM_LEAD';
+  return (
+    <span
+      title={`${person.name} · ${ROLE_LABELS[person.staffRole]}`}
+      className={`relative flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px] font-bold tracking-tight ring-2 ring-white ${
+        lead ? 'bg-tc-black text-tc-lime' : person.staffRole === 'JR_CLEANER' ? 'bg-emerald-100 text-emerald-800' : 'bg-tc-200 text-tc-700'
+      }`}
+    >
+      {initials(person.name)}
+    </span>
+  );
+}
+
+function Cell({ id, tone, warn, disabled, children }: { id: string; tone: string; warn: boolean; disabled: boolean; children: React.ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({ id, disabled });
   return (
     <div
       ref={setNodeRef}
-      className={`min-h-[96px] space-y-2 rounded-xl border p-1.5 transition ${
-        isOver ? 'border-gold bg-gold/10' : warn ? 'border-amber-200 bg-amber-50/60' : today ? 'border-line bg-gold/5' : 'border-line bg-surface'
+      className={`min-h-[118px] space-y-2 border-b border-l border-tc-100 p-2 transition-colors ${
+        isOver ? 'bg-tc-lime-wash shadow-[inset_0_0_0_2px_#B8FF00]' : warn ? 'bg-amber-50/70' : tone
       }`}
     >
       {children}
@@ -281,10 +428,19 @@ function Cell({ id, today, warn, disabled, children }: { id: string; today: bool
   );
 }
 
+const ACCENT: Record<string, string> = {
+  REQUESTED: 'bg-tc-300',
+  PENDING: 'bg-tc-black',
+  EN_ROUTE: 'bg-tc-blue',
+  IN_PROGRESS: 'bg-tc-amber',
+  COMPLETE: 'bg-tc-green',
+};
+
 function JobCard({ card, personById, onOpen }: { card: BoardCard; personById: Record<string, BoardPerson>; onOpen: () => void }) {
   const canMove = movable(card);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.bookingId, disabled: !canMove });
   const staff = card.staff.map((id) => personById[id]).filter(Boolean);
+  const accent = card.bookingStatus === 'REQUESTED' ? ACCENT.REQUESTED : ACCENT[card.jobStatus ?? 'PENDING'];
   return (
     <div
       ref={setNodeRef}
@@ -292,33 +448,41 @@ function JobCard({ card, personById, onOpen }: { card: BoardCard; personById: Re
       {...attributes}
       onClick={onOpen}
       style={transform ? { transform: `translate(${transform.x}px, ${transform.y}px)` } : undefined}
-      className={`rounded-xl border border-line bg-white p-2 text-left text-xs shadow-sm ${canMove ? 'cursor-grab touch-none active:cursor-grabbing' : 'cursor-pointer'} ${
-        isDragging ? 'relative z-50 shadow-card-lg' : 'hover:border-gold'
-      }`}
+      className={`relative overflow-hidden rounded-lg border border-tc-200 bg-white py-2 pl-3 pr-2 text-left text-xs shadow-[0_1px_2px_rgba(11,15,20,0.06)] transition ${
+        canMove ? 'cursor-grab touch-none active:cursor-grabbing' : 'cursor-pointer'
+      } ${isDragging ? 'z-50 shadow-tc-lg ring-2 ring-tc-lime' : 'hover:-translate-y-px hover:border-tc-300 hover:shadow-md'}`}
       aria-roledescription={canMove ? 'Draggable job' : 'Job'}
       aria-label={`${card.clientName}, ${timeLabel(card.slotStart)} to ${timeLabel(card.slotEnd)}`}
     >
-      <div className="flex items-center justify-between gap-1">
-        <span className="font-semibold text-ink">
-          {timeLabel(card.slotStart)}–{timeLabel(card.slotEnd)}
-        </span>
-        {card.jobStatus && card.jobStatus !== 'PENDING' && (
-          <span className={`pill ${STATUS_STYLE[card.jobStatus]} !px-1.5 !py-0 text-[10px]`}>{STATUS_LABEL[card.jobStatus]}</span>
-        )}
-      </div>
-      <p className="mt-0.5 truncate font-medium text-ink">{card.clientName}</p>
-      <p className="truncate text-muted">{card.serviceName}</p>
-      {card.addressLine && <p className="truncate text-muted">{card.addressLine}</p>}
-      {staff.length > 0 && (
-        <div className="mt-1.5 flex flex-wrap gap-1">
-          {staff.map((p) => (
-            <span key={p.id} title={`${p.name} · ${ROLE_LABELS[p.staffRole]}`} className={`pill !px-1.5 !py-0 text-[10px] ${ROLE_STYLES[p.staffRole]}`}>
-              {initials(p.name)}
-            </span>
-          ))}
+      <span aria-hidden="true" className={`absolute inset-y-0 left-0 w-[3px] ${accent}`} />
+      <span className="block whitespace-nowrap font-semibold tabular-nums text-tc-900">
+        {timeLabel(card.slotStart)}–{timeLabel(card.slotEnd)}
+      </span>
+      <p className="mt-1 truncate text-[13px] font-semibold leading-snug text-tc-900">{card.clientName}</p>
+      <p className="truncate text-tc-700">{card.serviceName}</p>
+      {card.addressLine && (
+        <p className="mt-0.5 flex items-center gap-1 truncate text-tc-500">
+          <svg width="10" height="12" viewBox="0 0 10 12" aria-hidden="true" className="shrink-0">
+            <path d="M5 0.5A4 4 0 0 0 1 4.5c0 3 4 7 4 7s4-4 4-7a4 4 0 0 0-4-4Zm0 5.6A1.6 1.6 0 1 1 5 2.9a1.6 1.6 0 0 1 0 3.2Z" fill="currentColor" />
+          </svg>
+          <span className="truncate">{card.addressLine}</span>
+        </p>
+      )}
+      {(staff.length > 0 || (card.jobStatus && card.jobStatus !== 'PENDING') || card.bookingStatus === 'REQUESTED') && (
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-1">
+          <div className="flex -space-x-1">
+            {staff.map((p) => (
+              <Avatar key={p.id} person={p} />
+            ))}
+          </div>
+          {card.jobStatus && card.jobStatus !== 'PENDING' ? (
+            <span className={`whitespace-nowrap rounded-full px-1.5 py-px text-[10px] font-semibold ${STATUS_STYLE[card.jobStatus]}`}>{STATUS_LABEL[card.jobStatus]}</span>
+          ) : card.bookingStatus === 'REQUESTED' ? (
+            <span className="whitespace-nowrap rounded-full bg-tc-100 px-1.5 py-px text-[10px] font-semibold text-tc-500">Requested</span>
+          ) : null}
         </div>
       )}
-      {card.jobId && staff.length === 0 && <p className="mt-1 text-[10px] font-semibold text-amber-700">Nobody on this job</p>}
+      {card.jobId && staff.length === 0 && <p className="mt-1.5 text-[10px] font-semibold text-amber-700">Nobody on this job</p>}
     </div>
   );
 }
