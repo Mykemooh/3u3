@@ -24,7 +24,7 @@ export const TC_IMAGES: Record<ImageSlotKey, { title: string; brief: string; alt
     brief:
       'Two or three cleaners in black polos walking up a Texas suburban driveway with caddies and a vacuum, late-morning daylight, one checking a phone. Wide environmental frame — the house and the walk matter more than faces. Landscape, 16:10.',
     alt: 'A TRASHCAN crew lead going over the day’s jobs on his phone with three cleaners by the TRASHCAN van',
-    file: '/images/trashcan/crew-arrival-tc.jpg',
+    file: '/images/trashcan/crew-arrival-tc2.jpg',
   },
   'kitchen-finish': {
     title: 'A finished kitchen',
