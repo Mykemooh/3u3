@@ -14,6 +14,8 @@ export default function ImageSlot({
   sizes = '(min-width: 1024px) 50vw, 100vw',
   priority = false,
   captionClass = '',
+  quality,
+  children,
 }: {
   slot: ImageSlotKey;
   className?: string;
@@ -23,12 +25,17 @@ export default function ImageSlot({
   priority?: boolean;
   /** Extra classes for the placeholder caption, e.g. to clear an overlapping element. */
   captionClass?: string;
+  /** Compression quality for the served photo (next/image default 75). */
+  quality?: number;
+  /** Overlays laid over a finished photo (e.g. a logo badge). */
+  children?: React.ReactNode;
 }) {
   const s = TC_IMAGES[slot];
   if (s.file) {
     return (
       <div className={`relative overflow-hidden rounded-tc-lg bg-tc-100 ${aspect} ${className}`}>
-        <Image src={s.file} alt={s.alt} fill sizes={sizes} priority={priority} className="object-cover" />
+        <Image src={s.file} alt={s.alt} fill sizes={sizes} priority={priority} quality={quality} className="object-cover" />
+        {children}
       </div>
     );
   }
