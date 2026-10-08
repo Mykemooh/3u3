@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import TcSite, { getTcNav } from '@/components/tc/TcSite';
 import Icon from '@/components/Icon';
+import TcLogo from '@/components/tc/TcLogo';
 import ImageSlot from '@/components/tc/ImageSlot';
 import { DashboardMockup, PhoneMockup, QuoteVignette, ScheduleVignette, InvoiceVignette, RoomsVignette } from '@/components/tc/Mockups';
 import { PLANS, PLAN_ORDER, feeLabel, dollars } from '@/lib/billing/plans';
@@ -232,15 +233,19 @@ export default function TrashCanHome() {
 
       {/* ---------------- Built by operators ---------------- */}
       <section className="mx-auto grid max-w-[1280px] items-center gap-12 px-4 py-20 sm:px-6 md:py-28 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20 lg:px-8">
-        <ImageSlot slot="founders" aspect="aspect-[4/5]" className="mx-auto w-full max-w-[460px]" sizes="(min-width: 1024px) 460px, 100vw" />
+        <ImageSlot slot="founders" aspect="aspect-[4/5]" className="mx-auto w-full max-w-[460px]" sizes="(min-width: 1024px) 460px, 100vw" quality={90}>
+          <span className="absolute left-4 top-4 inline-flex rounded-full bg-tc-black/90 px-3.5 py-2 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.5)] backdrop-blur-sm sm:left-5 sm:top-5">
+            <TcLogo on="dark" size="sm" />
+          </span>
+        </ImageSlot>
         <div>
           <p className="text-[12px] font-bold uppercase tracking-[0.08em] text-tc-lime-ink">Why we built it</p>
           <h2 className="tc-h1 mt-3">Built by a cleaning company, for cleaning companies.</h2>
-          <p className="tc-lead mt-5 max-w-[54ch]">
+          <p className="mt-5 max-w-[54ch] text-[16px] leading-relaxed text-tc-700">
             We run a cleaning company in Katy, Texas. Every CRM we tried was built for every trade at once — plumbers, landscapers, pest control — and cleaning got squeezed into someone else’s workflow. Jack of all trades, master of none.
           </p>
           <p className="mt-4 max-w-[54ch] text-[16px] leading-relaxed text-tc-700">
-            So we built the one our own crews needed, then made every part of it yours to set: your services and checklists, your prices, how your crews get paid. It fits your company the way it fits ours.
+            So we built the one our own crews needed, then made every part of it yours to set: your services and checklists, your prices, how your crews get paid. It fits your company, small or big, the way it fits ours.
           </p>
           <ul className="mt-8 grid max-w-[560px] gap-3 sm:grid-cols-3">
             {[
