@@ -5,6 +5,7 @@ import { getEmployees, staffForJobs } from '@/lib/team';
 import { businessTodayISO } from '@/lib/time';
 import ScheduleBoard from '@/components/team/ScheduleBoard';
 import { weatherWatch } from '@/lib/weather';
+import { weekWeather } from '@/lib/forecast';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,7 +30,11 @@ export default async function AdminSchedule({ searchParams }: { searchParams: { 
     getWeekSchedule(tenant.id, start),
     getEmployees(tenant.id),
   ]);
-  const weather = await weatherWatch(tenant.id, dates[0], dates[dates.length - 1]);
+  const entriesForWeather = [...crews.flatMap((c) => dates.flatMap((d) => byCrew[c.id][d])), ...dates.flatMap((d) => unassigned[d])];
+  const [weather, forecast] = await Promise.all([
+    weatherWatch(tenant.id, dates[0], dates[dates.length - 1]),
+    weekWeather(tenant.id, dates, entriesForWeather.map((e) => e.bookingId)),
+  ]);
   const dayName = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' });
   const entries = [
     ...crews.flatMap((c) => dates.flatMap((d) => byCrew[c.id][d])),
@@ -88,6 +93,8 @@ export default async function AdminSchedule({ searchParams }: { searchParams: { 
         teams={crews.map((c) => ({ id: c.id, name: c.name }))}
         cards={entries.map((e) => ({ ...e, staff: e.jobId ? staff[e.jobId] ?? [] : [] }))}
         people={employees.map((e) => ({ id: e.id, name: e.name, staffRole: e.staffRole, crewId: e.crewId }))}
+        weather={forecast.days}
+        weatherPlace={forecast.place}
       />
 
       <p className="mt-6 text-sm text-muted">
