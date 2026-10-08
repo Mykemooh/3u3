@@ -665,6 +665,13 @@
   }
 }
 
+/* The TrashCan sign-in (/signin?platform=1) puts the EN | ES toggle in its
+   own header row, so the frame's corner copy (components/AuthLocaleFrame.tsx)
+   steps aside rather than floating over the dark brand panel. */
+body:has([data-tc-signin]) .auth-lang-corner {
+  display: none;
+}
+
 /* The company watermark and Tex bubble belong to the company's site, not
    TrashCan's pages. */
 body:has([data-tc-surface]) .brand-watermark {
